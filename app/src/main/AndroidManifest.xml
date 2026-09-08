@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".GodjiApplication"
+        android:allowBackup="false"
+        android:label="Goji VPN"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.GodjiVpn"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GodjiVpn">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Ловит редирект из Native OAuth (Google/Yandex/Telegram) после серверного callback.
+             Схему godjivpn://oauth2redirect нужно один раз внести в панели: Настройки →
+             Мобильные приложения → "Разрешённые схемы app_redirect". -->
+        <activity
+            android:name=".auth.OAuthCallbackActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="godjivpn"
+                    android:host="oauth2redirect" />
+            </intent-filter>
+        </activity>
+
+        <!-- Сам VPN-туннель. BIND_VPN_SERVICE — системное разрешение, декларируется на сервисе -->
+        <service
+            android:name=".vpn.GodjiVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <!-- Виджет на главный экран (см. GojiWidgetProvider) — статус + кнопка подключения.
+             exported=true обязателен для AppWidgetProvider: APPWIDGET_UPDATE шлёт system_server
+             от имени лончера, и на части прошивок/версий Android такая доставка не проходит до
+             ресивера с exported=false, несмотря на то что сам intent-action защищённый. Приёмник
+             не принимает никаких внешних данных (сам решает, что рисовать, по внутреннему
+             состоянию сервиса/кэша), так что расширение поверхности атаки этим не создаётся. -->
+        <receiver
+            android:name=".widget.GojiWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_goji_info" />
+        </receiver>
+
+        <!-- WorkManager инициализируется вручную через HiltWorkerFactory в GodjiApplication
+             (Configuration.Provider) — стандартный провайдер-инициализатор нужно снять,
+             иначе он создаст WorkManager без Hilt-инъекции до onCreate() приложения. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+    </application>
+</manifest>

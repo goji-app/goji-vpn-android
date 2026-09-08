@@ -1,0 +1,22 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/libs/*.aar
+.kotlin/
+app/build/
+
+# Ключ подписи релиза и пароли к нему — НИКОГДА не публикуются. Держите свою копию
+# app/keystore.properties и app/godji-release.keystore локально, вне репозитория.
+app/keystore.properties
+app/*.keystore
+app/*.jks
+
+# Собранные APK — это бинарные артефакты (сотни МБ суммарно), не исходный код;
+# храните их локально или публикуйте через GitHub Releases отдельно от репозитория.
+/release-*/

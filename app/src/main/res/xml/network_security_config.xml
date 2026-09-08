@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Стандартное системное доверие для HTTPS-запросов к вашему API (не влияет на VLESS/Reality-туннель — тот работает внутри Xray-core со своей TLS-логией) -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

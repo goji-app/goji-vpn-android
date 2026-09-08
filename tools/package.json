@@ -1,0 +1,10 @@
+{
+  "name": "godji-globe-geo-gen",
+  "private": true,
+  "type": "module",
+  "description": "One-off generator for app/src/main/assets/geo_globe.json. Run: npm install && node gen_globe_geo.mjs",
+  "dependencies": {
+    "topojson-client": "^3.1.0",
+    "node-fetch": "^3.3.2"
+  }
+}

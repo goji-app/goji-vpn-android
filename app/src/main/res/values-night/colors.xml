@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Тёмная тема системы — уведомление о статусе VPN рисуется в тёмном фоне шторки,
+         поэтому здесь белый текст вместо чёрного из values/colors.xml. -->
+    <color name="notification_text">#FFFFFFFF</color>
+</resources>
