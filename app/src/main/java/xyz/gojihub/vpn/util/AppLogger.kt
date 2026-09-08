@@ -81,6 +81,26 @@ object AppLogger {
         }
     }
 
+    /** Стирает уже записанное для категорий (текущий файл + .old-ротацию) — вызывается в начале
+     *  новой попытки подключения (см. GodjiVpnService.onStartCommand), чтобы "Лог ядра"/
+     *  "Лог службы" всегда показывали только активное соединение, а не десяток прошлых попыток
+     *  вперемешку. Идёт через ту же очередь (scope+mutex), что и write() — благодаря этому,
+     *  если вызвать это ДО первого dlog() новой попытки, порядок гарантированно сохранится:
+     *  сначала очистка, потом уже строки самой попытки. */
+    fun startSession(context: Context, vararg categories: LogCategory) {
+        val appContext = context.applicationContext
+        scope.launch {
+            mutex.withLock {
+                for (category in categories) {
+                    runCatching {
+                        File(appContext.filesDir, "${category.fileBaseName}.log").delete()
+                        File(appContext.filesDir, "${category.fileBaseName}.log.old").delete()
+                    }
+                }
+            }
+        }
+    }
+
     /** Содержимое журнала конкретной категории для показа прямо в приложении (см.
      *  LogViewerDialog) — без отправки куда-либо, только чтение локального файла. Старый
      *  .old-файл (после ротации) читаем первым, чтобы порядок строк оставался хронологическим. */
