@@ -3,4 +3,19 @@
     <!-- Тёмная тема системы — уведомление о статусе VPN рисуется в тёмном фоне шторки,
          поэтому здесь белый текст вместо чёрного из values/colors.xml. -->
     <color name="notification_text">#FFFFFFFF</color>
+
+    <!-- Палитра виджета при системной тёмной теме — те же роли, что и в values/colors.xml,
+         тёмные значения взяты из тёмной палитры приложения (GodjiColors.applyDark()). -->
+    <color name="widget_bg">#1B211E</color>
+    <color name="widget_border">#333D3A</color>
+    <color name="widget_text_primary">#EAEFEC</color>
+    <color name="widget_text_secondary">#93A39C</color>
+    <color name="widget_node_bg">#232C29</color>
+    <color name="widget_dot_muted">#5A645F</color>
+    <color name="widget_dot_active">#2BC8B8</color>
+    <color name="widget_button_teal">#2BC8B8</color>
+    <color name="widget_button_red">#E2765F</color>
+    <color name="widget_button_text">#121614</color>
+    <color name="widget_list_item_bg">#00000000</color>
+    <color name="widget_list_item_selected_bg">#332BC8B8</color>
 </resources>

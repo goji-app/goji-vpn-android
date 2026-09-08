@@ -60,9 +60,10 @@
         <!-- Виджет на главный экран (см. GojiWidgetProvider) — статус + кнопка подключения.
              exported=true обязателен для AppWidgetProvider: APPWIDGET_UPDATE шлёт system_server
              от имени лончера, и на части прошивок/версий Android такая доставка не проходит до
-             ресивера с exported=false, несмотря на то что сам intent-action защищённый. Приёмник
-             не принимает никаких внешних данных (сам решает, что рисовать, по внутреннему
-             состоянию сервиса/кэша), так что расширение поверхности атаки этим не создаётся. -->
+             ресивера с exported=false, несмотря на то что сам intent-action защищённый. Сюда
+             приходят только системные широковещания жизненного цикла виджета (APPWIDGET_UPDATE/
+             OPTIONS_CHANGED) — сам провайдер только перерисовывает виджет по внутреннему
+             состоянию, никаких действий с реальным эффектом не выполняет. -->
         <receiver
             android:name=".widget.GojiWidgetProvider"
             android:exported="true">
@@ -73,6 +74,25 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_goji_info" />
         </receiver>
+
+        <!-- Выбор сервера/подключение из виджета (см. GojiWidgetActionReceiver) — в отличие от
+             GojiWidgetProvider выше, exported=false: эти действия реально меняют текущий узел
+             подписки и поднимают VPN, а не просто перерисовывают виджет, поэтому стороннему
+             приложению сюда доступа быть не должно. PendingIntent, которые создаёт сам виджет
+             (кнопка/строка списка), долетают сюда независимо от exported — это разрешение
+             переносится вместе с самим PendingIntent, а не проверяется заново на приёме. -->
+        <receiver
+            android:name=".widget.GojiWidgetActionReceiver"
+            android:exported="false" />
+
+        <!-- Список серверов внутри развёрнутого (3x3) виджета — см.
+             GojiWidgetRemoteViewsService/widget_goji_expanded.xml. BIND_REMOTEVIEWS — системное
+             разрешение, гарантирует, что подключаться к сервису может только сам системный
+             процесс лончера/виджет-хоста, а не произвольное приложение. -->
+        <service
+            android:name=".widget.GojiWidgetRemoteViewsService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
 
         <!-- WorkManager инициализируется вручную через HiltWorkerFactory в GodjiApplication
              (Configuration.Provider) — стандартный провайдер-инициализатор нужно снять,

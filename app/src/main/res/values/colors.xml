@@ -2,4 +2,21 @@
 <resources>
     <color name="launcher_background">#0A1412</color>
     <color name="notification_text">#FF000000</color>
+
+    <!-- Виджет на главный экран — следует СИСТЕМНОЙ (телефона) тёмной/светлой теме, а не
+         внутриприложенческому тумблеру: RemoteViews виджета инфлейтятся процессом лончера,
+         который сам применяет values-night при системном тёмной режиме — отдельный код для
+         этого не нужен, достаточно вынести цвета сюда вместо хардкода прямо в drawable/layout. -->
+    <color name="widget_bg">#FFFDF7</color>
+    <color name="widget_border">#E7DFCA</color>
+    <color name="widget_text_primary">#12312C</color>
+    <color name="widget_text_secondary">#5F736D</color>
+    <color name="widget_node_bg">#EFE7D4</color>
+    <color name="widget_dot_muted">#9AA39B</color>
+    <color name="widget_dot_active">#00A79B</color>
+    <color name="widget_button_teal">#00A79B</color>
+    <color name="widget_button_red">#C4553C</color>
+    <color name="widget_button_text">#FFFDF7</color>
+    <color name="widget_list_item_bg">#00000000</color>
+    <color name="widget_list_item_selected_bg">#1A00A79B</color>
 </resources>

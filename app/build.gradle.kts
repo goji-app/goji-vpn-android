@@ -1,4 +1,3 @@
-import com.android.build.api.variant.FilterConfiguration
 import java.util.Properties
 
 plugins {
@@ -24,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.0.21"
+        versionCode = 4
+        versionName = "1.0.22"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
@@ -77,28 +76,16 @@ android {
         }
     }
 
-    // Отдельный APK на каждую архитектуру — внутри только свой .so, а не все сразу.
-    // Итоговые имена файлов переопределены ниже (androidComponents.onVariants) на
-    // Goji-<версия>-<abi>.apk вместо стандартных app-<abi>-<buildType>.apk.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = true
-        }
-    }
 }
 
-// Переименование итоговых APK: Goji-<versionName>-<abi|universal>.apk вместо стандартного
-// app-<abi>-<buildType>.apk — так собранные файлы сразу узнаваемы среди прочего в папке
-// outputs, без необходимости заглядывать в имя buildType/module.
+// Один universal-APK на сборку (со всеми ABI из ndk.abiFilters выше внутри одного файла) —
+// раньше splits.abi дополнительно нарезал его на app-arm64-v8a/app-armeabi-v7a/app-universal;
+// от отдельных per-ABI сборок решили отказаться, раздаём и публикуем только universal.
+// Имя файла — просто Goji.apk, без версии/архитектуры: версия и так видна внутри самого APK
+// (versionName/versionCode) и в имени папки release-X.Y.Z на GitHub.
 androidComponents {
     onVariants { variant ->
-        variant.outputs.forEach { output ->
-            val abi = output.filters.find { it.filterType == FilterConfiguration.FilterType.ABI }?.identifier ?: "universal"
-            output.outputFileName.set("Goji-${android.defaultConfig.versionName}-$abi-${variant.buildType}.apk")
-        }
+        variant.outputs.forEach { output -> output.outputFileName.set("Goji.apk") }
     }
 }
 
