@@ -9,7 +9,10 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Constraints
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.SettingsRepository
@@ -17,6 +20,8 @@ import xyz.gojihub.vpn.subscription.SubscriptionRefreshWorker
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.util.AppLogger
 import xyz.gojihub.vpn.vpn.GeoAssets
+import xyz.gojihub.vpn.vpn.geo.GeoDataDownloader
+import xyz.gojihub.vpn.vpn.geo.GeoDataRefreshWorker
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -43,6 +48,12 @@ class GodjiApplication : Application(), Configuration.Provider {
             AppLogger.level = settingsRepository.logLevelNow()
         }
         schedulePeriodicRefresh()
+        scheduleGeoDataRefresh()
+        // Разовая попытка сразу после установки/первого запуска — периодический воркер и так
+        // рано или поздно скачает свежие geoip.dat/geosite.dat, но при первом же реальном
+        // подключении (см. GodjiVpnService.resolveGeoDataRules) лучше уже иметь российский
+        // набор runetfreedom, а не только общий, встроенный в assets (см. GeoAssets).
+        CoroutineScope(Dispatchers.IO).launch { GeoDataDownloader.refresh(this@GodjiApplication) }
     }
 
     /** "Автообновление подписки каждый час, когда приложение активно или в фоне" —
@@ -54,6 +65,19 @@ class GodjiApplication : Application(), Configuration.Provider {
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             SubscriptionRefreshWorker.UNIQUE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /** runetfreedom/russia-v2ray-rules-dat обновляется каждые 6 часов на их стороне — раз в
+     *  сутки достаточно, чтобы не отставать надолго, не гоняя загрузку слишком часто впустую. */
+    private fun scheduleGeoDataRefresh() {
+        val request = PeriodicWorkRequestBuilder<GeoDataRefreshWorker>(24, TimeUnit.HOURS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            GeoDataRefreshWorker.UNIQUE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )
