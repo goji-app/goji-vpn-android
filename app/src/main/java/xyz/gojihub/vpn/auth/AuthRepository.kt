@@ -113,6 +113,11 @@ class AuthRepository @Inject constructor(
     fun logout() = tokenManager.clear()
     fun isLoggedIn(): Boolean = tokenManager.isLoggedIn()
 
+    /** true после реального 401 от бэкенда (см. authInterceptor в NetworkModule) — GodjiApp
+     *  подписывается, чтобы среагировать переходом на логин прямо во время работы приложения. */
+    val sessionExpired get() = tokenManager.sessionExpired
+    fun consumeSessionExpired() = tokenManager.consumeSessionExpired()
+
     private companion object {
         const val KEY_VERIFIER = "verifier"
         const val KEY_PROVIDER = "provider"

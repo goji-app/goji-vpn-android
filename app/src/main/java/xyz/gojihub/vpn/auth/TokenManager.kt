@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,6 +14,13 @@ import javax.inject.Singleton
 class TokenManager @Inject constructor(
     @ApplicationContext context: Context
 ) {
+    // Устанавливается authInterceptor'ом (см. NetworkModule) при реальном 401 от бэкенда —
+    // единственный надёжный признак того, что токен действительно мёртв (см. isLoggedIn()
+    // ниже и комментарий там про то, почему раньше решали это иначе). GodjiApp (MainActivity)
+    // подписывается на этот флаг, чтобы выкинуть пользователя на экран логина реактивно,
+    // а не только при следующем холодном старте.
+    private val _sessionExpired = MutableStateFlow(false)
+    val sessionExpired: StateFlow<Boolean> = _sessionExpired.asStateFlow()
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
@@ -33,14 +43,33 @@ class TokenManager @Inject constructor(
 
     fun accessToken(): String? = prefs.getString(KEY_TOKEN, null)
 
-    fun isLoggedIn(): Boolean {
-        if (accessToken() == null) return false
-        val expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0L)
-        return expiresAt == 0L || System.currentTimeMillis() < expiresAt
-    }
+    /** Раньше здесь ещё сравнивался KEY_EXPIRES_AT (локально посчитанный из expires_in при
+     *  логине) с системным временем — из-за этого MainActivity при каждом холодном старте
+     *  (Android регулярно убивает процесс в фоне, особенно без активного VPN-сервиса) могла
+     *  посчитать токен протухшим и выкинуть пользователя на логин ещё ДО того, как токен
+     *  реально переставал приниматься бэкендом (backend не выдаёт refresh_token для
+     *  email-OTP входа вообще, а для OAuth его получаем, но не используем — обновлять токен
+     *  заранее было нечем). Настоящий и единственный источник истины о протухшем токене —
+     *  ответ 401 от самого бэкенда (см. authInterceptor в NetworkModule и sessionExpired
+     *  выше); только на него теперь и полагаемся.
+     */
+    fun isLoggedIn(): Boolean = accessToken() != null
 
     fun clear() {
         prefs.edit().clear().apply()
+    }
+
+    /** Вызывается authInterceptor'ом при 401 — стирает токен и поднимает [sessionExpired]
+     *  для реактивной навигации на логин прямо во время работы приложения. */
+    fun markSessionExpired() {
+        clear()
+        _sessionExpired.value = true
+    }
+
+    /** GodjiApp вызывает после того, как отреагировал на [sessionExpired] (перешёл на логин) —
+     *  иначе флаг остался бы true и снова сработал бы при следующей рекомпозиции/пересоздании. */
+    fun consumeSessionExpired() {
+        _sessionExpired.value = false
     }
 
     private companion object {

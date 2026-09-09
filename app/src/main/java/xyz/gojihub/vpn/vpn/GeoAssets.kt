@@ -30,7 +30,10 @@ object GeoAssets {
     private fun ensureDir(context: Context): File {
         val dir = File(context.filesDir, "geoassets")
         if (!dir.exists()) dir.mkdirs()
-        listOf("geoip.dat", "geosite.dat").forEach { name ->
+        listOf(
+            "geoip.dat", "geosite.dat",
+            "mobile_whitelist_domains.txt", "mobile_whitelist_cidr.txt"
+        ).forEach { name ->
             val dest = File(dir, name)
             if (!dest.exists()) {
                 context.assets.open("geoassets/$name").use { input ->

@@ -37,7 +37,18 @@ object NetworkModule {
             // XMLHttpRequest/fetch автоматически, plain OkHttp — нет, добавляем сами.
             addHeader("X-Requested-With", "XMLHttpRequest")
         }.build()
-        chain.proceed(request)
+        val response = chain.proceed(request)
+        // 401 с уже приложенным токеном — единственный надёжный признак того, что сессия
+        // реально мертва на бэкенде (см. TokenManager.isLoggedIn()/markSessionExpired() —
+        // раньше это решалось локальным сравнением с expires_at, из-за чего приложение могло
+        // разлогинить пользователя ещё до того, как бэкенд на самом деле отказался бы принимать
+        // токен). Не трогаем ответ без токена (аноним и так получит 401 по делу, не о протухшей
+        // сессии) и не трогаем сами auth-эндпоинты (неверный OTP-код тоже может прийти как 401
+        // и не должен разлогинивать несуществующую ещё сессию).
+        if (response.code == 401 && token != null && !request.url.encodedPath.startsWith("/api/auth/")) {
+            tokenManager.markSessionExpired()
+        }
+        response
     }
 
     @Provides

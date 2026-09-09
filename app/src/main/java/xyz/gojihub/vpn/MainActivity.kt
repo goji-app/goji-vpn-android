@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             GodjiVpnTheme {
-                GodjiApp(startLoggedIn = authRepository.isLoggedIn())
+                GodjiApp(startLoggedIn = authRepository.isLoggedIn(), authRepository = authRepository)
             }
         }
     }
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
 private data class BottomTab(val route: String, val label: String, val icon: String)
 
 @Composable
-fun GodjiApp(startLoggedIn: Boolean) {
+fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
     // Системную тёмную тему устройства мы всегда игнорировали (GodjiVpnTheme), но верхнюю
     // строку состояния/нижнюю навигационную панель никто раньше не трогал — они держались
     // системных дефолтов (обычно светлых) независимо от переключателя темы в Настройках,
@@ -86,6 +86,22 @@ fun GodjiApp(startLoggedIn: Boolean) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in tabs.map { it.route }
+
+    // Реальный 401 от бэкенда (см. authInterceptor в NetworkModule) — единственный надёжный
+    // признак протухшей сессии. Раньше это решалось только сравнением с локально посчитанным
+    // expires_at при следующем холодном старте MainActivity, из-за чего приложение периодически
+    // "выходило из профиля" даже посреди активной работы (Android регулярно убивает фоновые
+    // процессы) ещё до того, как токен реально переставал бы приниматься сервером. Теперь
+    // реагируем сразу, во время работы приложения, а не только при пересоздании Activity.
+    val sessionExpired by authRepository.sessionExpired.collectAsState()
+    LaunchedEffect(sessionExpired) {
+        if (sessionExpired) {
+            navController.navigate(GodjiDestinations.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+            authRepository.consumeSessionExpired()
+        }
+    }
 
     Scaffold(
         bottomBar = {

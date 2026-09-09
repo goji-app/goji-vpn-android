@@ -1,9 +1,11 @@
 package xyz.gojihub.vpn.subscription
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.util.Base64
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -142,9 +144,27 @@ class SubscriptionRepository @Inject constructor(
     }
 
     fun select(id: String) {
+        val previousId = _selectedId.value
         _selectedId.value = id
         scope.launch { NodeListCache.save(appContext, _nodes.value, id) }
         GojiWidgetProvider.refresh(appContext)
+        // Раньше select() менял только "выбранный" узел в списке — сам туннель, если он уже был
+        // поднят, продолжал молча работать через старый outbound. UI при этом показывал новую
+        // страну (ConnectViewModel.updateNodeDependentState() берёт имя/гео из selectedId), хотя
+        // реальный исходящий IP не менялся до ручного отключения-подключения. Явно дёргаем сервис
+        // на реальный реконнект, если он уже запущен и узел действительно другой.
+        if (previousId != id && GodjiVpnService.isRunning.value) {
+            _nodes.value.firstOrNull { it.id == id }?.let(::reconnectToNode)
+        }
+    }
+
+    private fun reconnectToNode(node: VlessNode) {
+        val intent = Intent(appContext, GodjiVpnService::class.java).apply {
+            action = GodjiVpnService.ACTION_CONNECT
+            putExtra(GodjiVpnService.EXTRA_VLESS_LINK, node.connectPayload)
+            putExtra(GodjiVpnService.EXTRA_NODE_LABEL, node.geo?.country ?: node.name)
+        }
+        ContextCompat.startForegroundService(appContext, intent)
     }
 
     fun selectedNode(): VlessNode? = _nodes.value.firstOrNull { it.id == _selectedId.value }

@@ -22,6 +22,8 @@ import xyz.gojihub.vpn.util.AppLogger
 import xyz.gojihub.vpn.vpn.GeoAssets
 import xyz.gojihub.vpn.vpn.geo.GeoDataDownloader
 import xyz.gojihub.vpn.vpn.geo.GeoDataRefreshWorker
+import xyz.gojihub.vpn.vpn.geo.MobileWhitelistDownloader
+import xyz.gojihub.vpn.vpn.geo.MobileWhitelistRefreshWorker
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -49,11 +51,13 @@ class GodjiApplication : Application(), Configuration.Provider {
         }
         schedulePeriodicRefresh()
         scheduleGeoDataRefresh()
+        scheduleMobileWhitelistRefresh()
         // Разовая попытка сразу после установки/первого запуска — периодический воркер и так
         // рано или поздно скачает свежие geoip.dat/geosite.dat, но при первом же реальном
         // подключении (см. GodjiVpnService.resolveGeoDataRules) лучше уже иметь российский
         // набор runetfreedom, а не только общий, встроенный в assets (см. GeoAssets).
         CoroutineScope(Dispatchers.IO).launch { GeoDataDownloader.refresh(this@GodjiApplication) }
+        CoroutineScope(Dispatchers.IO).launch { MobileWhitelistDownloader.refresh(this@GodjiApplication) }
     }
 
     /** "Автообновление подписки каждый час, когда приложение активно или в фоне" —
@@ -78,6 +82,21 @@ class GodjiApplication : Application(), Configuration.Provider {
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             GeoDataRefreshWorker.UNIQUE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /** hxehex/russia-mobile-internet-whitelist — вручную пополняемый краудсорс-список
+     *  (см. MobileWhitelistDownloader), обновляется гораздо реже, чем category-ru — раз в
+     *  неделю достаточно для актуализации адресов, не гоняя загрузку 470КБ+ CIDR-файла
+     *  чаще, чем реально нужно. */
+    private fun scheduleMobileWhitelistRefresh() {
+        val request = PeriodicWorkRequestBuilder<MobileWhitelistRefreshWorker>(7, TimeUnit.DAYS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            MobileWhitelistRefreshWorker.UNIQUE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )
