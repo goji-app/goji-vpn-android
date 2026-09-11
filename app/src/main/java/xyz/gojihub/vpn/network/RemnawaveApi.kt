@@ -44,4 +44,18 @@ interface RemnawaveApi {
 
     @GET("api/dashboard/plans")
     suspend fun getPlans(): PlansResponse
+
+    // Страница "Мои рассылки"/"Новости" веб-версии (#/my-broadcasts) — список уже
+    // отправленных пользователю новостей/объявлений.
+    @GET("api/broadcasts/completed")
+    suspend fun getBroadcasts(): List<BroadcastDto>
+
+    // Страница "Рефералы" веб-версии (#/my-referrals, за флагом referral_enabled).
+    @GET("api/dashboard/referrals")
+    suspend fun getReferrals(): ReferralsResponse
+
+    // Страница "Партнёрская программа" веб-версии (#/partner-dashboard, за флагом
+    // partner_program_enabled) — только сводка/статус, см. PartnerStatusResponse.
+    @GET("api/partner/status")
+    suspend fun getPartnerStatus(): PartnerStatusResponse
 }

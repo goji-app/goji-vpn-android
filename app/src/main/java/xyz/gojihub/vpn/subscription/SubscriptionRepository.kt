@@ -23,6 +23,7 @@ import xyz.gojihub.vpn.geo.CountryGeoLookup
 import xyz.gojihub.vpn.geo.CountryGeo
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.network.RemnawaveApi
+import xyz.gojihub.vpn.network.models.BroadcastDto
 import xyz.gojihub.vpn.network.models.SubscriptionInfo
 import xyz.gojihub.vpn.util.AppLogger
 import xyz.gojihub.vpn.util.LogCategory
@@ -89,6 +90,13 @@ class SubscriptionRepository @Inject constructor(
     private val _subscription = MutableStateFlow<SubscriptionInfo?>(null)
     val subscription: StateFlow<SubscriptionInfo?> = _subscription.asStateFlow()
 
+    // Новости/рассылки (см. RemnawaveApi.getBroadcasts) — та же страница, что "Мои рассылки"
+    // веб-версии (#/my-broadcasts). Не персистится на диск: список короткий, лишний раз
+    // сходить в сеть при следующем запуске не накладно, а устаревшие новости в офлайн-кэше
+    // приносили бы больше путаницы, чем пользы.
+    private val _broadcasts = MutableStateFlow<List<BroadcastDto>>(emptyList())
+    val broadcasts: StateFlow<List<BroadcastDto>> = _broadcasts.asStateFlow()
+
     // Заполняем из диска ДО первого сетевого запроса — как в Happ/Incy: если gojihub.xyz или
     // subs.gojihub.xyz недоступны прямо на старте (сайт/панель Remnawave легли, глушение сети
     // и т.п.), пользователь видит последний известный список серверов и может подключиться,
@@ -118,6 +126,17 @@ class SubscriptionRepository @Inject constructor(
         // отдельных вызывающих местах (воркер + 3 ViewModel), чтобы сработать при любом
         // источнике обновления, а не только раз в час в фоне.
         active?.let { SubscriptionNotifier.check(appContext, it) }
+
+        // Не завязано на наличие активной подписки — новости могут быть релевантны и до
+        // покупки тарифа. Отдельная от подписки/серверов ошибка не должна прерывать remainder
+        // refresh(), поэтому просто логируется и пропускается.
+        runCatching { api.getBroadcasts() }
+            .onFailure { AppLogger.e(appContext, LogCategory.SUBSCRIPTION, "GodjiSub", "getBroadcasts failed", it) }
+            .getOrNull()
+            ?.let { list ->
+                _broadcasts.value = list
+                BroadcastNotifier.check(appContext, list)
+            }
 
         val link = active?.subscriptionLink ?: return false
         val nodes = fetchNodes(link)

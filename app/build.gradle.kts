@@ -23,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 10
-        versionName = "1.0.28"
+        versionCode = 11
+        versionName = "1.0.29"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
@@ -101,6 +101,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.6") // ProcessLifecycleOwner — обновление при возврате приложения на передний план
 
     // ── Hilt (DI) ────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.60.1")
@@ -131,6 +132,7 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.browser:browser:1.8.0") // Custom Tabs для native OAuth
+    implementation("io.coil-kt:coil-compose:2.7.0") // Картинки/коллажи/слайд-шоу в новостях (RichContent)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 
     testImplementation("junit:junit:4.13.2")

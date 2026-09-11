@@ -9,12 +9,44 @@ import kotlinx.coroutines.launch
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.network.RemnawaveApi
 import xyz.gojihub.vpn.network.models.PlanInfo
+import xyz.gojihub.vpn.network.models.ReferralEntry
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
+import xyz.gojihub.vpn.util.formatDateTime
 import xyz.gojihub.vpn.util.formatDate
 import javax.inject.Inject
 
 data class PeriodUi(val months: Int, val label: String)
 data class PlanUi(val id: Long, val name: String, val description: String, val priceLabel: String, val isCurrent: Boolean)
+data class NewsButtonUi(val url: String, val text: String)
+data class NewsUi(val id: String, val rawContent: String, val dateLabel: String, val buttons: List<NewsButtonUi>)
+
+data class ReferralEntryUi(val displayName: String, val isActive: Boolean, val bonusDays: Int)
+data class ReferralUi(
+    val link: String,
+    val webLink: String?,
+    val totalReferrals: Int,
+    val activeReferrals: Int,
+    val totalBonusDays: Int,
+    val entries: List<ReferralEntryUi>
+)
+
+/** applicationStatus: null (нет заявки — можно подать), "pending", "rejected". Остальные
+ *  денежные действия (подать заявку, запросить вывод) — только через веб, см. PlansScreen. */
+data class PartnerUi(
+    val isPartner: Boolean,
+    val isActive: Boolean,
+    val applicationStatus: String?,
+    val commissionRate: Double,
+    val clientCount: Int,
+    val totalEarned: Double,
+    val availableBalance: Double,
+    val pendingBalance: Double
+)
+
+/** Сколько новостей показывать не разворачивая список, и сколько на страницу после
+ *  разворачивания (см. PlansScreen — свёрнутый вид против постраничного). */
+const val NEWS_PREVIEW_COUNT = 2
+const val NEWS_PAGE_SIZE = 3
 
 data class PlansUiState(
     val planName: String = "—",
@@ -24,8 +56,36 @@ data class PlansUiState(
     val selectedMonths: Int = 1,
     val plans: List<PlanUi> = emptyList(),
     val refreshing: Boolean = false,
-    val customerId: String? = null
+    val customerId: String? = null,
+    val news: List<NewsUi> = emptyList(),
+    val newsExpanded: Boolean = false,
+    val newsPage: Int = 0,
+    val referral: ReferralUi? = null,
+    val partner: PartnerUi? = null
 )
+
+/** Веб-версия маскирует половину имени/юзернейма/локальной части email точками —
+ *  повторяем то же самое, а не показываем приглашённых пользователей полностью открытым
+ *  текстом (это не наши данные, а личные данные третьих лиц). */
+private fun maskHalf(s: String): String {
+    if (s.isEmpty()) return s
+    val visible = (s.length + 1) / 2
+    return s.take(visible) + "•".repeat(s.length - visible)
+}
+
+private fun maskEmail(email: String): String {
+    val at = email.indexOf('@')
+    if (at < 0) return maskHalf(email)
+    return maskHalf(email.substring(0, at)) + email.substring(at)
+}
+
+private fun displayNameFor(e: ReferralEntry): String {
+    e.tgUsername?.takeIf { it.isNotBlank() }?.let { return "@" + maskHalf(it) }
+    val fullName = listOfNotNull(e.tgFirstName, e.tgLastName).joinToString(" ").trim()
+    if (fullName.isNotEmpty()) return maskHalf(fullName)
+    e.email?.takeIf { it.isNotBlank() }?.let { return maskEmail(it) }
+    return "ID: ${e.refereeTelegramId ?: e.refereeId ?: 0}"
+}
 
 @HiltViewModel
 class PlansViewModel @Inject constructor(
@@ -54,7 +114,17 @@ class PlansViewModel @Inject constructor(
                 // что зашит в конфиг узлов, реальный Remnawave-идентификатор, в отличие от
                 // customer_id (UUID шоп-бэкенда) и subscription.id (внутренний ID шоп-бэкенда) —
                 // ни один из них не находится в панели Remnawave по словам пользователя.
-                customerId = subscriptionRepository.clientUuid()
+                customerId = subscriptionRepository.clientUuid(),
+                news = subscriptionRepository.broadcasts.value
+                    .sortedByDescending { it.createdAt }
+                    .map { b ->
+                        NewsUi(
+                            id = b.id,
+                            rawContent = b.content,
+                            dateLabel = formatDateTime(b.createdAt),
+                            buttons = b.buttons().map { NewsButtonUi(it.url, it.text) }
+                        )
+                    }
             )
 
             runCatching { api.getPlans() }.onSuccess { response ->
@@ -72,7 +142,51 @@ class PlansViewModel @Inject constructor(
                 )
                 rebuildPlanCards()
             }
+
+            // referral_enabled/partner_program_enabled — оба флага сейчас включены на
+            // бэкенде, но не проверяются отдельным запросом настроек: если фича когда-нибудь
+            // выключат, эндпоинт просто перестанет отвечать успешно, и секция тихо не
+            // покажется (тот же принцип, что уже применяется к getBroadcasts/getPlans).
+            runCatching { api.getReferrals() }.onSuccess { r ->
+                _state.value = _state.value.copy(
+                    referral = ReferralUi(
+                        link = r.link,
+                        webLink = r.webLink,
+                        totalReferrals = r.summary.totalReferrals,
+                        activeReferrals = r.summary.activeReferrals,
+                        totalBonusDays = r.summary.totalBonusDays,
+                        entries = r.referrals.map { e ->
+                            ReferralEntryUi(displayNameFor(e), e.isActive, e.bonusDays)
+                        }
+                    )
+                )
+            }
+
+            runCatching { api.getPartnerStatus() }.onSuccess { p ->
+                _state.value = _state.value.copy(
+                    partner = PartnerUi(
+                        isPartner = p.isPartner,
+                        isActive = p.partner?.isActive ?: false,
+                        applicationStatus = p.application?.status,
+                        commissionRate = p.partner?.commissionRate ?: 0.0,
+                        clientCount = p.stats?.clientCount ?: 0,
+                        totalEarned = p.partner?.totalEarned ?: 0.0,
+                        availableBalance = p.partner?.availableBalance ?: 0.0,
+                        pendingBalance = p.partner?.pendingBalance ?: 0.0
+                    )
+                )
+            }
         }
+    }
+
+    /** Свёрнутый вид (NEWS_PREVIEW_COUNT новостей) <-> постраничный (NEWS_PAGE_SIZE на
+     *  страницу, начиная с первой). */
+    fun toggleNewsExpanded() {
+        _state.value = _state.value.copy(newsExpanded = !_state.value.newsExpanded, newsPage = 0)
+    }
+
+    fun setNewsPage(page: Int) {
+        _state.value = _state.value.copy(newsPage = page)
     }
 
     fun selectPeriod(months: Int) {

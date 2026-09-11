@@ -36,6 +36,12 @@ object NetworkModule {
             // ещё до хендлера, с ним — нормальный JSON-ответ). Веб-версия шлёт его через
             // XMLHttpRequest/fetch автоматически, plain OkHttp — нет, добавляем сами.
             addHeader("X-Requested-With", "XMLHttpRequest")
+            // header(), а не addHeader() — заменяет дефолтный User-Agent клиента целиком,
+            // а не добавляет второй. Касается только собственных запросов приложения к
+            // gojihub.xyz (эта конкретная интерцепция); User-Agent запроса подписки
+            // (SubscriptionRepository.fetchNodes) сюда не попадает — он идёт через отдельный
+            // OkHttpClient и намеренно спуфит другой клиент, см. комментарий там.
+            header("User-Agent", "Goji/${BuildConfig.VERSION_NAME}/Android")
         }.build()
         val response = chain.proceed(request)
         // 401 с уже приложенным токеном — единственный надёжный признак того, что сессия

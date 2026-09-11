@@ -120,6 +120,7 @@ object SubscriptionNotifier {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(CHANNEL_ID, Loc.s.notifSubChannelName, NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = Loc.s.notifSubChannelDesc
+            setShowBadge(true)
         }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
