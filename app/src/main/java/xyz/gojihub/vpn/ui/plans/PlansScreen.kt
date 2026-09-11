@@ -162,20 +162,57 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                         .background(planBg, RoundedCornerShape(18.dp))
                         .border(1.5.dp, planBorder, RoundedCornerShape(18.dp))
                         .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
-                        Text(plan.description, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.5.sp, lineHeight = 14.sp)
+                        // Длинные описания тарифов раньше разворачивали карточку на пол-экрана —
+                        // сжимаем до 2 строк и прячем остальное за "читать полностью", сам тоггл
+                        // показываем только если текст реально не поместился (hasVisualOverflow),
+                        // а не всегда — короткие описания тогда не получали бы лишнюю ссылку в никуда.
+                        var expanded by remember(plan.id) { mutableStateOf(false) }
+                        var overflowing by remember(plan.id) { mutableStateOf(false) }
+                        Text(
+                            plan.description,
+                            color = GodjiColors.TextSecondary,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 10.5.sp,
+                            lineHeight = 14.sp,
+                            maxLines = if (expanded) Int.MAX_VALUE else 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            onTextLayout = { if (!expanded) overflowing = it.hasVisualOverflow }
+                        )
+                        if (overflowing || expanded) {
+                            Text(
+                                if (expanded) Loc.s.plansDescriptionCollapse else Loc.s.plansDescriptionExpand,
+                                color = GodjiColors.TealDeep,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.5.sp,
+                                modifier = Modifier
+                                    .padding(top = 2.dp)
+                                    .clickable { expanded = !expanded }
+                            )
+                        }
                     }
                     Text(plan.priceLabel, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
         }
 
-        state.referral?.let { ReferralSection(it, clipboard) }
-        state.partner?.let { PartnerSection(it, context) }
+        if (state.subscriptionId != null) {
+            DevicesSection(
+                devices = state.devices,
+                deleteSupportOnly = state.devicesDeleteSupportOnly,
+                onRename = viewModel::renameDevice,
+                onDelete = viewModel::deleteDevice,
+                context = context
+            )
+        }
+
+        if (state.referral != null || state.partner != null) {
+            ProgramSection(state.referral, state.partner, clipboard, context)
+        }
 
         if (state.news.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
@@ -318,10 +355,168 @@ private fun NewsCard(item: NewsUi) {
  *  юзернеймы/email приглашённых уже замаскированы во ViewModel (см. displayNameFor) — это
  *  чужие персональные данные, не наши. */
 @Composable
-private fun ReferralSection(referral: ReferralUi, clipboard: androidx.compose.ui.platform.ClipboardManager) {
+private fun DevicesSection(
+    devices: List<DeviceUi>,
+    deleteSupportOnly: Boolean,
+    onRename: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+    context: Context
+) {
+    var renameTarget by remember { mutableStateOf<DeviceUi?>(null) }
+    var deleteTarget by remember { mutableStateOf<DeviceUi?>(null) }
+
     Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansReferralTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+    Text(Loc.s.plansDevicesTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
     Spacer(Modifier.height(8.dp))
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
+            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (devices.isEmpty()) {
+            Text(Loc.s.plansDevicesEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+        } else {
+            devices.forEachIndexed { index, device ->
+                if (index > 0) HorizontalDivider(color = GodjiColors.CardBorder)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(device.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        val subtitle = listOfNotNull(device.platform, device.createdAtLabel).joinToString(" · ")
+                        if (subtitle.isNotEmpty()) {
+                            Text(subtitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.sp)
+                        }
+                    }
+                    if (device.busy) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "✎",
+                                color = GodjiColors.TealDeep,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { renameTarget = device }
+                                    .padding(8.dp)
+                            )
+                            Text(
+                                "✕",
+                                color = GodjiColors.Danger,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { deleteTarget = device }
+                                    .padding(8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    renameTarget?.let { device ->
+        var name by remember(device.hwid) { mutableStateOf(device.name) }
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            title = { Text(Loc.s.plansDevicesRenameTitle) },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(Loc.s.plansDevicesRenameLabel) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { onRename(device.hwid, name); renameTarget = null }) { Text(Loc.s.plansDevicesSave) }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTarget = null }) { Text(Loc.s.plansDevicesCancel) }
+            }
+        )
+    }
+
+    deleteTarget?.let { device ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text(Loc.s.plansDevicesDeleteTitle) },
+            text = { Text(if (deleteSupportOnly) Loc.s.plansDevicesDeleteSupportOnly else Loc.s.plansDevicesDeleteConfirm) },
+            confirmButton = {
+                if (deleteSupportOnly) {
+                    TextButton(onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/support-chat")))
+                        deleteTarget = null
+                    }) { Text(Loc.s.plansDevicesContactSupport) }
+                } else {
+                    TextButton(onClick = { onDelete(device.hwid); deleteTarget = null }) {
+                        Text(Loc.s.plansDevicesDelete, color = GodjiColors.Danger)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text(Loc.s.plansDevicesCancel) }
+            }
+        )
+    }
+}
+
+/** Рефералы и партнёрка раньше были двумя отдельными секциями подряд — визуально дублировали
+ *  друг друга (у обеих ссылка/сводка/список) и вместе растягивали экран подписки на пол-ленты.
+ *  Объединили в одно меню "Программа" с переключателем вкладок, когда доступны обе программы
+ *  сразу; если доступна только одна — показываем её карточку без лишнего переключателя. */
+@Composable
+private fun ProgramSection(
+    referral: ReferralUi?,
+    partner: PartnerUi?,
+    clipboard: androidx.compose.ui.platform.ClipboardManager,
+    context: Context
+) {
+    // 0 = рефералы, 1 = партнёрка — по умолчанию открываем ту, что вообще доступна.
+    var tab by remember(referral != null, partner != null) { mutableIntStateOf(if (referral != null) 0 else 1) }
+
+    Spacer(Modifier.height(16.dp))
+    Text(Loc.s.plansProgramTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+    Spacer(Modifier.height(8.dp))
+
+    if (referral != null && partner != null) {
+        Row(
+            Modifier.fillMaxWidth().background(GodjiColors.Chip, RoundedCornerShape(16.dp)).padding(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            ProgramTab(Loc.s.plansProgramTabReferral, selected = tab == 0, modifier = Modifier.weight(1f)) { tab = 0 }
+            ProgramTab(Loc.s.plansProgramTabPartner, selected = tab == 1, modifier = Modifier.weight(1f)) { tab = 1 }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+
+    when {
+        referral != null && tab == 0 -> ReferralCard(referral, clipboard)
+        partner != null -> PartnerCard(partner, context)
+    }
+}
+
+@Composable
+private fun ProgramTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val bg by animateColorAsState(if (selected) GodjiColors.Ink else androidx.compose.ui.graphics.Color.Transparent, label = "programTabBg")
+    Box(
+        modifier
+            .height(38.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(bg)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = if (selected) GodjiColors.Surface else GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+    }
+}
+
+@Composable
+private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.platform.ClipboardManager) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -393,10 +588,7 @@ private fun ReferralStat(label: String, value: String, valueColor: androidx.comp
 /** Только статус/сводка — подача заявки и запрос вывода средств делаются на сайте (та же
  *  логика, что и "Продлить" для тарифов: не переизобретаем денежные формы нативно). */
 @Composable
-private fun PartnerSection(partner: PartnerUi, context: Context) {
-    Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansPartnerTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
-    Spacer(Modifier.height(8.dp))
+private fun PartnerCard(partner: PartnerUi, context: Context) {
     Column(
         Modifier
             .fillMaxWidth()

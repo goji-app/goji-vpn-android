@@ -113,7 +113,7 @@ class SubscriptionRepository @Inject constructor(
     /** @return true, если подписку удалось реально получить с бэкенда (для UI ручного
      *  обновления — показать "обновлено" или ошибку сети/сервера). */
     suspend fun refresh(): Boolean {
-        val active = runCatching { api.getSubscriptions() }
+        var active = runCatching { api.getSubscriptions() }
             .onFailure {
                 if (BuildConfig.DEBUG) android.util.Log.e("GodjiSub", "getSubscriptions failed", it)
                 AppLogger.e(appContext, LogCategory.SUBSCRIPTION, "GodjiSub", "getSubscriptions failed", it)
@@ -121,6 +121,18 @@ class SubscriptionRepository @Inject constructor(
             .getOrNull()
             ?.subscriptions
             ?.let { list -> list.firstOrNull { it.isPrimary } ?: list.firstOrNull() }
+
+        // С бэкенда 7.1.0 список выше больше не содержит traffic (подтверждено живым
+        // запросом) — дозапрашиваем полную запись по id, чтобы на экранах "Защита"/"Подписка"
+        // по-прежнему показывался реальный расход трафика, а не 0/безлимит по умолчанию.
+        // Сбой этого отдельного запроса не должен откатывать уже полученную active — тогда
+        // просто останется без трафика до следующего refresh(), а не пропадёт совсем.
+        val toEnrich = active
+        if (toEnrich != null && toEnrich.traffic == null) {
+            active = runCatching { api.getSubscription(toEnrich.id) }
+                .onFailure { AppLogger.e(appContext, LogCategory.SUBSCRIPTION, "GodjiSub", "getSubscription(${toEnrich.id}) failed", it) }
+                .getOrNull() ?: toEnrich
+        }
         _subscription.value = active
         // Уведомления о скором окончании подписки/успешной оплате — считаются здесь, а не в
         // отдельных вызывающих местах (воркер + 3 ViewModel), чтобы сработать при любом

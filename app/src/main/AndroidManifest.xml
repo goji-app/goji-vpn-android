@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Установка скачанного самим приложением APK-обновления (см. AppUpdateDownloader) —
+         не из Google Play. Само по себе разрешение ничего не открывает: Android при первой
+         попытке install-интента сам покажет системный экран "Разрешить установку из этого
+         источника" для Godji VPN, если он ещё не выдан. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".GodjiApplication"
@@ -45,6 +50,13 @@
                     android:host="oauth2redirect" />
             </intent-filter>
         </activity>
+
+        <!-- WebView-логин: обходной путь для сломанного на бэкенде 7.1.0 native/exchange (см.
+             WebLoginActivity) — запускается только из LoginScreen, наружу не экспортируется. -->
+        <activity
+            android:name=".auth.WebLoginActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
 
         <!-- Сам VPN-туннель. BIND_VPN_SERVICE — системное разрешение, декларируется на сервисе -->
         <service
@@ -85,6 +97,18 @@
             android:name=".widget.GojiWidgetActionReceiver"
             android:exported="false" />
 
+        <!-- Ловит завершение загрузки APK-обновления (см. AppUpdateDownloader) — системный
+             DownloadManager переживает смерть процесса приложения, поэтому регистрация
+             только в манифесте, не динамическая. exported=false: сам DOWNLOAD_COMPLETE —
+             защищённый системный broadcast, сторонним приложениям его не разослать. -->
+        <receiver
+            android:name=".update.UpdateDownloadReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
         <!-- Список серверов внутри развёрнутого (3x3) виджета — см.
              GojiWidgetRemoteViewsService/widget_goji_expanded.xml. BIND_REMOTEVIEWS — системное
              разрешение, гарантирует, что подключаться к сервису может только сам системный
@@ -97,6 +121,19 @@
         <!-- WorkManager инициализируется вручную через HiltWorkerFactory в GodjiApplication
              (Configuration.Provider) — стандартный провайдер-инициализатор нужно снять,
              иначе он создаст WorkManager без Hilt-инъекции до onCreate() приложения. -->
+        <!-- Отдаёт скачанный APK-файл обновления системному установщику через content://
+             (Android 7+ запрещает передавать file://-URI между приложениями) — см.
+             AppUpdateDownloader.installApk(). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

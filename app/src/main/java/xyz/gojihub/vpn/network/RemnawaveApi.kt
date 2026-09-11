@@ -2,7 +2,9 @@ package xyz.gojihub.vpn.network
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -15,8 +17,11 @@ interface RemnawaveApi {
     @POST("api/auth/email/send-otp")
     suspend fun sendOtp(@Body body: SendOtpRequest): SendOtpResponse
 
+    // Response<...>, а не голый VerifyOtpResponse — с 7.1.0 сам JWT-токен сессии приходит
+    // только в заголовке Set-Cookie (rw_session_token), тела ответа для этого недостаточно.
+    // См. AuthRepository.verifyOtp() и комментарий у VerifyOtpResponse.
     @POST("api/auth/email/verify-otp")
-    suspend fun verifyOtp(@Body body: VerifyOtpRequest): VerifyOtpResponse
+    suspend fun verifyOtp(@Body body: VerifyOtpRequest): Response<VerifyOtpResponse>
 
     @GET("api/auth/me")
     suspend fun getMe(): MeResponse
@@ -42,6 +47,13 @@ interface RemnawaveApi {
     @GET("api/subscriptions")
     suspend fun getSubscriptions(): SubscriptionsResponse
 
+    // С бэкенда 7.1.0 GET api/subscriptions (список выше) больше не отдаёт traffic вообще —
+    // подтверждено живым запросом (см. SubscriptionInfo.traffic) — только этот, детальный
+    // эндпоинт по конкретному id. SubscriptionRepository.refresh() дозапрашивает его для
+    // выбранной подписки.
+    @GET("api/subscriptions/{id}")
+    suspend fun getSubscription(@Path("id") id: Long): SubscriptionInfo
+
     @GET("api/dashboard/plans")
     suspend fun getPlans(): PlansResponse
 
@@ -58,4 +70,17 @@ interface RemnawaveApi {
     // partner_program_enabled) — только сводка/статус, см. PartnerStatusResponse.
     @GET("api/partner/status")
     suspend fun getPartnerStatus(): PartnerStatusResponse
+
+    @GET("api/subscriptions/{id}/devices")
+    suspend fun getDevices(@Path("id") id: Long): List<DeviceDto>
+
+    @PATCH("api/subscriptions/{id}/devices/{hwid}")
+    suspend fun renameDevice(
+        @Path("id") id: Long,
+        @Path("hwid") hwid: String,
+        @Body body: RenameDeviceRequest
+    ): Response<Void>
+
+    @DELETE("api/subscriptions/{id}/devices/{hwid}")
+    suspend fun deleteDevice(@Path("id") id: Long, @Path("hwid") hwid: String): Response<Void>
 }

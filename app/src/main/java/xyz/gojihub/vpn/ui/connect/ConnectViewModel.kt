@@ -44,7 +44,6 @@ data class ConnectUiState(
 
     val globeStatus: String = "off", // "off" | "connecting" | "on"
     val globeNode: GlobeNode? = null,
-    val globeAllNodes: List<GlobeNode> = emptyList(),
 
     val currentNodeName: String = "",
     val currentGeo: CountryGeo? = null,
@@ -147,7 +146,6 @@ class ConnectViewModel @Inject constructor(
         val globeNodes = nodes.mapNotNull { it.toGlobeNode() }
         val g = Greetings.forLang(selected?.geo?.lang)
         _state.value = _state.value.copy(
-            globeAllNodes = globeNodes,
             globeNode = selected?.toGlobeNode() ?: globeNodes.firstOrNull(),
             currentNodeName = selected?.name?.let(::stripLeadingFlag) ?: "",
             currentGeo = selected?.geo,

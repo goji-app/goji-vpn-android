@@ -25,6 +25,7 @@ import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
 import xyz.gojihub.vpn.ui.util.LogViewerDialog
+import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import xyz.gojihub.vpn.util.LogCategory
 
@@ -86,6 +87,10 @@ fun SettingsScreen(
             AboutRow(Loc.s.settingsXrayVersion, state.xrayVersion)
             AboutRow(Loc.s.settingsHwid, state.hwid)
             AboutRow(Loc.s.settingsDeviceInfo, state.deviceInfo)
+        }
+
+        SettingsSection(Loc.s.settingsUpdatesTitle) {
+            UpdateSectionContent(state, viewModel)
         }
 
         SettingsSection(Loc.s.settingsLogs) {
@@ -168,6 +173,69 @@ private fun SettingsLinkRow(title: String, subtitle: String?, onClick: () -> Uni
             subtitle?.let { Text(it, color = GodjiColors.TextSecondary, fontSize = 10.5.sp, lineHeight = 14.sp) }
         }
         Text("→", color = GodjiColors.TextSecondary, fontSize = 16.sp)
+    }
+}
+
+/** GitHub Releases (см. AppUpdateChecker) — либо ещё не проверяли, либо идёт проверка,
+ *  либо версия последняя, либо найдено обновление (changelog — тело релиза, тот же
+ *  Markdown/HTML, что и в новостях подписки, рендерится тем же RichContent), либо идёт
+ *  загрузка. Саму установку по завершении загрузки запускает системный broadcast-приёмник
+ *  (см. UpdateDownloadReceiver) — не завязано на то, открыт ли ещё этот экран. */
+@Composable
+private fun UpdateSectionContent(state: SettingsUiState, viewModel: SettingsViewModel) {
+    when {
+        state.updateDownloading -> {
+            Text(Loc.s.updateDownloading, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { state.updateDownloadProgress / 100f },
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                color = GodjiColors.TealDeep,
+                trackColor = GodjiColors.Chip
+            )
+            Spacer(Modifier.height(4.dp))
+            Text("${state.updateDownloadProgress}%", color = GodjiColors.TextSecondary, fontSize = 10.5.sp)
+        }
+        state.updateAvailable != null -> {
+            Text(
+                Loc.s.updateAvailableText(state.updateAvailable.version),
+                color = GodjiColors.TealDeep,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
+            if (state.updateAvailable.changelog.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                RichContent(raw = state.updateAvailable.changelog, collapsedBlocks = 5, readMoreLabel = Loc.s.plansNewsReadMore)
+            }
+            Spacer(Modifier.height(12.dp))
+            val (interaction, scale) = rememberPressScale()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .scale(scale.value)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(GodjiColors.Ink)
+                    .clickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = viewModel::downloadUpdate)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(Loc.s.updateDownloadInstall, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+            }
+        }
+        state.updateChecking -> {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
+                Text(Loc.s.updateChecking, color = GodjiColors.TextSecondary, fontSize = 12.5.sp)
+            }
+        }
+        state.updateChecked -> {
+            Text(Loc.s.updateUpToDate, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.5.sp)
+            Spacer(Modifier.height(10.dp))
+            SettingsLinkRow(title = Loc.s.settingsCheckUpdates, subtitle = null, onClick = viewModel::checkForUpdate)
+        }
+        else -> {
+            SettingsLinkRow(title = Loc.s.settingsCheckUpdates, subtitle = null, onClick = viewModel::checkForUpdate)
+        }
     }
 }
 

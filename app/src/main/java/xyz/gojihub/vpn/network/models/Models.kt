@@ -17,9 +17,13 @@ data class SendOtpResponse(
 @JsonClass(generateAdapter = true)
 data class VerifyOtpRequest(val email: String, val code: String)
 
+// С обновления бэкенда до 7.1.0 тело больше не содержит токен вообще (подтверждено живым
+// запросом) — сессия теперь выдаётся через HttpOnly Set-Cookie (rw_session_token), а не в
+// JSON. Сам JWT из этой куки при этом по-прежнему работает как обычный Bearer-токен (тоже
+// проверено живым запросом) — поэтому AuthRepository.verifyOtp() достаёт его из заголовков
+// ответа (см. RemnawaveApi.verifyOtp — Response<VerifyOtpResponse>), а не из этого тела.
 @JsonClass(generateAdapter = true)
 data class VerifyOtpResponse(
-    val token: String,
     @Json(name = "expires_in") val expiresIn: Long,
     val user: AuthUser,
     @Json(name = "account_existed") val accountExisted: Boolean
@@ -89,7 +93,13 @@ data class SubscriptionInfo(
     @Json(name = "days_left") val daysLeft: Int,
     @Json(name = "subscription_link") val subscriptionLink: String,
     @Json(name = "device_limit") val deviceLimit: Int,
-    val traffic: TrafficInfo,
+    // Начиная с бэкенда 7.1.0 список /api/subscriptions больше не отдаёт traffic вообще
+    // (подтверждено живым запросом) — переехал в отдельный GET /api/subscriptions/{id}.
+    // null здесь — обычное дело, а не ошибка; SubscriptionRepository.refresh() отдельно
+    // подтягивает недостающее через getSubscriptionDetail(). Раньше поле было обязательным
+    // (без значения по умолчанию) — это и роняло разбор всего ответа при выходе этой версии
+    // бэкенда, из-за чего подписка переставала подтягиваться целиком.
+    val traffic: TrafficInfo? = null,
     // "trial" для пробных тарифов (device_limit:1) — см. project-subscription-hwid-gate.
     // Используется для разного порога уведомления об окончании (12ч для триала, 3 дня для
     // платных). Не приходит в старых ответах — по умолчанию null, тогда считаем "не триал".
@@ -210,3 +220,22 @@ data class PartnerInfo(
 
 @JsonClass(generateAdapter = true)
 data class PartnerStats(@Json(name = "client_count") val clientCount: Int = 0)
+
+// ── Устройства подписки (gojihub.xyz/api/subscriptions/{id}/devices) ──────
+// Формат сверен так же, как и остальные веб-only разделы — анализом JS-бандла веб-версии
+// (ClientDashboard). Удаление на пробном/бесплатном тарифе (kind == "trial"/"free") веб-версия
+// сознательно не даёт делать самостоятельно ("удалить устройство можно только через поддержку") —
+// это чисто клиентская проверка на сайте (см. PlansViewModel), сам DELETE-эндпоинт её не требует,
+// но мы её повторяем, чтобы не давать в приложении то, что сайт намеренно прячет для этих тарифов.
+
+@JsonClass(generateAdapter = true)
+data class DeviceDto(
+    val hwid: String,
+    @Json(name = "readable_name") val readableName: String?,
+    val platform: String?,
+    @Json(name = "user_agent") val userAgent: String?,
+    @Json(name = "created_at") val createdAt: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class RenameDeviceRequest(@Json(name = "readable_name") val readableName: String)

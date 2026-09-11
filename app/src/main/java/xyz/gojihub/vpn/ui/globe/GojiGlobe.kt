@@ -30,7 +30,6 @@ import xyz.gojihub.vpn.ui.theme.GodjiColors
 fun GojiGlobe(
     status: String,
     node: GlobeNode?,
-    nodes: List<GlobeNode>,
     // Русское название страны для плавающей подписи — GlobeNode.country хранит английское
     // имя (должно совпадать с properties.name в geo_globe.json для подсветки полигона),
     // поэтому для текста, который видит пользователь, берём отдельно переданный перевод.
@@ -60,7 +59,6 @@ fun GojiGlobe(
             update = { view ->
                 view.goji.status = status
                 view.goji.currentNode = node
-                view.goji.nodes = nodes
                 view.goji.theme = if (dark) GlobeTheme.Dark else GlobeTheme.Light
             },
             modifier = Modifier.fillMaxSize()

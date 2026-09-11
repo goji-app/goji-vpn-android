@@ -10,6 +10,8 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.network.RemnawaveApi
 import xyz.gojihub.vpn.network.models.PlanInfo
 import xyz.gojihub.vpn.network.models.ReferralEntry
+import xyz.gojihub.vpn.network.models.DeviceDto
+import xyz.gojihub.vpn.network.models.RenameDeviceRequest
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
 import xyz.gojihub.vpn.util.formatDateTime
 import xyz.gojihub.vpn.util.formatDate
@@ -43,6 +45,14 @@ data class PartnerUi(
     val pendingBalance: Double
 )
 
+data class DeviceUi(
+    val hwid: String,
+    val name: String,
+    val platform: String?,
+    val createdAtLabel: String?,
+    val busy: Boolean = false
+)
+
 /** Сколько новостей показывать не разворачивая список, и сколько на страницу после
  *  разворачивания (см. PlansScreen — свёрнутый вид против постраничного). */
 const val NEWS_PREVIEW_COUNT = 2
@@ -61,7 +71,12 @@ data class PlansUiState(
     val newsExpanded: Boolean = false,
     val newsPage: Int = 0,
     val referral: ReferralUi? = null,
-    val partner: PartnerUi? = null
+    val partner: PartnerUi? = null,
+    val subscriptionId: Long? = null,
+    // На пробном/бесплатном тарифе — как на сайте, самостоятельное удаление устройства скрыто
+    // за "обратитесь в поддержку" (см. комментарий у DeviceDto в Models.kt).
+    val devicesDeleteSupportOnly: Boolean = false,
+    val devices: List<DeviceUi> = emptyList()
 )
 
 /** Веб-версия маскирует половину имени/юзернейма/локальной части email точками —
@@ -78,6 +93,13 @@ private fun maskEmail(email: String): String {
     if (at < 0) return maskHalf(email)
     return maskHalf(email.substring(0, at)) + email.substring(at)
 }
+
+private fun DeviceDto.toUi(): DeviceUi = DeviceUi(
+    hwid = hwid,
+    name = readableName?.takeIf { it.isNotBlank() } ?: platform?.takeIf { it.isNotBlank() } ?: hwid.take(8),
+    platform = platform,
+    createdAtLabel = createdAt?.let(::formatDate)
+)
 
 private fun displayNameFor(e: ReferralEntry): String {
     e.tgUsername?.takeIf { it.isNotBlank() }?.let { return "@" + maskHalf(it) }
@@ -115,6 +137,8 @@ class PlansViewModel @Inject constructor(
                 // customer_id (UUID шоп-бэкенда) и subscription.id (внутренний ID шоп-бэкенда) —
                 // ни один из них не находится в панели Remnawave по словам пользователя.
                 customerId = subscriptionRepository.clientUuid(),
+                subscriptionId = sub?.id,
+                devicesDeleteSupportOnly = sub?.kind == "trial" || sub?.kind == "free",
                 news = subscriptionRepository.broadcasts.value
                     .sortedByDescending { it.createdAt }
                     .map { b ->
@@ -162,6 +186,12 @@ class PlansViewModel @Inject constructor(
                 )
             }
 
+            sub?.id?.let { subId ->
+                runCatching { api.getDevices(subId) }.onSuccess { list ->
+                    _state.value = _state.value.copy(devices = list.map { it.toUi() })
+                }
+            }
+
             runCatching { api.getPartnerStatus() }.onSuccess { p ->
                 _state.value = _state.value.copy(
                     partner = PartnerUi(
@@ -204,6 +234,42 @@ class PlansViewModel @Inject constructor(
             PlanUi(plan.id, plan.name, plan.description, priceLabel, isCurrent = plan.name == current)
         }
         _state.value = _state.value.copy(plans = cards)
+    }
+
+    fun renameDevice(hwid: String, newName: String) {
+        val subId = _state.value.subscriptionId ?: return
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) return
+        setDeviceBusy(hwid, true)
+        viewModelScope.launch {
+            runCatching { api.renameDevice(subId, hwid, RenameDeviceRequest(trimmed)) }
+                .onSuccess {
+                    _state.value = _state.value.copy(devices = _state.value.devices.map {
+                        if (it.hwid == hwid) it.copy(name = trimmed, busy = false) else it
+                    })
+                }
+                .onFailure { setDeviceBusy(hwid, false) }
+        }
+    }
+
+    /** [devicesDeleteSupportOnly] проверяется на экране до вызова — здесь дополнительно не
+     *  дублируем проверку, чтобы не завязывать ViewModel на текст диалога поддержки. */
+    fun deleteDevice(hwid: String) {
+        val subId = _state.value.subscriptionId ?: return
+        setDeviceBusy(hwid, true)
+        viewModelScope.launch {
+            runCatching { api.deleteDevice(subId, hwid) }
+                .onSuccess {
+                    _state.value = _state.value.copy(devices = _state.value.devices.filterNot { it.hwid == hwid })
+                }
+                .onFailure { setDeviceBusy(hwid, false) }
+        }
+    }
+
+    private fun setDeviceBusy(hwid: String, busy: Boolean) {
+        _state.value = _state.value.copy(devices = _state.value.devices.map {
+            if (it.hwid == hwid) it.copy(busy = busy) else it
+        })
     }
 
     fun refresh() {

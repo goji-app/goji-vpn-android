@@ -95,7 +95,6 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
 
     @Volatile var status: String = "off"
     @Volatile var currentNode: GlobeNode? = null
-    @Volatile var nodes: List<GlobeNode> = emptyList()
 
     /** Экранные координаты (0..1 от размера вьюпорта) и видимость плавающей подписи узла. */
     var onLabelUpdate: ((visible: Boolean, x: Float, y: Float, title: String) -> Unit)? = null
@@ -305,28 +304,18 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         // подсветка страны назначения
         highlightBuf?.let { if (highlightVerts > 0) drawThickLine(it, highlightVerts, GLES20.GL_LINES, theme.hi, if (on) 1f else 0.45f + 0.25f * sin(t * 4), pixelRadius = 1.6f) }
 
-        // пины серверов + дом — "кольцо-мишень" вместо плоского кружка (тонкое кольцо теплого
-        // акцента + маленькое ядро) читается как современная метка на карте, а не голая точка;
-        // лёгкое мерцание у каждого узла (разная фаза от id) не даёт списку выглядеть статичным.
-        nodes.forEach { n ->
-            val active = node != null && n.id == node.id
-            if (!(active && status != "off")) {
-                val pos = GlobeMath.toVec(n.lat, n.lon, GlobeMath.RADIUS * 1.012f)
-                val phase = (n.id.hashCode() and 0xFFFF) / 65535f * (2f * PI.toFloat())
-                val breathe = 0.7f + 0.3f * ((sin(t * 1.1f + phase) + 1f) / 2f)
-                drawPinAt(pos, theme.dot, 0.012f, breathe)
-                drawRingAt(pos, theme.hi, 0.042f, breathe * 0.32f)
-            }
-        }
-        // точка А (дом) — мягкое свечение того же тона вокруг компактного ядра, по мотивам
-        // референсного видео (простая светящаяся точка, а не сплошной плоский кружок).
-        drawPinAt(homePos, theme.home, 0.032f, 0.22f)
-        drawPinAt(homePos, theme.home, 0.015f)
-
-        // точка Б (узел подключения) — тот же приём: мягкий ореол + маленькое яркое ядро +
-        // один тонкий пульсирующий обод (вместо прежних двух разноцветных колец — по видео
-        // это одна чистая светящаяся точка, а не "радар" из нескольких окружностей).
+        // Обе точки маршрута (дом и узел подключения) показываем только пока реально что-то
+        // происходит (подключение/подключено) — в состоянии "off" глобус остаётся полностью
+        // пустым, без единой метки, вместо того чтобы точка А (дом) горела там постоянно.
         if (status != "off") {
+            // точка А (дом) — мягкое свечение того же тона вокруг компактного ядра, по мотивам
+            // референсного видео (простая светящаяся точка, а не сплошной плоский кружок).
+            drawPinAt(homePos, theme.home, 0.032f, 0.22f)
+            drawPinAt(homePos, theme.home, 0.015f)
+
+            // точка Б (узел подключения) — тот же приём: мягкий ореол + маленькое яркое ядро +
+            // один тонкий пульсирующий обод (вместо прежних двух разноцветных колец — по видео
+            // это одна чистая светящаяся точка, а не "радар" из нескольких окружностей).
             val glowOp = (if (on) 0.32f else 0.2f) + 0.07f * sin(t * 2.4f)
             drawPinAt(nodePos, theme.hi, 0.044f, glowOp)
             drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.016f)

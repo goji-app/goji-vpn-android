@@ -2,8 +2,7 @@ package xyz.gojihub.vpn.ui.login
 
 import android.content.Intent
 import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.foundation.Image
+import xyz.gojihub.vpn.auth.WebLoginActivity
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -32,7 +30,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import xyz.gojihub.vpn.R
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
 import xyz.gojihub.vpn.ui.theme.GodjiColors
@@ -46,13 +43,17 @@ fun LoginScreen(
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
-    fun openInCustomTabs(url: String) {
-        CustomTabsIntent.Builder().build().launchUrl(context, android.net.Uri.parse(url))
+    // Нативный обмен кода на токен (/api/auth/native/exchange) сломан на бэкенде 7.1.0 —
+    // отвечает 400 на любой запрос, независимо от провайдера. Вместо Custom Tabs + этого
+    // эндпоинта — WebLoginActivity: полноценный веб-вход сайта во встроенном WebView, откуда
+    // читаем сессионную куку напрямую (см. комментарий в WebLoginActivity).
+    fun openWebLogin() {
+        context.startActivity(Intent(context, WebLoginActivity::class.java))
     }
 
     Box(Modifier.fillMaxSize().background(GodjiColors.Background)) {
         // Глобус во весь экран фоном — как в макете, без карточки-обрамления.
-        GojiGlobe(status = "off", node = null, nodes = emptyList(), modifier = Modifier.fillMaxSize())
+        GojiGlobe(status = "off", node = null, modifier = Modifier.fillMaxSize())
 
         // Плавный переход к цвету фона внизу, где сидят кнопки входа — тот же приём,
         // что и линейный градиент в макете поверх canvas.
@@ -68,19 +69,6 @@ fun LoginScreen(
                     )
                 )
         )
-
-        Row(
-            Modifier.align(Alignment.TopStart).statusBarsPadding().padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_notification),
-                contentDescription = null,
-                modifier = Modifier.size(40.dp)
-            )
-            Text("Goji", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-        }
 
         // verticalScroll — на невысоких экранах (особенно в режиме email с показанной
         // ошибкой) весь этот блок не помещается по высоте; так как колонка прижата к низу
@@ -137,54 +125,20 @@ fun LoginScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (!state.emailMode) {
-                    val (googleInteraction, googleScale) = rememberPressScale()
+                    // Раньше здесь были отдельные кнопки Google/Telegram/Yandex — после перехода
+                    // на WebLoginActivity (см. openWebLogin выше и комментарий в
+                    // WebLoginActivity.kt) все они ведут в одно и то же место — полноценный веб-
+                    // вход сайта, где пользователь сам выбирает провайдера. Три кнопки с
+                    // одинаковым действием только путали бы, поэтому оставили одну.
+                    val (webLoginInteraction, webLoginScale) = rememberPressScale()
                     Button(
-                        onClick = { viewModel.startOAuth("google", onUrlReady = ::openInCustomTabs) },
+                        onClick = { openWebLogin() },
                         enabled = !state.loading,
-                        interactionSource = googleInteraction,
+                        interactionSource = webLoginInteraction,
                         colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
                         shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier.fillMaxWidth().height(54.dp).scale(googleScale.value)
-                    ) { Text(Loc.s.loginGoogle, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
-
-                    // Временно отключено: вход через Telegram сейчас падает на этапе обмена
-                    // кода на токен на стороне бэкенда (invalid_client) — разработчик бота
-                    // пока не может сказать, когда это починится, поэтому не даём пользователям
-                    // упираться в тупик, а честно показываем "скоро" вместо рабочей кнопки.
-                    Box(Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = {},
-                            enabled = false,
-                            border = androidx.compose.foundation.BorderStroke(1.5.dp, GodjiColors.ButtonBorder),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                disabledContentColor = GodjiColors.TextSecondary
-                            ),
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) { Text(Loc.s.loginTelegram, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
-                        Text(
-                            Loc.s.loginSoon,
-                            color = GodjiColors.Surface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 14.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(GodjiColors.Terracotta)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    val (yandexInteraction, yandexScale) = rememberPressScale()
-                    OutlinedButton(
-                        onClick = { viewModel.startOAuth("yandex", onUrlReady = ::openInCustomTabs) },
-                        enabled = !state.loading,
-                        interactionSource = yandexInteraction,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, GodjiColors.ButtonBorder),
-                        shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier.fillMaxWidth().height(50.dp).scale(yandexScale.value)
-                    ) { Text(Loc.s.loginYandex, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
+                        modifier = Modifier.fillMaxWidth().height(54.dp).scale(webLoginScale.value)
+                    ) { Text(Loc.s.loginViaWebsite, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
 
                     TextButton(onClick = { viewModel.toggleEmailMode(true) }, modifier = Modifier.fillMaxWidth()) {
                         Text(Loc.s.loginEmailMode, color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)

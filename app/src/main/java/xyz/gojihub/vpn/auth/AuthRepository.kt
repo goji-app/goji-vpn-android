@@ -2,6 +2,7 @@ package xyz.gojihub.vpn.auth
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import okhttp3.Headers
 import xyz.gojihub.vpn.network.RemnawaveApi
 import xyz.gojihub.vpn.network.models.ConsentRequest
 import xyz.gojihub.vpn.network.models.NativeExchangeRequest
@@ -59,7 +60,14 @@ class AuthRepository @Inject constructor(
 
     suspend fun verifyOtp(email: String, code: String): AuthResult = runCatching {
         val response = api.verifyOtp(VerifyOtpRequest(email, code))
-        onAuthenticated(response.token, response.expiresIn)
+        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+        val body = response.body() ?: error("verifyOtp: пустое тело ответа")
+        // С 7.1.0 сам токен сессии — в Set-Cookie (rw_session_token), не в теле ответа (см.
+        // комментарий у VerifyOtpResponse). Тот же JWT работает как обычный Bearer-токен —
+        // подтверждено живым запросом к /api/auth/me и /api/subscriptions.
+        val token = extractCookieValue(response.headers(), "rw_session_token")
+            ?: error("verifyOtp: в ответе нет куки rw_session_token")
+        onAuthenticated(token, body.expiresIn)
         AuthResult.Success
     }.getOrElse {
         AppLogger.e(appContext, LogCategory.MAIN, TAG, "verifyOtp failed", it)
@@ -99,6 +107,31 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    /** Вызывается из WebLoginActivity после того, как встроенный WebView сам, целиком, прошёл
+     *  веб-версию логина сайта (Google/Yandex/Telegram/email — что выберет пользователь) и в его
+     *  CookieManager появилась кука rw_session_token. Обходной путь: нативный обмен кода на токен
+     *  (POST /api/auth/native/exchange) на бэкенде 7.1.0 сломан и всегда отвечает 400 "invalid
+     *  request" — независимо от провайдера (см. ARCHITECTURE.md). Веб-флоу сайта использует
+     *  совсем другой, отдельный эндпоинт (/api/auth/session/exchange) и им не затронут — токен
+     *  из его же Set-Cookie мы уже проверяли живым запросом как обычный Bearer и подтвердили, что
+     *  бэкенд принимает его наравне с токеном из email-входа. */
+    suspend fun completeWebLogin(sessionToken: String): AuthResult = runCatching {
+        onAuthenticated(sessionToken, WEB_LOGIN_EXPIRES_IN_SECONDS)
+        AuthResult.Success
+    }.getOrElse {
+        AppLogger.e(appContext, LogCategory.MAIN, TAG, "completeWebLogin failed", it)
+        AuthResult.Error(it.message ?: Loc.s.errorOAuthCompleteFailed)
+    }
+
+    /** Set-Cookie может встречаться несколько раз в одном ответе (rw_session_token +
+     *  rw_refresh_token) — берём только нужное по имени, до первой ';' (остальное —
+     *  атрибуты куки: Path/Expires/HttpOnly/Secure/SameSite, не часть значения). */
+    private fun extractCookieValue(headers: Headers, cookieName: String): String? =
+        headers.values("Set-Cookie")
+            .firstOrNull { it.startsWith("$cookieName=") }
+            ?.substringAfter("$cookieName=")
+            ?.substringBefore(";")
+
     private suspend fun onAuthenticated(token: String, expiresInSeconds: Long) {
         tokenManager.save(token, expiresInSeconds)
         // Согласия на обработку данных / условия использования — требуются один раз после
@@ -122,5 +155,8 @@ class AuthRepository @Inject constructor(
         const val KEY_VERIFIER = "verifier"
         const val KEY_PROVIDER = "provider"
         const val TAG = "GodjiAuth"
+        // TokenManager реально этим значением уже не пользуется (см. комментарий у isLoggedIn()) —
+        // единственный источник правды о протухшем токене — 401 от бэкенда. Держим с запасом.
+        const val WEB_LOGIN_EXPIRES_IN_SECONDS = 30L * 24 * 3600
     }
 }

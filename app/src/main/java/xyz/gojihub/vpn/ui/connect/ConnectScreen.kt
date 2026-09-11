@@ -307,7 +307,10 @@ private fun GlobeCard(state: ConnectUiState) {
             .background(GodjiColors.Surface)
             .border(GodjiColors.CardBorderStrong, RoundedCornerShape(24.dp))
     ) {
-        GojiGlobe(status = state.globeStatus, node = state.globeNode, nodes = state.globeAllNodes, label = state.currentGeo?.displayCityCountry(Loc.lang).orEmpty(), modifier = Modifier.fillMaxSize())
+        // Точки всех доступных локаций больше не показываем — только точки маршрута
+        // (дом/узел), и то лишь пока идёт подключение или оно уже установлено (см.
+        // GojiGlobeRenderer: обе точки скрыты целиком при status == "off").
+        GojiGlobe(status = state.globeStatus, node = state.globeNode, label = state.currentGeo?.displayCityCountry(Loc.lang).orEmpty(), modifier = Modifier.fillMaxSize())
 
         if (state.connected) {
             Column(
