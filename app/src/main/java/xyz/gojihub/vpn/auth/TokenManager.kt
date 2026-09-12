@@ -43,6 +43,16 @@ class TokenManager @Inject constructor(
 
     fun accessToken(): String? = prefs.getString(KEY_TOKEN, null)
 
+    /** rw_refresh_token — живёт намного дольше сессионного JWT (тот истекает ровно через 24ч,
+     *  см. TokenAuthenticator). Не приходит для сессий, начатых до этого обновления (старый
+     *  сохранённый accessToken без refresh-токена) — тогда TokenAuthenticator просто не сможет
+     *  продлить сессию и пользователь один раз перелогинится, дальше уже с refresh-токеном. */
+    fun saveRefreshToken(token: String) {
+        prefs.edit().putString(KEY_REFRESH_TOKEN, token).apply()
+    }
+
+    fun refreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
+
     /** Раньше здесь ещё сравнивался KEY_EXPIRES_AT (локально посчитанный из expires_in при
      *  логине) с системным временем — из-за этого MainActivity при каждом холодном старте
      *  (Android регулярно убивает процесс в фоне, особенно без активного VPN-сервиса) могла
@@ -75,5 +85,6 @@ class TokenManager @Inject constructor(
     private companion object {
         const val KEY_TOKEN = "access_token"
         const val KEY_EXPIRES_AT = "expires_at"
+        const val KEY_REFRESH_TOKEN = "refresh_token"
     }
 }

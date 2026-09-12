@@ -20,6 +20,7 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.settings.SettingsRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
+import xyz.gojihub.vpn.ui.theme.FontSizePreset
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.update.AppUpdateChecker
 import xyz.gojihub.vpn.update.AppUpdateDownloader
@@ -33,6 +34,9 @@ data class SettingsUiState(
     val pinNotification: Boolean = true,
     val darkTheme: Boolean = false,
     val language: AppLanguage = AppLanguage.RU,
+    val fontSize: FontSizePreset = FontSizePreset.NORMAL,
+    val autoConnectOnWifi: Boolean = false,
+    val killSwitch: Boolean = false,
     val pingMethod: PingMethod = PingMethod.PROXY_GET,
     val pingTestUrl: String = SettingsRepository.DEFAULT_PING_URL,
     val logLevel: LogLevel = LogLevel.DEBUG,
@@ -66,6 +70,9 @@ class SettingsViewModel @Inject constructor(
                 pingMethod = settingsRepository.pingMethodNow(),
                 pingTestUrl = settingsRepository.pingTestUrlNow(),
                 language = settingsRepository.appLanguageNow(),
+                fontSize = settingsRepository.fontSizeNow(),
+                autoConnectOnWifi = settingsRepository.autoConnectOnWifi.first(),
+                killSwitch = settingsRepository.killSwitchEnabled.first(),
                 logLevel = settingsRepository.logLevelNow(),
                 hwid = subscriptionRepository.hwidNow()
             )
@@ -103,6 +110,22 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(darkTheme = enabled)
         if (enabled) GodjiColors.applyDark() else GodjiColors.applyLight()
         viewModelScope.launch { settingsRepository.setDarkThemeEnabled(enabled) }
+    }
+
+    fun setFontSize(preset: FontSizePreset) {
+        _state.value = _state.value.copy(fontSize = preset)
+        GodjiColors.fontSizePreset = preset
+        viewModelScope.launch { settingsRepository.setFontSize(preset) }
+    }
+
+    fun setAutoConnectOnWifi(enabled: Boolean) {
+        _state.value = _state.value.copy(autoConnectOnWifi = enabled)
+        viewModelScope.launch { settingsRepository.setAutoConnectOnWifi(enabled) }
+    }
+
+    fun setKillSwitch(enabled: Boolean) {
+        _state.value = _state.value.copy(killSwitch = enabled)
+        viewModelScope.launch { settingsRepository.setKillSwitchEnabled(enabled) }
     }
 
     fun setPingMethod(method: PingMethod) {

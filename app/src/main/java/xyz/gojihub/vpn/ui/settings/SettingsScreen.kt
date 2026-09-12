@@ -1,5 +1,7 @@
 package xyz.gojihub.vpn.ui.settings
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
+import xyz.gojihub.vpn.ui.theme.FontSizePreset
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
 import xyz.gojihub.vpn.ui.util.LogViewerDialog
@@ -34,9 +38,11 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit,
     onOpenPingSettings: () -> Unit,
     onOpenLogLevel: () -> Unit,
+    onOpenAppTunneling: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
     var logDialog by remember { mutableStateOf<Pair<LogCategory, String>?>(null) }
     logDialog?.let { (category, title) ->
         LogViewerDialog(category = category, title = title, onDismiss = { logDialog = null })
@@ -51,6 +57,22 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 26.sp)
+
+        SettingsSection(Loc.s.settingsConnection) {
+            SettingsToggleRow(
+                title = Loc.s.settingsAutoConnectWifi,
+                subtitle = Loc.s.settingsAutoConnectWifiDesc,
+                checked = state.autoConnectOnWifi,
+                onCheckedChange = viewModel::setAutoConnectOnWifi
+            )
+            Spacer(Modifier.height(10.dp))
+            SettingsToggleRow(
+                title = Loc.s.settingsKillSwitch,
+                subtitle = Loc.s.settingsKillSwitchDesc,
+                checked = state.killSwitch,
+                onCheckedChange = viewModel::setKillSwitch
+            )
+        }
 
         SettingsSection(Loc.s.settingsNotifications) {
             SettingsToggleRow(
@@ -76,10 +98,38 @@ fun SettingsScreen(
                     LanguageChip(lang, selected = state.language == lang, onSelect = { viewModel.setLanguage(lang) })
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            Text(Loc.s.settingsFontSize, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                FontSizePreset.entries.forEach { preset ->
+                    FontSizeChip(preset, selected = state.fontSize == preset, onSelect = { viewModel.setFontSize(preset) })
+                }
+            }
         }
 
         SettingsSection(Loc.s.settingsServerCheck) {
             SettingsLinkRow(title = Loc.s.settingsPingLink, subtitle = Loc.s.settingsPingLinkDesc, onClick = onOpenPingSettings)
+        }
+
+        SettingsSection(Loc.s.settingsAppTunneling) {
+            SettingsLinkRow(title = Loc.s.settingsAppTunneling, subtitle = Loc.s.settingsAppTunnelingDesc, onClick = onOpenAppTunneling)
+        }
+
+        SettingsSection(Loc.s.settingsAlwaysOnTitle) {
+            Text(Loc.s.settingsAlwaysOnDesc, color = GodjiColors.TextSecondary, fontSize = 11.5.sp, lineHeight = 15.sp)
+            Spacer(Modifier.height(10.dp))
+            SettingsLinkRow(
+                title = Loc.s.settingsAlwaysOnOpen,
+                subtitle = null,
+                onClick = {
+                    // Программно включить Always-on VPN/"Блокировать соединения без VPN" нельзя —
+                    // это намеренное ограничение Android (иначе любое приложение само тихо
+                    // заблокировало бы весь трафик устройства без ведома пользователя). Можно
+                    // только открыть системный экран, где пользователь включает это сам.
+                    runCatching { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
+                }
+            )
         }
 
         SettingsSection(Loc.s.settingsAbout) {
@@ -290,6 +340,26 @@ private fun LanguageChip(lang: AppLanguage, selected: Boolean, onSelect: () -> U
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(lang.displayName, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun FontSizeChip(preset: FontSizePreset, selected: Boolean, onSelect: () -> Unit) {
+    val bg = if (selected) GodjiColors.Ink else GodjiColors.Chip
+    val fg = if (selected) GodjiColors.Surface else GodjiColors.TextPrimary
+    val label = when (preset) {
+        FontSizePreset.SMALL -> Loc.s.fontSizeSmall
+        FontSizePreset.NORMAL -> Loc.s.fontSizeNormal
+        FontSizePreset.LARGE -> Loc.s.fontSizeLarge
+    }
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(label, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
 

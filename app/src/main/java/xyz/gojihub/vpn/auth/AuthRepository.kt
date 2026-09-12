@@ -2,8 +2,8 @@ package xyz.gojihub.vpn.auth
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import okhttp3.Headers
 import xyz.gojihub.vpn.network.RemnawaveApi
+import xyz.gojihub.vpn.network.extractCookieValue
 import xyz.gojihub.vpn.network.models.ConsentRequest
 import xyz.gojihub.vpn.network.models.NativeExchangeRequest
 import xyz.gojihub.vpn.network.models.SendOtpRequest
@@ -67,6 +67,10 @@ class AuthRepository @Inject constructor(
         // подтверждено живым запросом к /api/auth/me и /api/subscriptions.
         val token = extractCookieValue(response.headers(), "rw_session_token")
             ?: error("verifyOtp: в ответе нет куки rw_session_token")
+        // Живёт намного дольше сессионного JWT — без неё TokenAuthenticator не сможет
+        // обновить сессию по истечении суток и пользователя раз в день выкидывало бы на
+        // логин (см. TokenAuthenticator в NetworkModule).
+        extractCookieValue(response.headers(), "rw_refresh_token")?.let(tokenManager::saveRefreshToken)
         onAuthenticated(token, body.expiresIn)
         AuthResult.Success
     }.getOrElse {
@@ -115,22 +119,14 @@ class AuthRepository @Inject constructor(
      *  совсем другой, отдельный эндпоинт (/api/auth/session/exchange) и им не затронут — токен
      *  из его же Set-Cookie мы уже проверяли живым запросом как обычный Bearer и подтвердили, что
      *  бэкенд принимает его наравне с токеном из email-входа. */
-    suspend fun completeWebLogin(sessionToken: String): AuthResult = runCatching {
+    suspend fun completeWebLogin(sessionToken: String, refreshToken: String?): AuthResult = runCatching {
+        refreshToken?.let(tokenManager::saveRefreshToken)
         onAuthenticated(sessionToken, WEB_LOGIN_EXPIRES_IN_SECONDS)
         AuthResult.Success
     }.getOrElse {
         AppLogger.e(appContext, LogCategory.MAIN, TAG, "completeWebLogin failed", it)
         AuthResult.Error(it.message ?: Loc.s.errorOAuthCompleteFailed)
     }
-
-    /** Set-Cookie может встречаться несколько раз в одном ответе (rw_session_token +
-     *  rw_refresh_token) — берём только нужное по имени, до первой ';' (остальное —
-     *  атрибуты куки: Path/Expires/HttpOnly/Secure/SameSite, не часть значения). */
-    private fun extractCookieValue(headers: Headers, cookieName: String): String? =
-        headers.values("Set-Cookie")
-            .firstOrNull { it.startsWith("$cookieName=") }
-            ?.substringAfter("$cookieName=")
-            ?.substringBefore(";")
 
     private suspend fun onAuthenticated(token: String, expiresInSeconds: Long) {
         tokenManager.save(token, expiresInSeconds)

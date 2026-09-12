@@ -32,6 +32,7 @@ import xyz.gojihub.vpn.ui.login.VerifyEmailScreen
 import xyz.gojihub.vpn.ui.navigation.GodjiDestinations
 import xyz.gojihub.vpn.ui.plans.PlansScreen
 import xyz.gojihub.vpn.ui.servers.ServersScreen
+import xyz.gojihub.vpn.ui.settings.AppTunnelingScreen
 import xyz.gojihub.vpn.ui.settings.LogLevelScreen
 import xyz.gojihub.vpn.ui.settings.PingSettingsScreen
 import xyz.gojihub.vpn.ui.settings.SettingsScreen
@@ -206,7 +207,8 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                         }
                     },
                     onOpenPingSettings = { navController.navigate(GodjiDestinations.PING_SETTINGS) },
-                    onOpenLogLevel = { navController.navigate(GodjiDestinations.LOG_LEVEL) }
+                    onOpenLogLevel = { navController.navigate(GodjiDestinations.LOG_LEVEL) },
+                    onOpenAppTunneling = { navController.navigate(GodjiDestinations.APP_TUNNELING) }
                 )
             }
             composable(
@@ -222,6 +224,13 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                 exitTransition = { ExitTransition.None }
             ) {
                 LogLevelScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                GodjiDestinations.APP_TUNNELING,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) {
+                AppTunnelingScreen(onBack = { navController.popBackStack() })
             }
         }
     }

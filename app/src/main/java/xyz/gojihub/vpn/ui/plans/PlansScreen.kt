@@ -200,6 +200,10 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
             }
         }
 
+        if (state.trafficHistory.any { it.bytes > 0 }) {
+            TrafficHistorySection(state.trafficHistory)
+        }
+
         if (state.subscriptionId != null) {
             DevicesSection(
                 devices = state.devices,
@@ -354,6 +358,63 @@ private fun NewsCard(item: NewsUi) {
 /** Сводка + ссылка + список приглашённых (gojihub.xyz/api/dashboard/referrals). Имена/
  *  юзернеймы/email приглашённых уже замаскированы во ViewModel (см. displayNameFor) — это
  *  чужие персональные данные, не наши. */
+/** Бэкенд не хранит историю по дням, только суммарный расход за период — график строится по
+ *  локальным снимкам (см. TrafficHistoryRepository), поэтому глубже последних ~60 дней (и не
+ *  раньше момента, когда это обновление появилось на устройстве) заглянуть нельзя. */
+@Composable
+private fun TrafficHistorySection(days: List<TrafficDayUi>) {
+    Spacer(Modifier.height(16.dp))
+    Text(Loc.s.plansTrafficHistoryTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+    Spacer(Modifier.height(8.dp))
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
+            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        val maxBytes = (days.maxOfOrNull { it.bytes } ?: 0L).coerceAtLeast(1L)
+        Row(
+            Modifier.fillMaxWidth().height(90.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            days.forEach { day ->
+                val fraction = day.bytes.toFloat() / maxBytes.toFloat()
+                Column(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(fraction.coerceIn(0.03f, 1f))
+                            .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                            .background(if (day.isToday) GodjiColors.Teal else GodjiColors.TealTint)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        day.dayLabel,
+                        color = if (day.isToday) GodjiColors.TealDeep else GodjiColors.TextSecondary,
+                        fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 9.5.sp
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = GodjiColors.CardBorder)
+        val todayBytes = days.lastOrNull { it.isToday }?.bytes ?: 0L
+        Text(
+            Loc.s.plansTrafficHistoryToday("%.2f".format(todayBytes / 1_000_000_000.0)),
+            color = GodjiColors.TextSecondary,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp
+        )
+    }
+}
+
 @Composable
 private fun DevicesSection(
     devices: List<DeviceUi>,
@@ -495,7 +556,7 @@ private fun ProgramSection(
     }
 
     when {
-        referral != null && tab == 0 -> ReferralCard(referral, clipboard)
+        referral != null && tab == 0 -> ReferralCard(referral, clipboard, context)
         partner != null -> PartnerCard(partner, context)
     }
 }
@@ -516,7 +577,7 @@ private fun ProgramTab(label: String, selected: Boolean, modifier: Modifier = Mo
 }
 
 @Composable
-private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.platform.ClipboardManager) {
+private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.platform.ClipboardManager, context: Context) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -537,6 +598,21 @@ private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.pl
         ) {
             Text(referral.link, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Text("⧉", color = GodjiColors.TealDeep, fontSize = 13.sp)
+            Text(
+                "↗",
+                color = GodjiColors.TealDeep,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable {
+                    // Системный share-sheet — раньше ссылку можно было только скопировать в
+                    // буфер, что лишний шаг перед отправкой в Telegram/WhatsApp/куда угодно.
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, referral.link)
+                    }
+                    context.startActivity(Intent.createChooser(send, null))
+                }
+            )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ReferralStat(Loc.s.plansReferralInvited, "${referral.totalReferrals}")

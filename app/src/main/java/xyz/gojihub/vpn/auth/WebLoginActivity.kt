@@ -68,9 +68,9 @@ class WebLoginActivity : ComponentActivity() {
         setContent {
             GodjiVpnTheme {
                 WebLoginScreen(
-                    onSessionCookie = { token ->
+                    onSessionCookie = { token, refreshToken ->
                         lifecycleScope.launch {
-                            authRepository.completeWebLogin(token)
+                            authRepository.completeWebLogin(token, refreshToken)
                             startActivity(
                                 Intent(this@WebLoginActivity, MainActivity::class.java)
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -87,10 +87,14 @@ class WebLoginActivity : ComponentActivity() {
 
 private const val SITE_URL = "https://gojihub.xyz/"
 private const val SESSION_COOKIE_NAME = "rw_session_token"
+private const val REFRESH_COOKIE_NAME = "rw_refresh_token"
 
 @SuppressLint("SetJavaScriptEnabled")
+private fun cookieFrom(cookies: String?, name: String): String? =
+    cookies?.split("; ")?.firstOrNull { it.startsWith("$name=") }?.substringAfter("$name=")
+
 @Composable
-private fun WebLoginScreen(onSessionCookie: (String) -> Unit, onClose: () -> Unit) {
+private fun WebLoginScreen(onSessionCookie: (String, String?) -> Unit, onClose: () -> Unit) {
     var canGoBack by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
     var handled by remember { mutableStateOf(false) }
@@ -142,14 +146,13 @@ private fun WebLoginScreen(onSessionCookie: (String) -> Unit, onClose: () -> Uni
                                 canGoBack = view.canGoBack()
                                 if (handled) return
                                 val cookies = CookieManager.getInstance().getCookie(SITE_URL)
-                                val token = cookies
-                                    ?.split("; ")
-                                    ?.firstOrNull { it.startsWith("$SESSION_COOKIE_NAME=") }
-                                    ?.substringAfter("$SESSION_COOKIE_NAME=")
+                                val token = cookieFrom(cookies, SESSION_COOKIE_NAME)
                                 if (!token.isNullOrBlank()) {
                                     handled = true
                                     CookieManager.getInstance().flush()
-                                    onSessionCookie(token)
+                                    // Живёт намного дольше сессионного JWT — без неё TokenAuthenticator
+                                    // не смог бы продлевать сессию раз в сутки (см. NetworkModule).
+                                    onSessionCookie(token, cookieFrom(cookies, REFRESH_COOKIE_NAME))
                                 }
                             }
                         }

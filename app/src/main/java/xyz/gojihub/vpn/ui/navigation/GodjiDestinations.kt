@@ -9,6 +9,7 @@ object GodjiDestinations {
     const val SETTINGS = "settings"
     const val PING_SETTINGS = "ping_settings"
     const val LOG_LEVEL = "log_level"
+    const val APP_TUNNELING = "app_tunneling"
 
     fun verifyEmail(email: String) = "verify_email/$email"
 }

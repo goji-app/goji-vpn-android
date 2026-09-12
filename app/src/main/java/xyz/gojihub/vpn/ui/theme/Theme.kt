@@ -62,7 +62,10 @@ fun GodjiVpnTheme(
     val scale = (configuration.screenWidthDp / REFERENCE_WIDTH_DP).coerceIn(MIN_SCALE, MAX_SCALE)
     val scaledDensity = Density(
         density = baseDensity.density * scale,
-        fontScale = baseDensity.fontScale
+        // Только fontScale, не density — настройка "Размер шрифта" должна менять размер
+        // текста, а не отступы/иконки/размеры карточек (те уже отмасштабированы под ширину
+        // экрана выше через density).
+        fontScale = baseDensity.fontScale * GodjiColors.fontSizePreset.multiplier
     )
 
     CompositionLocalProvider(LocalDensity provides scaledDensity) {

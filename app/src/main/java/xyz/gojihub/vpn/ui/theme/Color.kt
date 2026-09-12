@@ -5,6 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 
+/** Настройка "Размер шрифта" (см. SettingsScreen, секция "Внешний вид") — множитель поверх
+ *  системного fontScale (Theme.kt), трогает только sp (текст), а не dp (отступы/иконки/размеры
+ *  карточек), в отличие от общего адаптивного масштаба под ширину экрана там же. */
+enum class FontSizePreset(val multiplier: Float) { SMALL(0.9f), NORMAL(1f), LARGE(1.15f) }
+
 /**
  * Токены "Daylight" v3 — взяты 1:1 из макета Godji VPN v3 Daylight.dc.html, плюс тёмная
  * версия той же палитры (роли те же, светлота инвертирована).
@@ -22,6 +27,9 @@ object GodjiColors {
      *  OutlinedTextField) — без этого часть стандартных M3-компонентов держалась бы светлой
      *  палитры даже после переключения на тёмную тему. */
     var isDark by mutableStateOf(false)
+
+    /** См. FontSizePreset — читается реактивно в Theme.kt (GodjiVpnTheme), как и isDark. */
+    var fontSizePreset by mutableStateOf(FontSizePreset.NORMAL)
 
     var Background by mutableStateOf(Color(0xFFEFE9DA))
     var Surface by mutableStateOf(Color(0xFFFFFDF7))

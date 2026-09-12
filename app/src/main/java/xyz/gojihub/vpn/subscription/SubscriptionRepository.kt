@@ -66,6 +66,7 @@ fun VlessNode.toGlobeNode(): xyz.gojihub.vpn.globe.GlobeNode? =
 @Singleton
 class SubscriptionRepository @Inject constructor(
     private val api: RemnawaveApi,
+    private val trafficHistoryRepository: TrafficHistoryRepository,
     @ApplicationContext private val appContext: Context
 ) {
     // Тот же приём, что и в NetworkModule: пока туннель поднят, гоняем запрос списка серверов
@@ -134,6 +135,7 @@ class SubscriptionRepository @Inject constructor(
                 .getOrNull() ?: toEnrich
         }
         _subscription.value = active
+        active?.traffic?.usedBytes?.let { used -> runCatching { trafficHistoryRepository.recordToday(used) } }
         // Уведомления о скором окончании подписки/успешной оплате — считаются здесь, а не в
         // отдельных вызывающих местах (воркер + 3 ViewModel), чтобы сработать при любом
         // источнике обновления, а не только раз в час в фоне.

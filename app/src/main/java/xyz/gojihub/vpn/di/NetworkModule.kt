@@ -6,15 +6,21 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.Authenticator
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import xyz.gojihub.vpn.BuildConfig
 import xyz.gojihub.vpn.auth.TokenManager
 import xyz.gojihub.vpn.network.RemnawaveApi
+import xyz.gojihub.vpn.network.extractCookieValue
 import xyz.gojihub.vpn.vpn.GodjiVpnService
+import javax.inject.Named
 import javax.inject.Singleton
 
 // Реальный клиентский бэкенд (Telegram Mini App) — сверено напрямую с сетевыми запросами
@@ -51,15 +57,72 @@ object NetworkModule {
         // токен). Не трогаем ответ без токена (аноним и так получит 401 по делу, не о протухшей
         // сессии) и не трогаем сами auth-эндпоинты (неверный OTP-код тоже может прийти как 401
         // и не должен разлогинивать несуществующую ещё сессию).
+        // Если ниже сработает TokenAuthenticator и продлит сессию, сюда придёт уже финальный
+        // (не 401) ответ после успешного ретрая — markSessionExpired() увидит только "по-
+        // настоящему" мёртвую сессию (refresh-токена нет или сам он тоже не принят).
         if (response.code == 401 && token != null && !request.url.encodedPath.startsWith("/api/auth/")) {
             tokenManager.markSessionExpired()
         }
         response
     }
 
+    /** Отдельный клиент без authInterceptor/authenticator — только он используется внутри
+     *  самого TokenAuthenticator для запроса на обновление сессии, чтобы не словить рекурсию
+     *  (иначе обновляющий запрос сам мог бы получить 401 и снова вызвать аутентификатор). */
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
+    @Named("refresh")
+    fun provideRefreshOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .proxySelector(GodjiVpnService.tunnelAwareProxySelector())
+            .build()
+
+    /** Сессионный JWT бэкенда живёт ровно 24 часа (проверено по exp/iat в самом токене) —
+     *  без обновления пользователя стабильно выкидывало на логин раз в сутки. Веб-версия сайта
+     *  при 401 сначала пытается POST /api/auth/refresh (по куке rw_refresh_token) и повторяет
+     *  запрос — здесь та же логика через стандартный механизм OkHttp Authenticator: он
+     *  вызывается автоматически именно на 401, и его успешный результат уходит на повторную
+     *  попытку ДО того, как authInterceptor выше вообще увидит финальный ответ. */
+    @Provides
+    @Singleton
+    fun provideTokenAuthenticator(
+        tokenManager: TokenManager,
+        @Named("refresh") refreshClient: OkHttpClient
+    ): Authenticator = Authenticator { _, response ->
+        if (responseCount(response) >= 2) return@Authenticator null
+        if (response.request.url.encodedPath.startsWith("/api/auth/")) return@Authenticator null
+        val refreshToken = tokenManager.refreshToken() ?: return@Authenticator null
+
+        val refreshRequest = Request.Builder()
+            .url(BASE_URL + "api/auth/refresh")
+            .post("".toRequestBody(null))
+            .header("Cookie", "rw_refresh_token=$refreshToken")
+            .header("X-Requested-With", "XMLHttpRequest")
+            .build()
+
+        runCatching { refreshClient.newCall(refreshRequest).execute() }.getOrNull()?.use { refreshResponse ->
+            if (!refreshResponse.isSuccessful) return@Authenticator null
+            val newToken = extractCookieValue(refreshResponse.headers, "rw_session_token") ?: return@Authenticator null
+            // Ротация refresh-токена — если бэкенд не прислал новый, оставляем прежний
+            // (он мог быть выдан на длительный срок и не ротируется на каждое обновление).
+            extractCookieValue(refreshResponse.headers, "rw_refresh_token")?.let(tokenManager::saveRefreshToken)
+            // Значение здесь ни на что не влияет — TokenManager.isLoggedIn() его не читает,
+            // единственный источник правды о протухшем токене — 401 от бэкенда (см. там же).
+            tokenManager.save(newToken, 24L * 3600)
+            response.request.newBuilder().header("Authorization", "Bearer $newToken").build()
+        }
+    }
+
+    private fun responseCount(response: Response): Int {
+        var result = 1
+        var prior = response.priorResponse
+        while (prior != null) { result++; prior = prior.priorResponse }
+        return result
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(authInterceptor: Interceptor, tokenAuthenticator: Authenticator): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             // BODY — удобно для отладки, но логирует токены в plaintext. Не забудьте
             // переключить на NONE/BASIC в релизной сборке.
@@ -69,6 +132,7 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
+            .authenticator(tokenAuthenticator)
             // Пускаем запросы к gojihub.xyz через локальный SOCKS самого Xray, пока туннель
             // поднят — без этого собственные запросы приложения (и так исключённые из VPN,
             // см. GodjiVpnService.establishTunnel) шли по сырой сети телефона и падали в зоне

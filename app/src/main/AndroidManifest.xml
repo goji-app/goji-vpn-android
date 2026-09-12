@@ -12,6 +12,12 @@
          попытке install-интента сам покажет системный экран "Разрешить установку из этого
          источника" для Godji VPN, если он ещё не выдан. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Без этого на Android 11+ (API 30+) PackageManager.getInstalledApplications() видит
+         только сами себя и приложения, с которыми уже было явное взаимодействие (package
+         visibility) — экран "Прокси для выбранных приложений" получал бы почти пустой список
+         вместо всех установленных пакетов. Не требует ручной проверки в Google Play, потому
+         что приложение распространяется не через Play Store. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:name=".GodjiApplication"

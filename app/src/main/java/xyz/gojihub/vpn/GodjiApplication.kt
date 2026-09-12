@@ -74,6 +74,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
         // блокировка на старте пренебрежимо мала.
         runBlocking {
             if (settingsRepository.darkThemeEnabled.first()) GodjiColors.applyDark()
+            GodjiColors.fontSizePreset = settingsRepository.fontSizeNow()
             Loc.lang = settingsRepository.appLanguageNow()
             AppLogger.level = settingsRepository.logLevelNow()
         }
