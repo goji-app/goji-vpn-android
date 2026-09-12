@@ -1,6 +1,8 @@
 package xyz.gojihub.vpn.update
 
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -25,40 +27,49 @@ object AppUpdateChecker {
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    /** null — либо ошибка сети/API, либо установленная версия уже последняя. */
-    suspend fun checkForUpdate(): UpdateInfo? = runCatching {
-        val request = Request.Builder()
-            .url(RELEASES_URL)
-            .header("User-Agent", "Goji/${BuildConfig.VERSION_NAME}/Android")
-            .header("Accept", "application/vnd.github+json")
-            .build()
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@use null
-            val body = response.body?.string() ?: return@use null
-            val json = JSONObject(body)
-            // Теги релизов — vX.Y.Z (см. workflow релизов), убираем префикс для сравнения
-            // с BuildConfig.VERSION_NAME, где его нет.
-            val remoteVersion = json.optString("tag_name").removePrefix("v")
-            if (remoteVersion.isBlank() || !isNewer(remoteVersion, BuildConfig.VERSION_NAME)) return@use null
+    /** null — либо ошибка сети/API, либо установленная версия уже последняя.
+     *  withContext(IO) обязателен именно здесь, а не полагается на диспетчер вызывающего —
+     *  client.newCall(...).execute() блокирующий, а SettingsViewModel.checkForUpdate() запускает
+     *  эту suspend-функцию через обычный viewModelScope.launch (Dispatchers.Main.immediate по
+     *  умолчанию). Без этого ручная проверка по кнопке "Проверить обновления" валилась с
+     *  NetworkOnMainThreadException, которое тихо проглатывалось runCatching ниже и снаружи
+     *  выглядело как "у вас установлена последняя версия" даже когда на GitHub давно вышел
+     *  новый релиз. */
+    suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder()
+                .url(RELEASES_URL)
+                .header("User-Agent", "Goji/${BuildConfig.VERSION_NAME}/Android")
+                .header("Accept", "application/vnd.github+json")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val body = response.body?.string() ?: return@use null
+                val json = JSONObject(body)
+                // Теги релизов — vX.Y.Z (см. workflow релизов), убираем префикс для сравнения
+                // с BuildConfig.VERSION_NAME, где его нет.
+                val remoteVersion = json.optString("tag_name").removePrefix("v")
+                if (remoteVersion.isBlank() || !isNewer(remoteVersion, BuildConfig.VERSION_NAME)) return@use null
 
-            val assets = json.optJSONArray("assets") ?: return@use null
-            var apkUrl: String? = null
-            for (i in 0 until assets.length()) {
-                val asset = assets.optJSONObject(i) ?: continue
-                if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
-                    apkUrl = asset.optString("browser_download_url")
-                    break
+                val assets = json.optJSONArray("assets") ?: return@use null
+                var apkUrl: String? = null
+                for (i in 0 until assets.length()) {
+                    val asset = assets.optJSONObject(i) ?: continue
+                    if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
+                        apkUrl = asset.optString("browser_download_url")
+                        break
+                    }
                 }
-            }
-            if (apkUrl.isNullOrBlank()) return@use null
+                if (apkUrl.isNullOrBlank()) return@use null
 
-            UpdateInfo(
-                version = remoteVersion,
-                changelog = json.optString("body").ifBlank { json.optString("name") },
-                apkUrl = apkUrl
-            )
-        }
-    }.onFailure { Log.w(TAG, "checkForUpdate failed", it) }.getOrNull()
+                UpdateInfo(
+                    version = remoteVersion,
+                    changelog = json.optString("body").ifBlank { json.optString("name") },
+                    apkUrl = apkUrl
+                )
+            }
+        }.onFailure { Log.w(TAG, "checkForUpdate failed", it) }.getOrNull()
+    }
 
     /** Посегментное сравнение вида "1.0.29" > "1.0.28" — без поддержки суффиксов
      *  ("-beta" и т.п.), в тегах этого проекта их не бывает. */
