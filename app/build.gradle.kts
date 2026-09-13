@@ -23,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 31
-        versionName = "1.0.49"
+        versionCode = 32
+        versionName = "1.0.50"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только

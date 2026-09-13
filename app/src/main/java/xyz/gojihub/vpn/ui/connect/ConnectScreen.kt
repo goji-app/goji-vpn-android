@@ -312,10 +312,15 @@ private fun ctaColor(s: ConnectUiState) = GodjiColors.Surface
 
 @Composable
 private fun GlobeCard(state: ConnectUiState) {
+    // Цветное внешнее свечение вокруг самой карточки (не только внутри неё) — по мотивам
+    // shadow-[0_0_50px_rgba(0,245,160,0.12)] на контейнере глобуса в референсе; ярче, когда
+    // туннель поднят, едва заметно в состоянии "off".
+    val glowAlpha = if (state.connected) 0.35f else if (state.connecting) 0.22f else 0.12f
     Box(
         Modifier
             .fillMaxWidth()
             .height(230.dp)
+            .shadow(20.dp, RoundedCornerShape(24.dp), ambientColor = GodjiColors.Teal.copy(alpha = glowAlpha), spotColor = GodjiColors.Teal.copy(alpha = glowAlpha))
             .godjiCard(borderColor = GodjiColors.CardBorderStrong)
     ) {
         // Точки всех доступных локаций больше не показываем — только точки маршрута

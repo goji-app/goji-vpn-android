@@ -25,12 +25,17 @@ data class GlobeNode(val id: String, val lat: Double, val lon: Double, val count
  *  бежево-бумажная концепция глобуса, без фото-текстур/реалистичных цветов/освещения. */
 data class GlobeTheme(
     val ocean: FloatArray, val land: FloatArray, val grid: FloatArray,
-    val home: FloatArray, val hi: FloatArray, val arc: FloatArray, val dot: FloatArray
+    val home: FloatArray, val hi: FloatArray, val arc: FloatArray, val dot: FloatArray,
+    /** Цвет широтно-долготной сетки и внешнего атмосферного ободка — по референсу Stitch
+     *  (Three.js wireframe 0x00d2ff) это отдельный холодный "cyan", а не land/grid как раньше,
+     *  тот же тон, что и GodjiColors.Purple (секондари-акцент приложения). */
+    val wire: FloatArray
 ) {
     companion object {
         val Light = GlobeTheme(
             ocean = hex(0xece5da), land = hex(0x152220), grid = hex(0x152220),
-            home = hex(0xd84a2a), hi = hex(0x00875a), arc = hex(0xd84a2a), dot = hex(0x7b8a85)
+            home = hex(0xd84a2a), hi = hex(0x00875a), arc = hex(0xd84a2a), dot = hex(0x7b8a85),
+            wire = hex(0x00838f)
         )
         // Та же композиция ролей (песочный океан → чернильно-угольный, тёмные берега → почти
         // белые, акценты — неоновый изумруд/корал вместо приглушённой бирюзы), а не случайные
@@ -38,7 +43,8 @@ data class GlobeTheme(
         // тёмной теме приложения; теперь отражает "AMOLED void" редизайна.
         val Dark = GlobeTheme(
             ocean = hex(0x101419), land = hex(0xe0e2ea), grid = hex(0xe0e2ea),
-            home = hex(0xff5e3a), hi = hex(0x00f5a0), arc = hex(0xff5e3a), dot = hex(0x849588)
+            home = hex(0xff5e3a), hi = hex(0x00f5a0), arc = hex(0xff5e3a), dot = hex(0x849588),
+            wire = hex(0x00d2ff)
         )
         private fun hex(v: Int) = floatArrayOf(
             ((v shr 16) and 0xFF) / 255f, ((v shr 8) and 0xFF) / 255f, (v and 0xFF) / 255f
@@ -127,6 +133,8 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
     private var ringVerts = 0
     private lateinit var graticuleBuf: FloatBuffer // сетка параллелей/меридианов — доп. детализация
     private var graticuleVerts = 0
+    private lateinit var glowDiskBuf: FloatBuffer // залитый круг (r=1) для внешнего "атмосферного" ободка
+    private var glowDiskVerts = 0
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -188,6 +196,7 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
 
         ringBuf = buildRingLine(0.065f, 40).also { ringVerts = it.capacity() / 3 }
         graticuleBuf = buildGraticule()
+        glowDiskBuf = buildDisk(48)
 
         // Гео-данные грузим асинхронно и заливаем в GL на следующем кадре (см. onDrawFrame).
         pendingGeoLoad = true
@@ -284,6 +293,19 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         Matrix.rotateM(model, 0, Math.toDegrees(rotY.toDouble()).toFloat(), 0f, 1f, 0f)
         Matrix.multiplyMM(mvp, 0, vpMatrix, 0, model, 0)
 
+        // "Атмосферный" ободок по краю силуэта планеты (по мотивам внешней BackSide-сферы из
+        // референса Stitch/Three.js) — три залитых круга РАСТУЩЕГО радиуса и УБЫВАЮЩЕЙ альфы,
+        // отрисованные в плоскости XY через vpMatrix напрямую (без model-поворота: камера всегда
+        // смотрит вдоль Z с up=(0,1,0), поэтому такой плоский диск и так всегда развёрнут точно
+        // на камеру — отдельный billboard-поворот не нужен). Рисуем ДО сферы и без записи в
+        // depth-buffer (glDepthMask(false)) — тогда сфера, отрисованная следом, естественным
+        // образом перекрывает середину дисков, оставляя видимым только мягкое кольцо по краю.
+        GLES20.glDepthMask(false)
+        drawGlowDisk(GlobeMath.RADIUS * 1.34f, theme.hi, 0.05f)
+        drawGlowDisk(GlobeMath.RADIUS * 1.2f, theme.hi, 0.08f)
+        drawGlowDisk(GlobeMath.RADIUS * 1.07f, theme.hi, 0.12f)
+        GLES20.glDepthMask(true)
+
         // океан — по одной полосе широты за отрисовку (иначе triangle strip склеит несмежные полосы).
         // bandShade — простое "освещение сверху" без изменения шейдера, сфера читается объёмной,
         // а не плоской заливкой одного тона. Яркость считаем по РЕАЛЬНОЙ повёрнутой позиции
@@ -294,8 +316,9 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         drawSphereBands(sphereBuf, sphereLatSeg, sphereBandVerts, mvp, theme.ocean, 1f) { band ->
             bandBrightness(sphereBuf, band, sphereBandVerts)
         }
-        // сетка параллелей/меридианов — тонкая фоновая деталь поверх океана, под берегами
-        draw(graticuleBuf, graticuleVerts, GLES20.GL_LINES, theme.grid, 0.1f)
+        // сетка параллелей/меридианов — тонкая фоновая деталь поверх океана, под берегами;
+        // цвет — "wire" (холодный cyan), а не land/grid, по референсу Stitch
+        draw(graticuleBuf, graticuleVerts, GLES20.GL_LINES, theme.wire, 0.16f)
         // берега/границы: glLineWidth>1 не работает на большинстве мобильных GPU (реальный
         // диапазон часто [1,1]), поэтому толщину имитируем 5-проходной отрисовкой со сдвигом
         // на ~1px в NDC (см. drawThickLine) — иначе линии остаются машным волоском на плотных
@@ -570,18 +593,23 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
 
     /** Тонкая сетка параллелей (широта, шаг 30°) и меридианов (долгота, шаг 30°) чуть поверх
      *  поверхности океана — фоновая деталь, отрисовывается с низкой альфой поверх сферы. */
+    /** Шаг 15° (а не прежние 30°) — по плотности ближе к wireframe-сетке референса
+     *  (SphereGeometry 24×24 сегментов), сама сетка при этом остаётся фоновой деталью низкой
+     *  альфы, а не бросающейся в глаза решёткой. */
     private fun buildGraticule(): FloatBuffer {
         val r = GlobeMath.RADIUS * 1.002f
         val segs = 64
         val verts = ArrayList<Float>()
-        for (lat in intArrayOf(-60, -30, 0, 30, 60)) {
+        var latDeg = -75
+        while (latDeg <= 75) {
             var prev: FloatArray? = null
             for (i in 0..segs) {
                 val lon = -180.0 + i * 360.0 / segs
-                val v = GlobeMath.toVec(lat.toDouble(), lon, r)
+                val v = GlobeMath.toVec(latDeg.toDouble(), lon, r)
                 prev?.let { verts.add(it[0]); verts.add(it[1]); verts.add(it[2]); verts.add(v[0]); verts.add(v[1]); verts.add(v[2]) }
                 prev = v
             }
+            latDeg += 15
         }
         var lonDeg = 0
         while (lonDeg < 360) {
@@ -592,10 +620,39 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
                 prev?.let { verts.add(it[0]); verts.add(it[1]); verts.add(it[2]); verts.add(v[0]); verts.add(v[1]); verts.add(v[2]) }
                 prev = v
             }
-            lonDeg += 30
+            lonDeg += 15
         }
         graticuleVerts = verts.size / 3
         return toBuffer(verts.toFloatArray())
+    }
+
+    /** Залитый круг (triangle fan, единичный радиус) в плоскости XY — основа для
+     *  drawGlowDisk (атмосферный ободок вокруг силуэта планеты). */
+    private fun buildDisk(segments: Int): FloatBuffer {
+        val verts = ArrayList<Float>()
+        verts.add(0f); verts.add(0f); verts.add(0f)
+        for (i in 0..segments) {
+            val a = 2.0 * PI * i / segments
+            verts.add(cos(a).toFloat()); verts.add(sin(a).toFloat()); verts.add(0f)
+        }
+        glowDiskVerts = verts.size / 3
+        return toBuffer(verts.toFloatArray())
+    }
+
+    /** Рисует glowDiskBuf через vpMatrix напрямую (без модельного поворота глобуса) —
+     *  см. комментарий в onDrawFrame про то, почему билборд-поворот здесь не нужен. */
+    private fun drawGlowDisk(radius: Float, color: FloatArray, alpha: Float) {
+        val m = FloatArray(16)
+        Matrix.setIdentityM(m, 0)
+        Matrix.scaleM(m, 0, radius, radius, radius)
+        val localVp = FloatArray(16)
+        Matrix.multiplyMM(localVp, 0, vpMatrix, 0, m, 0)
+        glowDiskBuf.position(0)
+        GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, 0, glowDiskBuf)
+        GLES20.glUniformMatrix4fv(uMVP, 1, false, localVp, 0)
+        GLES20.glUniform4f(uColor, color[0], color[1], color[2], alpha)
+        GLES20.glUniform2f(uOffset, 0f, 0f)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, glowDiskVerts)
     }
 
     private fun buildRingLine(r: Float, segments: Int): FloatBuffer {
