@@ -34,6 +34,7 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.theme.godjiCard
 
 @Composable
 fun LoginScreen(
@@ -103,9 +104,7 @@ fun LoginScreen(
                 Modifier
                     .fillMaxWidth()
                     .scale(botBannerScale.value)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(GodjiColors.Chip)
-                    .border(1.dp, GodjiColors.CardBorderStrong, RoundedCornerShape(24.dp))
+                    .godjiCard(tint = GodjiColors.Chip, borderColor = GodjiColors.CardBorderStrong)
                     .clickable(interactionSource = botBannerInteraction, indication = LocalIndication.current) {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Shadow_Duck_bot")))
                     }

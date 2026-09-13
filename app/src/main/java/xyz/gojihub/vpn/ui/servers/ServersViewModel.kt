@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import xyz.gojihub.vpn.geo.CountryGeoLookup
+import xyz.gojihub.vpn.settings.SettingsRepository
 import xyz.gojihub.vpn.subscription.PingRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
 import xyz.gojihub.vpn.util.stripLeadingFlag
@@ -27,7 +28,8 @@ data class NodeUi(
     val flag: String,
     val host: String,
     val port: Int,
-    val pingMs: Int
+    val pingMs: Int,
+    val isFavorite: Boolean = false
 )
 
 data class ServersUiState(
@@ -41,10 +43,11 @@ data class ServersUiState(
 @HiltViewModel
 class ServersViewModel @Inject constructor(
     private val subscriptionRepository: SubscriptionRepository,
-    private val pingRepository: PingRepository
+    private val pingRepository: PingRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    val state: StateFlow<ServersUiState> = combine(
+    private val baseState = combine(
         subscriptionRepository.nodes,
         subscriptionRepository.selectedId,
         pingRepository.pings,
@@ -64,6 +67,19 @@ class ServersViewModel @Inject constructor(
             checkingId = checkingId,
             checkingAll = checkingAll,
             loading = false
+        )
+    }
+
+    // combine() у kotlinx.coroutines есть готовым только до 5 потоков — избранное добавляем
+    // отдельным вторым combine поверх уже собранного состояния, а не переписываем всё на
+    // вариант с Array<Flow<*>> ради одного лишнего источника.
+    val state: StateFlow<ServersUiState> = combine(
+        baseState, settingsRepository.favoriteServerIds
+    ) { base, favorites ->
+        if (favorites.isEmpty()) base else base.copy(
+            servers = base.servers
+                .map { it.copy(isFavorite = it.id in favorites) }
+                .sortedByDescending { it.isFavorite }
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ServersUiState())
 
@@ -88,6 +104,8 @@ class ServersViewModel @Inject constructor(
     fun pingOne(id: String) = pingRepository.pingOne(id)
 
     fun pingAll() = pingRepository.pingAll()
+
+    fun toggleFavorite(id: String) = viewModelScope.launch { settingsRepository.toggleFavoriteServer(id) }
 
     /** Ручное обновление подписки (список серверов мог поменяться на бэкенде) — отдельная
      *  кнопка от "обновить пинг", с уведомлением об успехе/ошибке. */

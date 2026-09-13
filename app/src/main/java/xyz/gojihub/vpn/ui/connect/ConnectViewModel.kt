@@ -36,6 +36,8 @@ data class ConnectUiState(
     val connecting: Boolean = false,
     val downSpeedMbps: Double = 0.0,
     val upSpeedMbps: Double = 0.0,
+    val downHistory: List<Float> = emptyList(),
+    val upHistory: List<Float> = emptyList(),
     val usedGb: Double = 0.0,
     val quotaGb: Double = 0.0,
     val isUnlimited: Boolean = false,
@@ -63,6 +65,8 @@ data class ConnectUiState(
 )
 
 enum class BannerKind { WARNING, SUCCESS, INFO }
+
+private const val SPEED_HISTORY_SIZE = 30
 
 @HiltViewModel
 class ConnectViewModel @Inject constructor(
@@ -327,9 +331,16 @@ class ConnectViewModel @Inject constructor(
                 val rx = TrafficStats.getUidRxBytes(uid)
                 val tx = TrafficStats.getUidTxBytes(uid)
                 val dtSeconds = (now - lastTime).coerceAtLeast(1) / 1000.0
+                val down = ((rx - lastRx).coerceAtLeast(0) / dtSeconds / 1_000_000.0)
+                val up = ((tx - lastTx).coerceAtLeast(0) / dtSeconds / 1_000_000.0)
                 _state.value = _state.value.copy(
-                    downSpeedMbps = (rx - lastRx).coerceAtLeast(0) / dtSeconds / 1_000_000.0,
-                    upSpeedMbps = (tx - lastTx).coerceAtLeast(0) / dtSeconds / 1_000_000.0,
+                    downSpeedMbps = down,
+                    upSpeedMbps = up,
+                    // Скользящее окно последних точек для мини-графика в StatCard — ощутимо
+                    // короче, чем TrafficHistoryRepository (та копит дни, эта — секунды текущей
+                    // сессии, и не переживает пересоздание ViewModel, что тут и не нужно).
+                    downHistory = (_state.value.downHistory + down.toFloat()).takeLast(SPEED_HISTORY_SIZE),
+                    upHistory = (_state.value.upHistory + up.toFloat()).takeLast(SPEED_HISTORY_SIZE),
                     connectedTimeLabel = formatElapsed(now - connectedSinceOrNow())
                 )
                 lastRx = rx
@@ -348,7 +359,7 @@ class ConnectViewModel @Inject constructor(
     private fun stopSpeedPolling() {
         speedJob?.cancel()
         speedJob = null
-        _state.value = _state.value.copy(downSpeedMbps = 0.0, upSpeedMbps = 0.0)
+        _state.value = _state.value.copy(downSpeedMbps = 0.0, upSpeedMbps = 0.0, downHistory = emptyList(), upHistory = emptyList())
     }
 
     private fun formatElapsed(millis: Long): String {

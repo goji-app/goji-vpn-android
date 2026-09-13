@@ -52,6 +52,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val lastConnectLabelKey = stringPreferencesKey("last_connect_label")
     private val perAppProxyModeKey = stringPreferencesKey("per_app_proxy_mode")
     private val perAppProxyPackagesKey = stringSetPreferencesKey("per_app_proxy_packages")
+    private val favoriteServerIdsKey = stringSetPreferencesKey("favorite_server_ids")
 
     val preferredNodeId: Flow<String?> = context.dataStore.data.map { it[preferredNodeKey] }
 
@@ -151,6 +152,16 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit { it[perAppProxyPackagesKey] = packages }
     }
     suspend fun perAppProxyPackagesNow(): Set<String> = perAppProxyPackages.first()
+
+    /** Избранные серверы (закреплены сверху списка в ServersScreen) — просто набор id узлов,
+     *  сами узлы приходят из подписки и не хранятся здесь. */
+    val favoriteServerIds: Flow<Set<String>> = context.dataStore.data.map { it[favoriteServerIdsKey] ?: emptySet() }
+    suspend fun toggleFavoriteServer(id: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[favoriteServerIdsKey] ?: emptySet()
+            prefs[favoriteServerIdsKey] = if (id in current) current - id else current + id
+        }
+    }
 
     companion object {
         const val DEFAULT_PING_URL = "https://cp.cloudflare.com/generate_204"

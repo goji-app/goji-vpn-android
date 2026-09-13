@@ -20,6 +20,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.core.content.ContextCompat
@@ -39,6 +40,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -58,6 +64,7 @@ import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.JetBrainsMonoFamily
+import xyz.gojihub.vpn.ui.theme.godjiCard
 
 @Composable
 fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}) {
@@ -206,10 +213,15 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                     .scale(ctaScale.value)
                     .drawBehind {
                         if (glowColor != null) {
-                            val haloRadius = size.maxDimension * 1.8f
+                            // "Photon bloom" из редизайна — на тёмном AMOLED-фоне неоновое
+                            // свечение читается гораздо ярче, чем на светлом песочном холсте,
+                            // поэтому радиус и непрозрачность ореола отличаются по теме, а не
+                            // берутся одним компромиссным значением на обе.
+                            val haloRadius = size.maxDimension * (if (GodjiColors.isDark) 2.6f else 1.8f)
+                            val peakAlpha = if (GodjiColors.isDark) 0.85f else 0.5f
                             drawCircle(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(glowColor.copy(alpha = glowPulse * 0.5f), glowColor.copy(alpha = 0f)),
+                                    colors = listOf(glowColor.copy(alpha = glowPulse * peakAlpha), glowColor.copy(alpha = 0f)),
                                     radius = haloRadius
                                 ),
                                 radius = haloRadius,
@@ -225,15 +237,14 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            StatCard("↓ ${"%.1f".format(state.downSpeedMbps)} ${Loc.s.speedUnit}", Loc.s.statDownload, GodjiColors.Teal, Modifier.weight(1f))
-            StatCard("↑ ${"%.1f".format(state.upSpeedMbps)} ${Loc.s.speedUnit}", Loc.s.statUpload, GodjiColors.Terracotta, Modifier.weight(1f))
+            StatCard("↓ ${"%.1f".format(state.downSpeedMbps)} ${Loc.s.speedUnit}", Loc.s.statDownload, GodjiColors.Teal, state.downHistory, Modifier.weight(1f))
+            StatCard("↑ ${"%.1f".format(state.upSpeedMbps)} ${Loc.s.speedUnit}", Loc.s.statUpload, GodjiColors.Terracotta, state.upHistory, Modifier.weight(1f))
         }
 
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-                .border(GodjiColors.CardBorder, RoundedCornerShape(24.dp))
+                .godjiCard()
                 .padding(11.dp, 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
@@ -305,9 +316,7 @@ private fun GlobeCard(state: ConnectUiState) {
         Modifier
             .fillMaxWidth()
             .height(230.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(GodjiColors.Surface)
-            .border(GodjiColors.CardBorderStrong, RoundedCornerShape(24.dp))
+            .godjiCard(borderColor = GodjiColors.CardBorderStrong)
     ) {
         // Точки всех доступных локаций больше не показываем — только точки маршрута
         // (дом/узел), и то лишь пока идёт подключение или оно уже установлено (см.
@@ -350,16 +359,45 @@ private fun NetworkPill(net: NetState) {
 }
 
 @Composable
-private fun StatCard(value: String, label: String, accent: Color, modifier: Modifier = Modifier) {
+private fun StatCard(value: String, label: String, accent: Color, history: List<Float>, modifier: Modifier = Modifier) {
     Column(
         modifier
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(GodjiColors.CardBorder, RoundedCornerShape(24.dp))
+            .godjiCard()
             .padding(13.dp)
     ) {
         Text(label, color = GodjiColors.TextSecondary, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.6.sp)
         Spacer(Modifier.height(6.dp))
         Text(value, color = GodjiColors.TextPrimary, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+        Spacer(Modifier.height(8.dp))
+        Sparkline(history, accent, Modifier.fillMaxWidth().height(22.dp))
+    }
+}
+
+/** Мини-график последних ~30 замеров скорости (см. ConnectViewModel.SPEED_HISTORY_SIZE) —
+ *  та самая "живая" телеметрия из референса редизайна вместо голого числа. Рисуется сразу
+ *  заполненной область под линией (полупрозрачный accent), а не только сама линия — так
+ *  читается лучше на маленькой высоте карточки. */
+@Composable
+private fun Sparkline(history: List<Float>, color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        if (history.size < 2) return@Canvas
+        val maxV = (history.maxOrNull() ?: 0f).coerceAtLeast(0.01f)
+        val stepX = size.width / (history.size - 1)
+        val points = history.mapIndexed { i, v ->
+            Offset(i * stepX, size.height - (v / maxV) * size.height)
+        }
+        val linePath = Path().apply {
+            moveTo(points.first().x, points.first().y)
+            for (p in points.drop(1)) lineTo(p.x, p.y)
+        }
+        val fillPath = Path().apply {
+            addPath(linePath)
+            lineTo(points.last().x, size.height)
+            lineTo(points.first().x, size.height)
+            close()
+        }
+        drawPath(fillPath, brush = Brush.verticalGradient(listOf(color.copy(alpha = 0.28f), color.copy(alpha = 0f))))
+        drawPath(linePath, color = color, style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
@@ -370,7 +408,7 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
     val color = when (kind) { BannerKind.WARNING -> GodjiColors.JamText; BannerKind.SUCCESS -> GodjiColors.TealDeep; BannerKind.INFO -> GodjiColors.TextPrimary }
     val icon = when (kind) { BannerKind.WARNING -> "⚠️"; BannerKind.SUCCESS -> "✅"; BannerKind.INFO -> "ℹ️" }
     Row(
-        Modifier.fillMaxWidth().background(bg, RoundedCornerShape(24.dp)).border(border, RoundedCornerShape(24.dp)).padding(12.dp),
+        Modifier.fillMaxWidth().godjiCard(tint = bg, borderColor = border).padding(12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
@@ -383,7 +421,7 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
 @Composable
 private fun AutoSwitchCard(state: ConnectUiState) {
     Column(
-        Modifier.fillMaxWidth().background(GodjiColors.Surface, RoundedCornerShape(24.dp)).border(GodjiColors.CardBorder, RoundedCornerShape(24.dp)).padding(13.dp),
+        Modifier.fillMaxWidth().godjiCard().padding(13.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column {
@@ -412,9 +450,7 @@ private fun TrafficCard(state: ConnectUiState, onClick: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(GodjiColors.Chip, RoundedCornerShape(24.dp))
-            .border(GodjiColors.CardBorderStrong, RoundedCornerShape(24.dp))
+            .godjiCard(tint = GodjiColors.Chip, borderColor = GodjiColors.CardBorderStrong)
             .clickable(onClick = onClick)
             .padding(13.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)

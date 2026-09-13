@@ -10,6 +10,7 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.theme.godjiCard
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
@@ -88,8 +91,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .scale(rowScale.value)
-                        .background(rowBg, RoundedCornerShape(12.dp))
-                        .border(1.5.dp, rowBorder, RoundedCornerShape(12.dp))
+                        .godjiCard(shape = RoundedCornerShape(12.dp), tint = rowBg, borderColor = rowBorder)
                         .clickable(interactionSource = rowInteraction, indication = LocalIndication.current) { viewModel.select(node.id) }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -101,6 +103,15 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
                     Column(Modifier.weight(1f)) {
                         Text(node.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
                     }
+                    Text(
+                        if (node.isFavorite) "★" else "☆",
+                        color = if (node.isFavorite) GodjiColors.Warning else GodjiColors.TextMuted,
+                        fontSize = 15.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = LocalIndication.current) { viewModel.toggleFavorite(node.id) }
+                            .padding(6.dp)
+                    )
                     TextButton(
                         onClick = { viewModel.pingOne(node.id) },
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
@@ -129,8 +140,7 @@ private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(bg, RoundedCornerShape(24.dp))
-            .border(1.dp, border, RoundedCornerShape(24.dp))
+            .godjiCard(tint = bg, borderColor = border)
             .padding(12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(9.dp)

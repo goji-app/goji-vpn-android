@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.theme.godjiCard
 import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
@@ -94,8 +95,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-                .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
+                .godjiCard(borderColor = GodjiColors.Ink)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -159,8 +159,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(planBg, RoundedCornerShape(24.dp))
-                        .border(1.5.dp, planBorder, RoundedCornerShape(24.dp))
+                        .godjiCard(tint = planBg, borderColor = planBorder)
                         .padding(14.dp),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -292,8 +291,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
             Modifier
                 .fillMaxWidth()
                 .scale(supportScale.value)
-                .background(GodjiColors.TerracottaTint, RoundedCornerShape(24.dp))
-                .border(1.dp, GodjiColors.TerracottaTintBorder, RoundedCornerShape(24.dp))
+                .godjiCard(tint = GodjiColors.TerracottaTint, borderColor = GodjiColors.TerracottaTintBorder)
                 .clickable(interactionSource = supportInteraction, indication = LocalIndication.current) {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/support-chat")))
                 }
@@ -320,8 +318,7 @@ private fun NewsCard(item: NewsUi) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.5.dp, GodjiColors.CardBorder, RoundedCornerShape(24.dp))
+            .godjiCard()
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -369,8 +366,7 @@ private fun TrafficHistorySection(days: List<TrafficDayUi>) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
+            .godjiCard(borderColor = GodjiColors.Ink)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -432,8 +428,7 @@ private fun DevicesSection(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
+            .godjiCard(borderColor = GodjiColors.Ink)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -581,8 +576,7 @@ private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.pl
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
+            .godjiCard(borderColor = GodjiColors.Ink)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -668,8 +662,7 @@ private fun PartnerCard(partner: PartnerUi, context: Context) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
+            .godjiCard(borderColor = GodjiColors.Ink)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {

@@ -28,6 +28,7 @@ import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.FontSizePreset
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.theme.godjiCard
 import xyz.gojihub.vpn.ui.util.LogViewerDialog
 import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
@@ -173,8 +174,7 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
-            .border(1.5.dp, GodjiColors.CardBorder, RoundedCornerShape(24.dp))
+            .godjiCard()
             .padding(16.dp)
     ) {
         Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
