@@ -199,9 +199,9 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                 onClick = { toggle() },
                 interactionSource = ctaInteraction,
                 colors = ButtonDefaults.buttonColors(containerColor = ctaBgAnimated, contentColor = ctaColor(state)),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(50),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp, pressedElevation = 1.dp),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
                 modifier = Modifier
                     .scale(ctaScale.value)
                     .drawBehind {
@@ -218,7 +218,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                         }
                     }
                     .height(44.dp)
-                    .shadow(8.dp, RoundedCornerShape(16.dp), ambientColor = ctaBgAnimated, spotColor = ctaBgAnimated)
+                    .shadow(8.dp, RoundedCornerShape(50), ambientColor = ctaBgAnimated, spotColor = ctaBgAnimated)
             ) {
                 Text(ctaLabel(state), fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
             }
@@ -232,8 +232,8 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(GodjiColors.Surface, RoundedCornerShape(16.dp))
-                .border(GodjiColors.CardBorder, RoundedCornerShape(16.dp))
+                .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+                .border(GodjiColors.CardBorder, RoundedCornerShape(24.dp))
                 .padding(11.dp, 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
@@ -353,8 +353,8 @@ private fun NetworkPill(net: NetState) {
 private fun StatCard(value: String, label: String, accent: Color, modifier: Modifier = Modifier) {
     Column(
         modifier
-            .background(GodjiColors.Surface, RoundedCornerShape(16.dp))
-            .border(GodjiColors.CardBorder, RoundedCornerShape(16.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(GodjiColors.CardBorder, RoundedCornerShape(24.dp))
             .padding(13.dp)
     ) {
         Text(label, color = GodjiColors.TextSecondary, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.6.sp)
@@ -370,7 +370,7 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
     val color = when (kind) { BannerKind.WARNING -> GodjiColors.JamText; BannerKind.SUCCESS -> GodjiColors.TealDeep; BannerKind.INFO -> GodjiColors.TextPrimary }
     val icon = when (kind) { BannerKind.WARNING -> "⚠️"; BannerKind.SUCCESS -> "✅"; BannerKind.INFO -> "ℹ️" }
     Row(
-        Modifier.fillMaxWidth().background(bg, RoundedCornerShape(16.dp)).border(border, RoundedCornerShape(16.dp)).padding(12.dp),
+        Modifier.fillMaxWidth().background(bg, RoundedCornerShape(24.dp)).border(border, RoundedCornerShape(24.dp)).padding(12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
@@ -383,7 +383,7 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
 @Composable
 private fun AutoSwitchCard(state: ConnectUiState) {
     Column(
-        Modifier.fillMaxWidth().background(GodjiColors.Surface, RoundedCornerShape(16.dp)).border(GodjiColors.CardBorder, RoundedCornerShape(16.dp)).padding(13.dp),
+        Modifier.fillMaxWidth().background(GodjiColors.Surface, RoundedCornerShape(24.dp)).border(GodjiColors.CardBorder, RoundedCornerShape(24.dp)).padding(13.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column {
@@ -412,9 +412,9 @@ private fun TrafficCard(state: ConnectUiState, onClick: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(GodjiColors.Chip, RoundedCornerShape(16.dp))
-            .border(GodjiColors.CardBorderStrong, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(GodjiColors.Chip, RoundedCornerShape(24.dp))
+            .border(GodjiColors.CardBorderStrong, RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
             .padding(13.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)

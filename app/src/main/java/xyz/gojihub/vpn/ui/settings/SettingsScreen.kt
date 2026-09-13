@@ -173,8 +173,8 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(18.dp))
-            .border(1.5.dp, GodjiColors.CardBorder, RoundedCornerShape(18.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.5.dp, GodjiColors.CardBorder, RoundedCornerShape(24.dp))
             .padding(16.dp)
     ) {
         Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -203,7 +203,7 @@ private fun SettingsToggleRow(title: String, subtitle: String?, checked: Boolean
                 checkedThumbColor = GodjiColors.Surface,
                 checkedTrackColor = GodjiColors.Teal,
                 uncheckedThumbColor = GodjiColors.Surface,
-                uncheckedTrackColor = GodjiColors.ButtonBorder
+                uncheckedTrackColor = GodjiColors.TrackBg
             )
         )
     }
@@ -263,7 +263,7 @@ private fun UpdateSectionContent(state: SettingsUiState, viewModel: SettingsView
                 Modifier
                     .fillMaxWidth()
                     .scale(scale.value)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(50))
                     .background(GodjiColors.Ink)
                     .clickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = viewModel::downloadUpdate)
                     .padding(vertical = 12.dp),

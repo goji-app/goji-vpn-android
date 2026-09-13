@@ -86,7 +86,7 @@ fun VerifyEmailScreen(
             onClick = { viewModel.verify(email, onSuccess = onVerified) },
             enabled = !state.loading,
             colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.TealBright),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(50),
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
             Text(if (state.loading) Loc.s.verifyChecking else Loc.s.verifyConfirm, color = GodjiColors.Background, fontWeight = FontWeight.Bold)

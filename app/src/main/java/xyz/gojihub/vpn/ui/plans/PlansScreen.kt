@@ -94,8 +94,8 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
-                .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+                .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+                .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -120,7 +120,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                 onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/plans"))) },
                 interactionSource = extendInteraction,
                 colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(50),
                 modifier = Modifier.fillMaxWidth().height(44.dp).scale(extendScale.value)
             ) { Text(Loc.s.plansExtend, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp) }
         }
@@ -140,7 +140,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                             .weight(1f)
                             .height(38.dp)
                             .scale(chipScale.value)
-                            .clip(RoundedCornerShape(11.dp))
+                            .clip(RoundedCornerShape(50))
                             .background(chipBg)
                             .clickable(interactionSource = chipInteraction, indication = LocalIndication.current) { viewModel.selectPeriod(p.months) },
                         contentAlignment = Alignment.Center
@@ -159,8 +159,8 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(planBg, RoundedCornerShape(18.dp))
-                        .border(1.5.dp, planBorder, RoundedCornerShape(18.dp))
+                        .background(planBg, RoundedCornerShape(24.dp))
+                        .border(1.5.dp, planBorder, RoundedCornerShape(24.dp))
                         .padding(14.dp),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -292,8 +292,8 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
             Modifier
                 .fillMaxWidth()
                 .scale(supportScale.value)
-                .background(GodjiColors.TerracottaTint, RoundedCornerShape(16.dp))
-                .border(1.dp, GodjiColors.TerracottaTintBorder, RoundedCornerShape(16.dp))
+                .background(GodjiColors.TerracottaTint, RoundedCornerShape(24.dp))
+                .border(1.dp, GodjiColors.TerracottaTintBorder, RoundedCornerShape(24.dp))
                 .clickable(interactionSource = supportInteraction, indication = LocalIndication.current) {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/support-chat")))
                 }
@@ -320,8 +320,8 @@ private fun NewsCard(item: NewsUi) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(18.dp))
-            .border(1.5.dp, GodjiColors.CardBorder, RoundedCornerShape(18.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.5.dp, GodjiColors.CardBorder, RoundedCornerShape(24.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -338,7 +338,7 @@ private fun NewsCard(item: NewsUi) {
                         Modifier
                             .fillMaxWidth()
                             .scale(btnScale.value)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(50))
                             .background(GodjiColors.TealTint)
                             .clickable(interactionSource = btnInteraction, indication = LocalIndication.current) {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(btn.url)))
@@ -369,8 +369,8 @@ private fun TrafficHistorySection(days: List<TrafficDayUi>) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -432,8 +432,8 @@ private fun DevicesSection(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -567,7 +567,7 @@ private fun ProgramTab(label: String, selected: Boolean, modifier: Modifier = Mo
     Box(
         modifier
             .height(38.dp)
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(50))
             .background(bg)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -581,8 +581,8 @@ private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.pl
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -668,8 +668,8 @@ private fun PartnerCard(partner: PartnerUi, context: Context) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(GodjiColors.Surface, RoundedCornerShape(20.dp))
-            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(20.dp))
+            .background(GodjiColors.Surface, RoundedCornerShape(24.dp))
+            .border(1.5.dp, GodjiColors.Ink, RoundedCornerShape(24.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -717,7 +717,7 @@ private fun PartnerActionButton(label: String, context: Context) {
         Modifier
             .fillMaxWidth()
             .scale(scale.value)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(50))
             .background(GodjiColors.Ink)
             .clickable(interactionSource = interaction, indication = LocalIndication.current) {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/partner-dashboard")))

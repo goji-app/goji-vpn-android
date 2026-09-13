@@ -129,8 +129,8 @@ private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(bg, RoundedCornerShape(16.dp))
-            .border(1.dp, border, RoundedCornerShape(16.dp))
+            .background(bg, RoundedCornerShape(24.dp))
+            .border(1.dp, border, RoundedCornerShape(24.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(9.dp)

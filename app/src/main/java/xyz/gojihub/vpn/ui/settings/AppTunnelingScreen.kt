@@ -130,7 +130,7 @@ private fun ModeTab(label: String, mode: PerAppProxyMode, selected: PerAppProxyM
     Box(
         modifier
             .height(38.dp)
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(50))
             .background(if (active) GodjiColors.Ink else Color.Transparent)
             .clickable { onSelect(mode) },
         contentAlignment = Alignment.Center

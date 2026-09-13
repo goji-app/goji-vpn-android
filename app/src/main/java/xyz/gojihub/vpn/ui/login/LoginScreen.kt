@@ -103,9 +103,9 @@ fun LoginScreen(
                 Modifier
                     .fillMaxWidth()
                     .scale(botBannerScale.value)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(GodjiColors.Chip)
-                    .border(1.dp, GodjiColors.CardBorderStrong, RoundedCornerShape(14.dp))
+                    .border(1.dp, GodjiColors.CardBorderStrong, RoundedCornerShape(24.dp))
                     .clickable(interactionSource = botBannerInteraction, indication = LocalIndication.current) {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Shadow_Duck_bot")))
                     }
@@ -137,7 +137,7 @@ fun LoginScreen(
                         enabled = !state.loading,
                         interactionSource = webLoginInteraction,
                         colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(50),
                         modifier = Modifier.fillMaxWidth().height(54.dp).scale(webLoginScale.value)
                     ) { Text(Loc.s.loginViaWebsite, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
 
@@ -158,7 +158,7 @@ fun LoginScreen(
                         enabled = !state.loading,
                         interactionSource = otpInteraction,
                         colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Teal),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(50),
                         modifier = Modifier.fillMaxWidth().height(54.dp).scale(otpScale.value)
                     ) { Text(if (state.loading) Loc.s.loginSendingOtp else Loc.s.loginGetCode, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
                     TextButton(onClick = { viewModel.toggleEmailMode(false) }, modifier = Modifier.fillMaxWidth()) {
