@@ -29,15 +29,16 @@ data class GlobeTheme(
 ) {
     companion object {
         val Light = GlobeTheme(
-            ocean = hex(0xe7e0cf), land = hex(0x12312c), grid = hex(0x12312c),
-            home = hex(0xd9714b), hi = hex(0x00897e), arc = hex(0xd9714b), dot = hex(0xa9a08a)
+            ocean = hex(0xece5da), land = hex(0x152220), grid = hex(0x152220),
+            home = hex(0xd84a2a), hi = hex(0x00875a), arc = hex(0xd84a2a), dot = hex(0x7b8a85)
         )
-        // Та же композиция ролей (тёплый океан → тёмный, чернильные берега → светлые,
-        // акценты чуть ярче для контраста на тёмном фоне), а не случайные цвета — карточка с
-        // глобусом раньше оставалась светло-бежевой даже при включённой тёмной теме приложения.
+        // Та же композиция ролей (песочный океан → чернильно-угольный, тёмные берега → почти
+        // белые, акценты — неоновый изумруд/корал вместо приглушённой бирюзы), а не случайные
+        // цвета — карточка с глобусом раньше оставалась светло-бежевой даже при включённой
+        // тёмной теме приложения; теперь отражает "AMOLED void" редизайна.
         val Dark = GlobeTheme(
-            ocean = hex(0x1b211e), land = hex(0xc7d0cb), grid = hex(0xc7d0cb),
-            home = hex(0xe98863), hi = hex(0x2bc8b8), arc = hex(0xe98863), dot = hex(0x6b746e)
+            ocean = hex(0x101419), land = hex(0xe0e2ea), grid = hex(0xe0e2ea),
+            home = hex(0xff5e3a), hi = hex(0x00f5a0), arc = hex(0xff5e3a), dot = hex(0x849588)
         )
         private fun hex(v: Int) = floatArrayOf(
             ((v shr 16) and 0xFF) / 255f, ((v shr 8) and 0xFF) / 255f, (v and 0xFF) / 255f

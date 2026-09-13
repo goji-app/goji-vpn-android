@@ -25,7 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PerAppProxyMode
 import xyz.gojihub.vpn.ui.theme.GodjiColors
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 /** "Прокси для выбранных приложений" — тот же приём, что Per-app Proxy у Happ: ВЫКЛ (всем
@@ -51,7 +51,7 @@ fun AppTunnelingScreen(onBack: () -> Unit, viewModel: AppTunnelingViewModel = hi
                     .clickable(interactionSource = backInteraction, indication = null) { onBack() }
                     .padding(end = 10.dp)
             )
-            Text(Loc.s.appTunnelingTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 21.sp)
+            Text(Loc.s.appTunnelingTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 21.sp)
         }
 
         LazyColumn(

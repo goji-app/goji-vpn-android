@@ -17,7 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.GodjiColors
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 /** Вынесено из основного экрана Настроек в отдельное подменю — способ пинга и URL теста
@@ -45,7 +45,7 @@ fun PingSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltVi
                     .clickable(interactionSource = backInteraction, indication = null) { onBack() }
                     .padding(end = 10.dp)
             )
-            Text(Loc.s.pingSettingsTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 24.sp)
+            Text(Loc.s.pingSettingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
         }
 
         SettingsSection(Loc.s.settingsServerCheck) {

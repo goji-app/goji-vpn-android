@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
@@ -39,7 +39,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
     Column(Modifier.fillMaxSize().background(GodjiColors.Background).padding(18.dp, 18.dp, 18.dp, 10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
-                Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 26.sp)
+                Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
                 Text(Loc.s.serversCount(state.servers.size), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
             }
             // Компактные иконки без рамок-квадратов — как в тулбаре Happ, но в нашей палитре.

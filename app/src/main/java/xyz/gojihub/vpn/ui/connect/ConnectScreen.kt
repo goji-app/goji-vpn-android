@@ -56,7 +56,8 @@ import xyz.gojihub.vpn.network.NetState
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.util.rememberPressScale
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.theme.JetBrainsMonoFamily
 
 @Composable
 fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}) {
@@ -129,7 +130,8 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                 Text(
                     headline(state),
                     color = GodjiColors.TextPrimary,
-                    fontFamily = InstrumentSerifFamily,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 26.sp,
                     lineHeight = 27.sp,
                     maxLines = 2,
@@ -320,7 +322,8 @@ private fun GlobeCard(state: ConnectUiState) {
                 Text(
                     state.greetingHi,
                     color = GodjiColors.TextPrimary,
-                    fontFamily = if (state.greetingUsesSerif) InstrumentSerifFamily else FontFamily.Default,
+                    fontFamily = if (state.greetingUsesSerif) SpaceGroteskFamily else FontFamily.Default,
+                    fontWeight = if (state.greetingUsesSerif) FontWeight.SemiBold else FontWeight.Normal,
                     fontSize = 28.sp
                 )
                 Text(state.greetingSub, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp)
@@ -354,9 +357,9 @@ private fun StatCard(value: String, label: String, accent: Color, modifier: Modi
             .border(GodjiColors.CardBorder, RoundedCornerShape(16.dp))
             .padding(13.dp)
     ) {
-        Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 9.5.sp)
+        Text(label, color = GodjiColors.TextSecondary, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.6.sp)
         Spacer(Modifier.height(6.dp))
-        Text(value, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        Text(value, color = GodjiColors.TextPrimary, fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
     }
 }
 

@@ -27,7 +27,7 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.FontSizePreset
 import xyz.gojihub.vpn.ui.theme.GodjiColors
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.util.LogViewerDialog
 import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
@@ -56,7 +56,7 @@ fun SettingsScreen(
             .padding(18.dp, 18.dp, 18.dp, 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 26.sp)
+        Text(Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
 
         SettingsSection(Loc.s.settingsConnection) {
             SettingsToggleRow(

@@ -11,8 +11,11 @@ import androidx.compose.ui.graphics.Color
 enum class FontSizePreset(val multiplier: Float) { SMALL(0.9f), NORMAL(1f), LARGE(1.15f) }
 
 /**
- * Токены "Daylight" v3 — взяты 1:1 из макета Godji VPN v3 Daylight.dc.html, плюс тёмная
- * версия той же палитры (роли те же, светлота инвертирована).
+ * Токены "Tactical Sand & Void" — взяты из макета редизайна Stitch (goji_vpn /
+ * tactical_sand_void_dual_system), адаптированы под существующую структуру полей ниже: светлая
+ * тема — тёплый "песочный" холст с глубоким изумрудным акцентом, тёмная — AMOLED-чернота с
+ * неоновым изумрудом/коралом. Имена и назначение полей не менялись, чтобы не трогать все экраны
+ * — обновлены только сами значения.
  *
  * Каждое поле — не val, а var по mutableStateOf: экраны как читали `GodjiColors.Background` и
  * т.п. напрямую (без единого изменения по всему проекту), так и продолжают — а поскольку это
@@ -31,74 +34,74 @@ object GodjiColors {
     /** См. FontSizePreset — читается реактивно в Theme.kt (GodjiVpnTheme), как и isDark. */
     var fontSizePreset by mutableStateOf(FontSizePreset.NORMAL)
 
-    var Background by mutableStateOf(Color(0xFFEFE9DA))
-    var Surface by mutableStateOf(Color(0xFFFFFDF7))
-    var SurfaceGlass by mutableStateOf(Color(0xFFFFFDF7))
+    var Background by mutableStateOf(Color(0xFFF4EFE6))
+    var Surface by mutableStateOf(Color(0xFFFFFFFF))
+    var SurfaceGlass by mutableStateOf(Color(0xFFFAF7F2))
 
-    var Ink by mutableStateOf(Color(0xFF12312C))
-    var InkShadow by mutableStateOf(Color(0xFF0A1F1C))
-    var TextPrimary by mutableStateOf(Color(0xFF12312C))
-    var TextSecondary by mutableStateOf(Color(0xFF5F736D))
-    var TextMuted by mutableStateOf(Color(0xFF5F736D))
+    var Ink by mutableStateOf(Color(0xFF152220))
+    var InkShadow by mutableStateOf(Color(0xFF0B1512))
+    var TextPrimary by mutableStateOf(Color(0xFF152220))
+    var TextSecondary by mutableStateOf(Color(0xFF4E5D59))
+    var TextMuted by mutableStateOf(Color(0xFF7B8A85))
 
-    var Teal by mutableStateOf(Color(0xFF00A79B))
-    var TealBright by mutableStateOf(Color(0xFF00A79B))
-    var TealDeep by mutableStateOf(Color(0xFF076A62))
-    var TealTint by mutableStateOf(Color(0xFFE8F2EE))
-    var TealTintBorder by mutableStateOf(Color(0xFFBFDCD5))
+    var Teal by mutableStateOf(Color(0xFF00875A))
+    var TealBright by mutableStateOf(Color(0xFF00875A))
+    var TealDeep by mutableStateOf(Color(0xFF005235))
+    var TealTint by mutableStateOf(Color(0xFFE3F2EA))
+    var TealTintBorder by mutableStateOf(Color(0xFFB8DECB))
 
-    var Terracotta by mutableStateOf(Color(0xFFD9714B))
-    var TerracottaDeep by mutableStateOf(Color(0xFF8A4526))
-    var TerracottaTint by mutableStateOf(Color(0xFFF2E0D5))
-    var TerracottaTintBorder by mutableStateOf(Color(0xFFE4C9B8))
+    var Terracotta by mutableStateOf(Color(0xFFD84A2A))
+    var TerracottaDeep by mutableStateOf(Color(0xFF8B1A00))
+    var TerracottaTint by mutableStateOf(Color(0xFFFBE4DC))
+    var TerracottaTintBorder by mutableStateOf(Color(0xFFF0C0AE))
 
     var Warning by mutableStateOf(Color(0xFFC9911F))
-    var Danger by mutableStateOf(Color(0xFFC4553C))
-    var JamBg by mutableStateOf(Color(0xFFF7E2D8))
-    var JamBorder by mutableStateOf(Color(0xFFE4B49B))
-    var JamText by mutableStateOf(Color(0xFF8A3A1D))
+    var Danger by mutableStateOf(Color(0xFFD84A2A))
+    var JamBg by mutableStateOf(Color(0xFFFBE4DC))
+    var JamBorder by mutableStateOf(Color(0xFFF0C0AE))
+    var JamText by mutableStateOf(Color(0xFF8B1A00))
 
-    var CardBorder by mutableStateOf(Color(0xFFE7DFCA))
-    var CardBorderStrong by mutableStateOf(Color(0xFFE2D9C4))
+    var CardBorder by mutableStateOf(Color(0xFFECE5DA))
+    var CardBorderStrong by mutableStateOf(Color(0xFFE4DCC8))
     var ButtonBorder by mutableStateOf(Color(0xFFD8CFB8))
-    var Chip by mutableStateOf(Color(0xFFEFE7D4))
-    var TrackBg by mutableStateOf(Color(0xFFE0D5BA))
+    var Chip by mutableStateOf(Color(0xFFECE5DA))
+    var TrackBg by mutableStateOf(Color(0xFFECE5DA))
 
-    var BorderTeal by mutableStateOf(Color(0x2600A79B))
-    var Purple by mutableStateOf(Color(0xFF8A4526))
+    var BorderTeal by mutableStateOf(Color(0x2600875A))
+    var Purple by mutableStateOf(Color(0xFF00838F))
 
     fun applyLight() {
         isDark = false
-        Background = Color(0xFFEFE9DA); Surface = Color(0xFFFFFDF7); SurfaceGlass = Color(0xFFFFFDF7)
-        Ink = Color(0xFF12312C); InkShadow = Color(0xFF0A1F1C)
-        TextPrimary = Color(0xFF12312C); TextSecondary = Color(0xFF5F736D); TextMuted = Color(0xFF5F736D)
-        Teal = Color(0xFF00A79B); TealBright = Color(0xFF00A79B); TealDeep = Color(0xFF076A62)
-        TealTint = Color(0xFFE8F2EE); TealTintBorder = Color(0xFFBFDCD5)
-        Terracotta = Color(0xFFD9714B); TerracottaDeep = Color(0xFF8A4526)
-        TerracottaTint = Color(0xFFF2E0D5); TerracottaTintBorder = Color(0xFFE4C9B8)
-        Warning = Color(0xFFC9911F); Danger = Color(0xFFC4553C)
-        JamBg = Color(0xFFF7E2D8); JamBorder = Color(0xFFE4B49B); JamText = Color(0xFF8A3A1D)
-        CardBorder = Color(0xFFE7DFCA); CardBorderStrong = Color(0xFFE2D9C4)
-        ButtonBorder = Color(0xFFD8CFB8); Chip = Color(0xFFEFE7D4); TrackBg = Color(0xFFE0D5BA)
-        BorderTeal = Color(0x2600A79B); Purple = Color(0xFF8A4526)
+        Background = Color(0xFFF4EFE6); Surface = Color(0xFFFFFFFF); SurfaceGlass = Color(0xFFFAF7F2)
+        Ink = Color(0xFF152220); InkShadow = Color(0xFF0B1512)
+        TextPrimary = Color(0xFF152220); TextSecondary = Color(0xFF4E5D59); TextMuted = Color(0xFF7B8A85)
+        Teal = Color(0xFF00875A); TealBright = Color(0xFF00875A); TealDeep = Color(0xFF005235)
+        TealTint = Color(0xFFE3F2EA); TealTintBorder = Color(0xFFB8DECB)
+        Terracotta = Color(0xFFD84A2A); TerracottaDeep = Color(0xFF8B1A00)
+        TerracottaTint = Color(0xFFFBE4DC); TerracottaTintBorder = Color(0xFFF0C0AE)
+        Warning = Color(0xFFC9911F); Danger = Color(0xFFD84A2A)
+        JamBg = Color(0xFFFBE4DC); JamBorder = Color(0xFFF0C0AE); JamText = Color(0xFF8B1A00)
+        CardBorder = Color(0xFFECE5DA); CardBorderStrong = Color(0xFFE4DCC8)
+        ButtonBorder = Color(0xFFD8CFB8); Chip = Color(0xFFECE5DA); TrackBg = Color(0xFFECE5DA)
+        BorderTeal = Color(0x2600875A); Purple = Color(0xFF00838F)
     }
 
     fun applyDark() {
         isDark = true
-        Background = Color(0xFF121614); Surface = Color(0xFF1B211E); SurfaceGlass = Color(0xFF1B211E)
+        Background = Color(0xFF0A0E13); Surface = Color(0xFF101419); SurfaceGlass = Color(0xFF181C21)
         // Ink/Surface работают как инвертируемая пара (тёмная кнопка со светлым текстом на
         // светлой теме → светлая кнопка с тёмным текстом на тёмной, ничего в экранах менять
         // не пришлось: и там, и там текст "Surface", фон "Ink").
-        Ink = Color(0xFFE9EDEB); InkShadow = Color(0xFFD3DBD8)
-        TextPrimary = Color(0xFFEAEFEC); TextSecondary = Color(0xFF93A39C); TextMuted = Color(0xFF93A39C)
-        Teal = Color(0xFF2BC8B8); TealBright = Color(0xFF2BC8B8); TealDeep = Color(0xFF6BE0D2)
-        TealTint = Color(0xFF17332E); TealTintBorder = Color(0xFF2C5049)
-        Terracotta = Color(0xFFE98863); TerracottaDeep = Color(0xFFFFB294)
-        TerracottaTint = Color(0xFF3A241C); TerracottaTintBorder = Color(0xFF5A3A2C)
-        Warning = Color(0xFFE0A63C); Danger = Color(0xFFE2765F)
-        JamBg = Color(0xFF3A2A20); JamBorder = Color(0xFF5C4230); JamText = Color(0xFFF0B294)
-        CardBorder = Color(0xFF2A3230); CardBorderStrong = Color(0xFF333D3A)
-        ButtonBorder = Color(0xFF3A433F); Chip = Color(0xFF232C29); TrackBg = Color(0xFF2C332E)
-        BorderTeal = Color(0x262BC8B8); Purple = Color(0xFFFFB294)
+        Ink = Color(0xFFE0E2EA); InkShadow = Color(0xFFC7CBD4)
+        TextPrimary = Color(0xFFE0E2EA); TextSecondary = Color(0xFF849588); TextMuted = Color(0xFF849588)
+        Teal = Color(0xFF00F5A0); TealBright = Color(0xFF00F5A0); TealDeep = Color(0xFF00B87A)
+        TealTint = Color(0xFF14332A); TealTintBorder = Color(0xFF1F4A3B)
+        Terracotta = Color(0xFFFF5E3A); TerracottaDeep = Color(0xFFFF8562)
+        TerracottaTint = Color(0xFF2E1D16); TerracottaTintBorder = Color(0xFF5C3323)
+        Warning = Color(0xFFE0A63C); Danger = Color(0xFFFF5E3A)
+        JamBg = Color(0xFF2E1D16); JamBorder = Color(0xFF5C3323); JamText = Color(0xFFFF8562)
+        CardBorder = Color(0xFF262C31); CardBorderStrong = Color(0xFF303840)
+        ButtonBorder = Color(0xFF2E363B); Chip = Color(0xFF181C21); TrackBg = Color(0xFF262A30)
+        BorderTeal = Color(0x2600F5A0); Purple = Color(0xFF00D2FF)
     }
 }

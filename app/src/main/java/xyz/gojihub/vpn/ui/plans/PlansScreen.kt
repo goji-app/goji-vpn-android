@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
@@ -66,7 +66,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text(Loc.s.plansTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 26.sp)
+                Text(Loc.s.plansTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
                 Text(Loc.s.plansSubtitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.5.sp)
                 state.customerId?.let { id ->
                     Row(
@@ -220,7 +220,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
 
         if (state.news.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
-            Text(Loc.s.plansNewsTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+            Text(Loc.s.plansNewsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
             Spacer(Modifier.height(8.dp))
             if (!state.newsExpanded) {
                 // Свёрнутый вид — только самые свежие NEWS_PREVIEW_COUNT, остальное скрыто
@@ -364,7 +364,7 @@ private fun NewsCard(item: NewsUi) {
 @Composable
 private fun TrafficHistorySection(days: List<TrafficDayUi>) {
     Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansTrafficHistoryTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+    Text(Loc.s.plansTrafficHistoryTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
     Spacer(Modifier.height(8.dp))
     Column(
         Modifier
@@ -427,7 +427,7 @@ private fun DevicesSection(
     var deleteTarget by remember { mutableStateOf<DeviceUi?>(null) }
 
     Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansDevicesTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+    Text(Loc.s.plansDevicesTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
     Spacer(Modifier.height(8.dp))
     Column(
         Modifier
@@ -541,7 +541,7 @@ private fun ProgramSection(
     var tab by remember(referral != null, partner != null) { mutableIntStateOf(if (referral != null) 0 else 1) }
 
     Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansProgramTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 19.sp)
+    Text(Loc.s.plansProgramTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
     Spacer(Modifier.height(8.dp))
 
     if (referral != null && partner != null) {

@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
-import xyz.gojihub.vpn.ui.theme.InstrumentSerifFamily
+import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import xyz.gojihub.vpn.util.LogLevel
 
@@ -49,7 +49,7 @@ fun LogLevelScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                     .clickable(interactionSource = backInteraction, indication = null) { onBack() }
                     .padding(end = 10.dp)
             )
-            Text(Loc.s.logLevelTitle, color = GodjiColors.TextPrimary, fontFamily = InstrumentSerifFamily, fontSize = 24.sp)
+            Text(Loc.s.logLevelTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
         }
 
         SettingsSection(Loc.s.settingsLogLevel) {
