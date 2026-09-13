@@ -22,6 +22,8 @@ import xyz.gojihub.vpn.settings.SettingsRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
 import xyz.gojihub.vpn.ui.theme.FontSizePreset
 import xyz.gojihub.vpn.ui.theme.GodjiColors
+import xyz.gojihub.vpn.ui.theme.ThemeMode
+import xyz.gojihub.vpn.ui.theme.isSystemInDarkMode
 import xyz.gojihub.vpn.update.AppUpdateChecker
 import xyz.gojihub.vpn.update.AppUpdateDownloader
 import xyz.gojihub.vpn.update.UpdateInfo
@@ -32,7 +34,7 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val pinNotification: Boolean = true,
-    val darkTheme: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val language: AppLanguage = AppLanguage.RU,
     val fontSize: FontSizePreset = FontSizePreset.NORMAL,
     val autoConnectOnWifi: Boolean = false,
@@ -66,7 +68,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(
                 pinNotification = settingsRepository.pinNotificationNow(),
-                darkTheme = settingsRepository.darkThemeEnabled.first(),
+                themeMode = settingsRepository.themeModeNow(),
                 pingMethod = settingsRepository.pingMethodNow(),
                 pingTestUrl = settingsRepository.pingTestUrlNow(),
                 language = settingsRepository.appLanguageNow(),
@@ -106,10 +108,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setPinNotification(pinned) }
     }
 
-    fun setDarkTheme(enabled: Boolean) {
-        _state.value = _state.value.copy(darkTheme = enabled)
-        if (enabled) GodjiColors.applyDark() else GodjiColors.applyLight()
-        viewModelScope.launch { settingsRepository.setDarkThemeEnabled(enabled) }
+    /** DARK/LIGHT применяются сразу и однозначно; SYSTEM применяет текущую системную тему один
+     *  раз в момент выбора — дальнейшее слежение за её сменой уже не отсюда, а из GodjiApp.kt
+     *  (SideEffect на isSystemInDarkTheme(), реагирует пока приложение открыто). */
+    fun setThemeMode(mode: ThemeMode) {
+        _state.value = _state.value.copy(themeMode = mode)
+        GodjiColors.themeMode = mode
+        val dark = when (mode) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            ThemeMode.SYSTEM -> isSystemInDarkMode(appContext)
+        }
+        if (dark) GodjiColors.applyDark() else GodjiColors.applyLight()
+        viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
     fun setFontSize(preset: FontSizePreset) {

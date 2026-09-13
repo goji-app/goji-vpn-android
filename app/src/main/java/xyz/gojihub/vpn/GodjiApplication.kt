@@ -25,6 +25,8 @@ import xyz.gojihub.vpn.settings.SettingsRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRefreshWorker
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
 import xyz.gojihub.vpn.ui.theme.GodjiColors
+import xyz.gojihub.vpn.ui.theme.ThemeMode
+import xyz.gojihub.vpn.ui.theme.isSystemInDarkMode
 import xyz.gojihub.vpn.update.AppUpdateChecker
 import xyz.gojihub.vpn.update.AppUpdateNotifier
 import xyz.gojihub.vpn.update.UpdateCheckWorker
@@ -73,7 +75,14 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
         // DataStore-чтение тут — попадание в уже прогретый на диске файл на несколько КБ,
         // блокировка на старте пренебрежимо мала.
         runBlocking {
-            if (settingsRepository.darkThemeEnabled.first()) GodjiColors.applyDark()
+            val mode = settingsRepository.themeModeNow()
+            GodjiColors.themeMode = mode
+            val dark = when (mode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkMode(this@GodjiApplication)
+            }
+            if (dark) GodjiColors.applyDark()
             GodjiColors.fontSizePreset = settingsRepository.fontSizeNow()
             Loc.lang = settingsRepository.appLanguageNow()
             AppLogger.level = settingsRepository.logLevelNow()

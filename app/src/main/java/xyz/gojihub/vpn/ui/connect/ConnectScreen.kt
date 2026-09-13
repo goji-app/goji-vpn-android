@@ -214,11 +214,12 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                     .drawBehind {
                         if (glowColor != null) {
                             // "Photon bloom" из редизайна — на тёмном AMOLED-фоне неоновое
-                            // свечение читается гораздо ярче, чем на светлом песочном холсте,
-                            // поэтому радиус и непрозрачность ореола отличаются по теме, а не
-                            // берутся одним компромиссным значением на обе.
-                            val haloRadius = size.maxDimension * (if (GodjiColors.isDark) 2.6f else 1.8f)
-                            val peakAlpha = if (GodjiColors.isDark) 0.85f else 0.5f
+                            // свечение читается ярче, чем на светлом песочном холсте, поэтому
+                            // радиус и непрозрачность ореола отличаются по теме. Первая версия
+                            // (radius 2.6x/alpha 0.85 в тёмной теме) оказалась слишком яркой и
+                            // отвлекающей на живом экране — уменьшено примерно вдвое.
+                            val haloRadius = size.maxDimension * (if (GodjiColors.isDark) 2.0f else 1.6f)
+                            val peakAlpha = if (GodjiColors.isDark) 0.4f else 0.32f
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(glowColor.copy(alpha = glowPulse * peakAlpha), glowColor.copy(alpha = 0f)),

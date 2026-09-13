@@ -7,6 +7,7 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,7 @@ import xyz.gojihub.vpn.ui.settings.PingSettingsScreen
 import xyz.gojihub.vpn.ui.settings.SettingsScreen
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
+import xyz.gojihub.vpn.ui.theme.ThemeMode
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -59,10 +61,19 @@ private data class BottomTab(val route: String, val label: String, val icon: Str
 
 @Composable
 fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
-    // Системную тёмную тему устройства мы всегда игнорировали (GodjiVpnTheme), но верхнюю
-    // строку состояния/нижнюю навигационную панель никто раньше не трогал — они держались
-    // системных дефолтов (обычно светлых) независимо от переключателя темы в Настройках,
-    // из-за чего при включённой тёмной теме приложения строка состояния оставалась светлой.
+    // При режиме "Системная" (см. ThemeMode, настройка Внешний вид → Тема оформления) следим
+    // за системной тёмной темой живьём, пока приложение открыто — раньше (до ThemeMode.SYSTEM)
+    // приложение всегда игнорировало системную тему и держалось только явного переключателя.
+    // isSystemInDarkTheme() перекомпонует этот блок при смене темы Android на лету — SideEffect
+    // ниже просто переносит актуальное значение в GodjiColors, если сейчас включён SYSTEM.
+    val systemDark = isSystemInDarkTheme()
+    val themeMode = GodjiColors.themeMode
+    SideEffect {
+        if (themeMode == ThemeMode.SYSTEM && systemDark != GodjiColors.isDark) {
+            if (systemDark) GodjiColors.applyDark() else GodjiColors.applyLight()
+        }
+    }
+
     val view = LocalView.current
     val isDark = GodjiColors.isDark
     val barColor = GodjiColors.Background

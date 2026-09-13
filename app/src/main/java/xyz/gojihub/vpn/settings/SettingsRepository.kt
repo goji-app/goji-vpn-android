@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.ui.theme.FontSizePreset
+import xyz.gojihub.vpn.ui.theme.ThemeMode
 import xyz.gojihub.vpn.util.LogLevel
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +43,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val pinNotificationKey = booleanPreferencesKey("pin_notification")
     private val pingMethodKey = stringPreferencesKey("ping_method")
     private val pingTestUrlKey = stringPreferencesKey("ping_test_url")
-    private val darkThemeKey = booleanPreferencesKey("dark_theme_enabled")
+    private val darkThemeKey = booleanPreferencesKey("dark_theme_enabled") // legacy, см. themeMode ниже
+    private val themeModeKey = stringPreferencesKey("theme_mode")
     private val appLanguageKey = stringPreferencesKey("app_language")
     private val logLevelKey = stringPreferencesKey("log_level")
     private val fontSizeKey = stringPreferencesKey("font_size_preset")
@@ -84,10 +86,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     suspend fun pingTestUrlNow(): String = pingTestUrl.first()
 
-    val darkThemeEnabled: Flow<Boolean> = context.dataStore.data.map { it[darkThemeKey] ?: false }
-    suspend fun setDarkThemeEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[darkThemeKey] = enabled }
+    /** Новый пользователь (или тот, кто никогда явно не трогал переключатель темы) получает
+     *  SYSTEM — приложение следует теме телефона. Тому, кто раньше explicit включил старый
+     *  булевый "Тёмная тема", при первом чтении после обновления мигрируем выбор в DARK, а не
+     *  молча переводим на SYSTEM — явный прошлый выбор не должен потеряться. */
+    val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
+        prefs[themeModeKey]?.let { raw -> runCatching { ThemeMode.valueOf(raw) }.getOrNull() }
+            ?: if (prefs[darkThemeKey] == true) ThemeMode.DARK else ThemeMode.SYSTEM
     }
+    suspend fun setThemeMode(mode: ThemeMode) {
+        context.dataStore.edit { it[themeModeKey] = mode.name }
+    }
+    suspend fun themeModeNow(): ThemeMode = themeMode.first()
 
     val appLanguage: Flow<AppLanguage> = context.dataStore.data.map { AppLanguage.fromCode(it[appLanguageKey]) }
     suspend fun setAppLanguage(language: AppLanguage) {

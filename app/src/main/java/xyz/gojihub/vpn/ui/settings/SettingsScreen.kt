@@ -26,6 +26,7 @@ import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.FontSizePreset
+import xyz.gojihub.vpn.ui.theme.ThemeMode
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
@@ -85,12 +86,13 @@ fun SettingsScreen(
         }
 
         SettingsSection(Loc.s.settingsAppearance) {
-            SettingsToggleRow(
-                title = Loc.s.settingsDarkTheme,
-                subtitle = null,
-                checked = state.darkTheme,
-                onCheckedChange = viewModel::setDarkTheme
-            )
+            Text(Loc.s.settingsDarkTheme, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ThemeMode.entries.forEach { mode ->
+                    ThemeModeChip(mode, selected = state.themeMode == mode, onSelect = { viewModel.setThemeMode(mode) })
+                }
+            }
             Spacer(Modifier.height(14.dp))
             Text(Loc.s.settingsLanguage, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
             Spacer(Modifier.height(6.dp))
@@ -340,6 +342,26 @@ private fun LanguageChip(lang: AppLanguage, selected: Boolean, onSelect: () -> U
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(lang.displayName, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun ThemeModeChip(mode: ThemeMode, selected: Boolean, onSelect: () -> Unit) {
+    val bg = if (selected) GodjiColors.Ink else GodjiColors.Chip
+    val fg = if (selected) GodjiColors.Surface else GodjiColors.TextPrimary
+    val label = when (mode) {
+        ThemeMode.LIGHT -> Loc.s.themeModeLight
+        ThemeMode.DARK -> Loc.s.themeModeDark
+        ThemeMode.SYSTEM -> Loc.s.themeModeSystem
+    }
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(label, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
 

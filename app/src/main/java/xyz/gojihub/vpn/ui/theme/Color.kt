@@ -31,6 +31,12 @@ object GodjiColors {
      *  палитры даже после переключения на тёмную тему. */
     var isDark by mutableStateOf(false)
 
+    /** Текущий режим темы (см. ThemeMode) — читается в MainActivity.GodjiApp, чтобы при
+     *  SYSTEM живо реагировать на смену системной темы через isSystemInDarkTheme(), а не
+     *  только на явный выбор в Настройках. Сам isDark выше остаётся источником истины для
+     *  цветов — themeMode лишь определяет, кто им управляет: пользователь или система. */
+    var themeMode by mutableStateOf(ThemeMode.SYSTEM)
+
     /** См. FontSizePreset — читается реактивно в Theme.kt (GodjiVpnTheme), как и isDark. */
     var fontSizePreset by mutableStateOf(FontSizePreset.NORMAL)
 
