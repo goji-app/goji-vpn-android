@@ -23,13 +23,24 @@ object NodeListCache {
     private const val FILE_NAME = "servers_cache.json"
     private const val KEY_NODES = "nodes"
     private const val KEY_SELECTED = "selected_id"
+    private const val KEY_SUBSCRIPTION_LINK = "subscription_link"
 
-    data class Cached(val nodes: List<VlessNode>, val selectedId: String?)
+    data class Cached(val nodes: List<VlessNode>, val selectedId: String?, val subscriptionLink: String?)
 
-    fun save(context: Context, nodes: List<VlessNode>, selectedId: String?) {
+    /** [subscriptionLink] — та же ссылка, что обычно приходит от getSubscriptions() (gojihub.xyz)
+     *  на каждый refresh(); кэшируем и её отдельно от узлов, чтобы при недоступности НАШЕГО
+     *  шоп-бэкенда (см. SubscriptionRepository.refresh()) можно было всё равно попробовать
+     *  обновить сам список серверов напрямую с последней известной ссылки — subs.gojihub.xyz
+     *  (Remnawave) технически независим от gojihub.xyz и может быть доступен, даже когда сам
+     *  шоп-сайт заблокирован/недоступен на конкретной сети. */
+    fun save(context: Context, nodes: List<VlessNode>, selectedId: String?, subscriptionLink: String? = null) {
         val array = JSONArray()
         nodes.forEach { array.put(toJson(it)) }
         val root = JSONObject().put(KEY_NODES, array).put(KEY_SELECTED, selectedId ?: JSONObject.NULL)
+        // subscriptionLink не передан (например select() просто перезаписывает selectedId) —
+        // сохраняем прежнее значение, а не затираем null'ом то, что уже было на диске.
+        val linkToSave = subscriptionLink ?: load(context)?.subscriptionLink
+        root.put(KEY_SUBSCRIPTION_LINK, linkToSave ?: JSONObject.NULL)
         runCatching {
             val target = file(context)
             if (target.exists()) target.delete() // EncryptedFile не даёт открыть на запись существующий файл
@@ -45,7 +56,11 @@ object NodeListCache {
         val array = root.getJSONArray(KEY_NODES)
         val nodes = (0 until array.length()).map { fromJson(array.getJSONObject(it)) }
         if (nodes.isEmpty()) return null
-        Cached(nodes, root.optString(KEY_SELECTED).takeIf { it.isNotBlank() })
+        Cached(
+            nodes,
+            root.optString(KEY_SELECTED).takeIf { it.isNotBlank() },
+            root.optString(KEY_SUBSCRIPTION_LINK).takeIf { it.isNotBlank() }
+        )
     }.getOrNull()
 
     private fun encryptedFile(context: Context, file: File): EncryptedFile {

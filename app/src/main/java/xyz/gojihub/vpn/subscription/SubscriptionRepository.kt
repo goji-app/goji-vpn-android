@@ -152,7 +152,20 @@ class SubscriptionRepository @Inject constructor(
                 BroadcastNotifier.check(appContext, list)
             }
 
-        val link = active?.subscriptionLink ?: return false
+        // gojihub.xyz (наш шоп-бэкенд, откуда обычно приходит эта ссылка) и subs.gojihub.xyz
+        // (сам Remnawave, куда она указывает) — два независимых хоста на разной инфраструктуре.
+        // Раньше недоступность ПЕРВОГО (например точечная блокировка его IP у конкретного
+        // оператора — реально наблюдалось: ConnectException на gojihub.xyz при живом
+        // subs.gojihub.xyz) обрывала refresh() целиком, даже не пытаясь дойти до второго —
+        // список серверов переставал обновляться, хотя сам Remnawave был всё это время
+        // доступен напрямую (тот же путь, что использует любой сторонний v2ray-клиент —
+        // Happ/Incy/v2rayNG, — которому просто один раз вручную вставили эту ссылку и который
+        // вообще не знает о существовании gojihub.xyz). Теперь при сбое getSubscriptions()
+        // берём последнюю успешно полученную ссылку из кэша и всё равно пробуем — единственный
+        // случай без какого-либо выхода остаётся "ни разу не было ни одного успешного refresh()
+        // за всё время" (кэш пуст).
+        val freshLink = active?.subscriptionLink
+        val link = freshLink ?: NodeListCache.load(appContext)?.subscriptionLink ?: return false
         val nodes = fetchNodes(link)
         // Пустой список из fetchNodes означает "не удалось получить" (см. runCatching там же),
         // а не "в подписке теперь ноль узлов" — если затирать им текущий список при временном
@@ -170,10 +183,10 @@ class SubscriptionRepository @Inject constructor(
             // (имя/geo/uuid) — для офлайн-показа на случай следующего запуска без сети.
             withContext(Dispatchers.IO) {
                 ClientProfileStorage.saveAll(appContext, nodes)
-                NodeListCache.save(appContext, nodes, _selectedId.value)
+                NodeListCache.save(appContext, nodes, _selectedId.value, freshLink)
             }
         }
-        return true
+        return freshLink != null || nodes.isNotEmpty()
     }
 
     fun select(id: String) {
