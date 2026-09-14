@@ -87,10 +87,10 @@ data class Strings(
     // ── Подтверждение email (VerifyEmail) ──
     val verifyTitle: String,
     val verifySentTo: (email: String) -> String,
-    val verifyCodeLabel: String,
     val verifyChecking: String,
-    val verifyConfirm: String,
-    val errorEnter6Digits: String,
+    val verifyAutoHint: String,
+    val verifySuccessTitle: String,
+    val verifySuccessSubtitle: String,
 
     // ── Серверы (Servers) ──
     val serversTitle: String,
@@ -358,10 +358,10 @@ data class Strings(
 
             verifyTitle = "Подтверди почту",
             verifySentTo = { email -> "Код отправлен на $email" },
-            verifyCodeLabel = "Код из письма",
             verifyChecking = "Проверяем…",
-            verifyConfirm = "Подтвердить",
-            errorEnter6Digits = "Введите 6 цифр",
+            verifyAutoHint = "Проверка запустится сама, как только введёшь все цифры",
+            verifySuccessTitle = "Готово!",
+            verifySuccessSubtitle = "Почта подтверждена",
 
             serversTitle = "Где выйти в сеть",
             serversCount = { n -> "$n узлов в подписке" },
@@ -603,10 +603,10 @@ data class Strings(
 
             verifyTitle = "Confirm your email",
             verifySentTo = { email -> "Code sent to $email" },
-            verifyCodeLabel = "Code from the email",
             verifyChecking = "Checking…",
-            verifyConfirm = "Confirm",
-            errorEnter6Digits = "Enter 6 digits",
+            verifyAutoHint = "Verification starts automatically once you enter all digits",
+            verifySuccessTitle = "All set!",
+            verifySuccessSubtitle = "Your email is confirmed",
 
             serversTitle = "Where to go online",
             serversCount = { n -> "$n nodes in your subscription" },
@@ -848,10 +848,10 @@ data class Strings(
 
             verifyTitle = "验证邮箱",
             verifySentTo = { email -> "验证码已发送至 $email" },
-            verifyCodeLabel = "邮件中的验证码",
             verifyChecking = "验证中…",
-            verifyConfirm = "确认",
-            errorEnter6Digits = "请输入 6 位数字",
+            verifyAutoHint = "输入完所有数字后将自动验证",
+            verifySuccessTitle = "验证成功！",
+            verifySuccessSubtitle = "邮箱已确认",
 
             serversTitle = "选择出口节点",
             serversCount = { n -> "订阅中共 $n 个节点" },
