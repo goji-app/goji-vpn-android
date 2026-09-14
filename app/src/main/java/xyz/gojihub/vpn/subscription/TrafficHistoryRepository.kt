@@ -14,6 +14,13 @@ private val Context.trafficHistoryDataStore by preferencesDataStore(name = "godj
 
 data class TrafficDaySnapshot(val epochDay: Long, val usedBytes: Long)
 
+/** [hasData] отличает "расход честно посчитан и равен нулю" от "снимков за этот день ещё/уже
+ *  не существует" — первый день, за который вообще есть хоть один снимок, не может дать дельту
+ *  (не с чем сравнивать), и это НЕ то же самое, что подтверждённый нулевой расход. UI показывает
+ *  эти случаи по-разному, чтобы дни до начала локальной истории не выглядели как "баг", а как
+ *  честное "данных пока нет". */
+data class TrafficDayUsage(val date: LocalDate, val bytes: Long, val hasData: Boolean)
+
 /** Бэкенд отдаёт только ТЕКУЩИЙ суммарный расход трафика (traffic.used_bytes) за весь платёжный
  *  период — истории по дням он не хранит вообще (см. Models.kt/TrafficInfo). Строим её сами:
  *  при каждом успешном SubscriptionRepository.refresh() запоминаем today's used_bytes
@@ -50,19 +57,50 @@ class TrafficHistoryRepository @Inject constructor(
         }
     }
 
-    /** Дневной расход (не суммарный) за последние [days] дней, включая сегодня — разница между
-     *  соседними снимками. Отрицательная разница (начался новый платёжный период, used_bytes
-     *  обнулился) считается за 0, а не "минус трафик". Дни без снимка (приложение не открывали)
-     *  — тоже 0, не "неизвестно": так график рисуется ровно, без дыр/особых случаев в UI. */
-    suspend fun dailyUsageLast(days: Int): List<Pair<LocalDate, Long>> {
-        val snapshots = decode(context.trafficHistoryDataStore.data.first()[historyKey]).associateBy { it.epochDay }
+    /** Дневной расход (не суммарный) за последние [days] дней, включая сегодня. Раньше требовал
+     *  снимок РОВНО за предыдущий день — если приложение не открывали (или часовой фоновый
+     *  воркер не отработал, что Samsung с их агрессивной оптимизацией батареи вполне может
+     *  сделать) хотя бы один день, разрыв цепочки обнулял не только пропущенный день, но и весь
+     *  следующий: у него не находилось "вчера", с которым сравнивать. Снаружи это выглядело так,
+     *  будто расход за несколько прошедших дней просто пропал, хотя трафик реально шёл.
+     *
+     *  Теперь берём дельту между ЛЮБЫМИ двумя соседними по времени снимками (не обязательно
+     *  сутки друг за другом) и равномерно размазываем её по всем дням разрыва — так пропуск в
+     *  днях даёт честный средний расход за период вместо однодневного ложного всплеска или тишины.
+     *  Отрицательная разница (начался новый платёжный период, used_bytes обнулился) по-прежнему
+     *  считается за 0, а не "минус трафик". Дни ДО самого первого снимка (истории ещё физически
+     *  не существует — см. recordToday) помечены hasData=false, а не молча приравнены к 0. */
+    suspend fun dailyUsageLast(days: Int): List<TrafficDayUsage> {
+        val snapshots = decode(context.trafficHistoryDataStore.data.first()[historyKey]).sortedBy { it.epochDay }
         val today = LocalDate.now().toEpochDay()
+        val windowStart = today - (days - 1)
+        val firstSnapshotDay = snapshots.firstOrNull()?.epochDay
+
+        val perDay = HashMap<Long, Long>()
+        for (i in 1 until snapshots.size) {
+            val prev = snapshots[i - 1]
+            val curr = snapshots[i]
+            val spanDays = curr.epochDay - prev.epochDay
+            if (spanDays <= 0) continue
+            val delta = (curr.usedBytes - prev.usedBytes).coerceAtLeast(0L)
+            val share = delta / spanDays
+            val remainder = delta % spanDays
+            for (offset in 1..spanDays) {
+                val day = prev.epochDay + offset
+                if (day < windowStart) continue
+                // Последний день разрыва забирает остаток от целочисленного деления — сумма
+                // распределённых долей в точности равна исходной дельте, ни один байт не теряется.
+                perDay[day] = (perDay[day] ?: 0L) + share + if (offset == spanDays) remainder else 0L
+            }
+        }
+
         return (days - 1).downTo(0).map { offset ->
             val day = today - offset
-            val current = snapshots[day]?.usedBytes
-            val previous = snapshots[day - 1]?.usedBytes
-            val delta = if (current != null && previous != null && current >= previous) current - previous else 0L
-            LocalDate.ofEpochDay(day) to delta
+            // День имеет посчитанную дельту, только если он строго позже самого первого снимка —
+            // у самого первого снимка (baseline) и у всех более ранних дней в принципе нет "вчера",
+            // с которым сравнивать.
+            val hasData = firstSnapshotDay != null && day > firstSnapshotDay
+            TrafficDayUsage(LocalDate.ofEpochDay(day), perDay[day] ?: 0L, hasData)
         }
     }
 }

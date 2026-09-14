@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
+import xyz.gojihub.vpn.ui.theme.JetBrainsMonoFamily
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
 import xyz.gojihub.vpn.ui.util.RichContent
@@ -199,7 +200,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
             }
         }
 
-        if (state.trafficHistory.any { it.bytes > 0 }) {
+        if (state.trafficHistory.any { it.hasData }) {
             TrafficHistorySection(state.trafficHistory)
         }
 
@@ -370,7 +371,9 @@ private fun TrafficHistorySection(days: List<TrafficDayUi>) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        val maxBytes = (days.maxOfOrNull { it.bytes } ?: 0L).coerceAtLeast(1L)
+        // Считаем максимум только по дням с реальной историей — иначе "дыры" до начала
+        // локального отслеживания (см. TrafficDayUi.hasData) не должны влиять на масштаб.
+        val maxBytes = (days.filter { it.hasData }.maxOfOrNull { it.bytes } ?: 0L).coerceAtLeast(1L)
         Row(
             Modifier.fillMaxWidth().height(90.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -383,13 +386,39 @@ private fun TrafficHistorySection(days: List<TrafficDayUi>) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Bottom
                 ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(fraction.coerceIn(0.03f, 1f))
-                            .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
-                            .background(if (day.isToday) GodjiColors.Teal else GodjiColors.TealTint)
+                    // Число расхода — отдельной строкой НАД столбиком (фиксированные 11dp), а не
+                    // поверх него: раньше единственным ориентиром была относительная высота бара,
+                    // а самый высокий из недели день вдобавок выталкивал подпись дня за пределы
+                    // строки целиком (bar получал fillMaxHeight() от всей высоты строки).
+                    Text(
+                        if (day.hasData) "%.1f".format(day.bytes / 1_000_000_000.0) else "",
+                        color = GodjiColors.TextSecondary,
+                        fontFamily = JetBrainsMonoFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 8.sp,
+                        modifier = Modifier.height(11.dp)
                     )
+                    Box(Modifier.fillMaxWidth().height(51.dp), contentAlignment = Alignment.BottomCenter) {
+                        if (day.hasData) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(fraction.coerceIn(0.03f, 1f))
+                                    .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                    .background(if (day.isToday) GodjiColors.Teal else GodjiColors.TealTint)
+                            )
+                        } else {
+                            // "Данных ещё нет" (до первого локального снимка, см.
+                            // TrafficHistoryRepository) — пунктирная черта у оси вместо сплошного
+                            // столбика, чтобы не читаться как подтверждённый нулевой расход.
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                                    .background(GodjiColors.CardBorder)
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(
                         day.dayLabel,

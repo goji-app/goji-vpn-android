@@ -49,7 +49,7 @@ data class PartnerUi(
     val pendingBalance: Double
 )
 
-data class TrafficDayUi(val dayLabel: String, val bytes: Long, val isToday: Boolean)
+data class TrafficDayUi(val dayLabel: String, val bytes: Long, val isToday: Boolean, val hasData: Boolean)
 
 data class DeviceUi(
     val hwid: String,
@@ -142,11 +142,12 @@ class PlansViewModel @Inject constructor(
                 xyz.gojihub.vpn.i18n.AppLanguage.ZH -> Locale.CHINESE
                 xyz.gojihub.vpn.i18n.AppLanguage.EN -> Locale.ENGLISH
             }
-            val trafficHistory = trafficHistoryRepository.dailyUsageLast(7).map { (date, bytes) ->
+            val trafficHistory = trafficHistoryRepository.dailyUsageLast(7).map { usage ->
                 TrafficDayUi(
-                    dayLabel = date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
-                    bytes = bytes,
-                    isToday = date == today
+                    dayLabel = usage.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
+                    bytes = usage.bytes,
+                    isToday = usage.date == today,
+                    hasData = usage.hasData
                 )
             }
             _state.value = _state.value.copy(
