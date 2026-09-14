@@ -398,7 +398,8 @@ private fun TrafficHistorySection(days: List<TrafficDayUi>) {
                         fontSize = 8.sp,
                         modifier = Modifier.height(11.dp)
                     )
-                    Box(Modifier.fillMaxWidth().height(51.dp), contentAlignment = Alignment.BottomCenter) {
+                    Spacer(Modifier.height(3.dp))
+                    Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.BottomCenter) {
                         if (day.hasData) {
                             Box(
                                 Modifier
