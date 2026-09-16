@@ -13,12 +13,8 @@ import xyz.gojihub.vpn.network.models.ReferralEntry
 import xyz.gojihub.vpn.network.models.DeviceDto
 import xyz.gojihub.vpn.network.models.RenameDeviceRequest
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
-import xyz.gojihub.vpn.subscription.TrafficHistoryRepository
 import xyz.gojihub.vpn.util.formatDateTime
 import xyz.gojihub.vpn.util.formatDate
-import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
 import javax.inject.Inject
 
 data class PeriodUi(val months: Int, val label: String)
@@ -48,8 +44,6 @@ data class PartnerUi(
     val availableBalance: Double,
     val pendingBalance: Double
 )
-
-data class TrafficDayUi(val dayLabel: String, val bytes: Long, val isToday: Boolean, val hasData: Boolean)
 
 data class DeviceUi(
     val hwid: String,
@@ -82,8 +76,7 @@ data class PlansUiState(
     // На пробном/бесплатном тарифе — как на сайте, самостоятельное удаление устройства скрыто
     // за "обратитесь в поддержку" (см. комментарий у DeviceDto в Models.kt).
     val devicesDeleteSupportOnly: Boolean = false,
-    val devices: List<DeviceUi> = emptyList(),
-    val trafficHistory: List<TrafficDayUi> = emptyList()
+    val devices: List<DeviceUi> = emptyList()
 )
 
 /** Веб-версия маскирует половину имени/юзернейма/локальной части email точками —
@@ -119,8 +112,7 @@ private fun displayNameFor(e: ReferralEntry): String {
 @HiltViewModel
 class PlansViewModel @Inject constructor(
     private val api: RemnawaveApi,
-    private val subscriptionRepository: SubscriptionRepository,
-    private val trafficHistoryRepository: TrafficHistoryRepository
+    private val subscriptionRepository: SubscriptionRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PlansUiState())
@@ -136,20 +128,6 @@ class PlansViewModel @Inject constructor(
         viewModelScope.launch {
             subscriptionRepository.refresh()
             val sub = subscriptionRepository.subscription.value
-            val today = LocalDate.now()
-            val locale = when (Loc.lang) {
-                xyz.gojihub.vpn.i18n.AppLanguage.RU -> Locale("ru")
-                xyz.gojihub.vpn.i18n.AppLanguage.ZH -> Locale.CHINESE
-                xyz.gojihub.vpn.i18n.AppLanguage.EN -> Locale.ENGLISH
-            }
-            val trafficHistory = trafficHistoryRepository.dailyUsageLast(7).map { usage ->
-                TrafficDayUi(
-                    dayLabel = usage.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
-                    bytes = usage.bytes,
-                    isToday = usage.date == today,
-                    hasData = usage.hasData
-                )
-            }
             _state.value = _state.value.copy(
                 planName = sub?.planName ?: "—",
                 expiryLabel = sub?.expireAt?.let(::formatDate) ?: "—",
@@ -161,7 +139,6 @@ class PlansViewModel @Inject constructor(
                 customerId = subscriptionRepository.clientUuid(),
                 subscriptionId = sub?.id,
                 devicesDeleteSupportOnly = sub?.kind == "trial" || sub?.kind == "free",
-                trafficHistory = trafficHistory,
                 news = subscriptionRepository.broadcasts.value
                     .sortedByDescending { it.createdAt }
                     .map { b ->

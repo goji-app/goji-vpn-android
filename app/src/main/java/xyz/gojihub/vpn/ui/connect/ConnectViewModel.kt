@@ -336,9 +336,8 @@ class ConnectViewModel @Inject constructor(
                 _state.value = _state.value.copy(
                     downSpeedMbps = down,
                     upSpeedMbps = up,
-                    // Скользящее окно последних точек для мини-графика в StatCard — ощутимо
-                    // короче, чем TrafficHistoryRepository (та копит дни, эта — секунды текущей
-                    // сессии, и не переживает пересоздание ViewModel, что тут и не нужно).
+                    // Скользящее окно последних точек для мини-графика в StatCard — секунды
+                    // текущей сессии, не переживает пересоздание ViewModel, что тут и не нужно.
                     downHistory = (_state.value.downHistory + down.toFloat()).takeLast(SPEED_HISTORY_SIZE),
                     upHistory = (_state.value.upHistory + up.toFloat()).takeLast(SPEED_HISTORY_SIZE),
                     connectedTimeLabel = formatElapsed(now - connectedSinceOrNow())
