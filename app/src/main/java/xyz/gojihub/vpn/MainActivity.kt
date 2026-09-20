@@ -141,7 +141,19 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                                 )
                                 Text(tab.icon, fontSize = 19.sp, modifier = Modifier.scale(scale))
                             },
-                            label = { Text(tab.label, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                            // maxLines/overflow — на узких экранах или при крупном "Размере
+                            // шрифта" (Настройки → Внешний вид) длинные подписи вроде
+                            // "НАСТРОЙКИ"/"ПОДПИСКА" не помещались в узкую колонку нижней
+                            // панели и переносились по одной букве на строку. Многоточие
+                            // вместо этого — читаемая деградация, а не сломанная вёрстка.
+                            label = {
+                                Text(
+                                    tab.label,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedTextColor = GodjiColors.TealDeep,
                                 unselectedTextColor = GodjiColors.TextSecondary,

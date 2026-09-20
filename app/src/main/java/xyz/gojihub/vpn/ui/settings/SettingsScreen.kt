@@ -88,7 +88,12 @@ fun SettingsScreen(
         SettingsSection(Loc.s.settingsAppearance) {
             Text(Loc.s.settingsDarkTheme, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            // FlowRow, а не Row — на узких экранах или при крупном размере шрифта (см.
+            // "Размер шрифта" ниже) чипы в обычном Row не помещались в ширину, и Compose
+            // сжимал последний чип почти до нуля, из-за чего его текст переносился по одной
+            // букве на строку в вертикальный столбик. FlowRow вместо этого просто переносит
+            // не поместившийся чип на новую строку целиком, как обычный текст.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 ThemeMode.entries.forEach { mode ->
                     ThemeModeChip(mode, selected = state.themeMode == mode, onSelect = { viewModel.setThemeMode(mode) })
                 }
@@ -96,7 +101,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(14.dp))
             Text(Loc.s.settingsLanguage, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 AppLanguage.entries.forEach { lang ->
                     LanguageChip(lang, selected = state.language == lang, onSelect = { viewModel.setLanguage(lang) })
                 }
@@ -104,7 +109,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(14.dp))
             Text(Loc.s.settingsFontSize, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 FontSizePreset.entries.forEach { preset ->
                     FontSizeChip(preset, selected = state.fontSize == preset, onSelect = { viewModel.setFontSize(preset) })
                 }

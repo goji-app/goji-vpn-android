@@ -135,7 +135,11 @@ private fun ModeTab(label: String, mode: PerAppProxyMode, selected: PerAppProxyM
             .clickable { onSelect(mode) },
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = if (active) GodjiColors.Surface else GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Text(
+            label, color = if (active) GodjiColors.Surface else GodjiColors.TextSecondary,
+            fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
