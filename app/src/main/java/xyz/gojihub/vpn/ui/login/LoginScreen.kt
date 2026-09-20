@@ -183,13 +183,13 @@ fun LoginScreen(
                 val consentText = remember(Loc.lang) {
                     buildAnnotatedString {
                         append(Loc.s.loginConsentPrefix)
-                        withLink(LinkAnnotation.Url("https://telegra.ph/Polzovatelskoe-soglashenie-servisa-ShadowDuck-10-10")) {
+                        withLink(LinkAnnotation.Url("https://telegra.ph/Polzovatelskoe-soglashenie-Goji-VPN-09-20")) {
                             withStyle(SpanStyle(color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold)) {
                                 append(Loc.s.loginConsentTerms)
                             }
                         }
                         append(Loc.s.loginConsentAnd)
-                        withLink(LinkAnnotation.Url("https://telegra.ph/Politika-konfidencialnosti-servisa-ShadowDuck-10-10")) {
+                        withLink(LinkAnnotation.Url("https://telegra.ph/Politika-konfidencialnosti-Goji-VPN-09-20")) {
                             withStyle(SpanStyle(color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold)) {
                                 append(Loc.s.loginConsentPrivacy)
                             }
