@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import xyz.gojihub.vpn.geo.CountryGeo
@@ -122,22 +123,39 @@ class ConnectViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            GodjiVpnService.isRunning.collect { running ->
-                _state.value = _state.value.copy(
-                    connected = running,
-                    connecting = false,
-                    globeStatus = if (running) "on" else "off",
-                    // Реальное время начала отсчёта живёт в самом сервисе (connectedSinceMillis) —
-                    // формируется в startSpeedPolling() ниже; здесь только сбрасываем на "выключено"
-                    // для случая, когда туннель уже упал, а UI ещё не обновился спустя тик таймера.
-                    connectedTimeLabel = if (running) _state.value.connectedTimeLabel else "00:00:00"
-                )
-                if (running) startSpeedPolling() else stopSpeedPolling()
-            }
+            // combine, а не два независимых collect на isRunning/isConnecting — раньше
+            // "connecting" тут жёстко сбрасывался в false при любом изменении isRunning,
+            // из-за чего в момент переключения узла на активном соединении (см.
+            // GodjiVpnService.performConnect: старый туннель уже остановлен, isRunning на
+            // мгновение false, новый ещё не поднят) экран показывал "отключено", а не
+            // "переключаюсь" — выглядело как зависание, хотя сервис работал как задумано.
+            combine(GodjiVpnService.isRunning, GodjiVpnService.isConnecting) { running, connecting -> running to connecting }
+                .collect { (running, connecting) ->
+                    _state.value = _state.value.copy(
+                        connected = running,
+                        connecting = connecting,
+                        globeStatus = when {
+                            connecting -> "connecting"
+                            running -> "on"
+                            else -> "off"
+                        },
+                        // Реальное время начала отсчёта живёт в самом сервисе (connectedSinceMillis) —
+                        // формируется в startSpeedPolling() ниже; здесь только сбрасываем на "выключено"
+                        // для случая, когда туннель уже упал, а UI ещё не обновился спустя тик таймера.
+                        connectedTimeLabel = if (running) _state.value.connectedTimeLabel else "00:00:00"
+                    )
+                    if (running) startSpeedPolling() else stopSpeedPolling()
+                }
         }
         viewModelScope.launch {
+            // "connecting" сюда больше не трогаем — единственный источник правды для него
+            // теперь GodjiVpnService.isConnecting (см. combine выше): при промежуточной неудаче
+            // одной из RECONNECT_ATTEMPTS попыток внутри performConnect сервис ещё продолжает
+            // пытаться, и сбрасывать здесь connecting в false было бы враньём про реальное
+            // состояние — экран уже успевал показать "не получилось" ровно в тот момент,
+            // когда сервис молча готовил следующую попытку.
             GodjiVpnService.lastError.collect { error ->
-                if (error != null) _state.value = _state.value.copy(error = error, connecting = false)
+                if (error != null) _state.value = _state.value.copy(error = error)
             }
         }
         viewModelScope.launch {

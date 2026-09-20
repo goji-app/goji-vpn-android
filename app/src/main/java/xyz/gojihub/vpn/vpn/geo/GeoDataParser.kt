@@ -20,9 +20,28 @@ import java.net.InetAddress
  */
 object GeoDataParser {
 
+    // Полный разбор geosite.dat/geoip.dat (десятки МБ, линейный проход по всему файлу) —
+    // establishTunnel() зовёт resolveDomains/resolveCidrs на КАЖДОЕ подключение: первое,
+    // любое переключение узла на активном соединении, каждую попытку из RECONNECT_ATTEMPTS
+    // (см. GodjiVpnService.performConnect) и каждое авто-восстановление watchdog'ом — то есть
+    // потенциально по несколько раз подряд за секунды, почти всегда с ОДНИМ И ТЕМ ЖЕ набором
+    // тегов (профиль узла не меняет свой routing между попытками). Раньше файл перечитывался
+    // и разбирался заново каждый раз — заметный лишний вклад именно в "долгое подключение",
+    // особенно на повторных попытках. Кэш на последний результат (не растущий, не на все
+    // виденные наборы тегов — так проще и не грозит утечкой памяти при частой смене узлов)
+    // ключуется по (путь, mtime, размер, набор тегов) — при следующей же попытке с тем же
+    // профилем отдаёт готовый результат без повторного чтения файла; если файл обновился
+    // (см. GeoDataDownloader) или набор тегов другой (другой узел), ключ не совпадёт и разбор
+    // произойдёт заново, как раньше.
+    private data class CacheKey(val path: String, val lastModified: Long, val length: Long, val tags: Set<String>)
+    @Volatile private var domainCache: Pair<CacheKey, Map<String, List<String>>>? = null
+    @Volatile private var cidrCache: Pair<CacheKey, Map<String, List<String>>>? = null
+
     fun resolveDomains(file: File, tags: Set<String>): Map<String, List<String>> {
         if (tags.isEmpty() || !file.exists()) return emptyMap()
         val wanted = tags.map { it.uppercase() }.toSet()
+        val key = CacheKey(file.absolutePath, file.lastModified(), file.length(), wanted)
+        domainCache?.let { (cachedKey, cachedValue) -> if (cachedKey == key) return cachedValue }
         val result = mutableMapOf<String, MutableList<String>>()
         val buf = file.readBytes()
         val reader = ProtoReader(buf, 0, buf.size)
@@ -39,12 +58,15 @@ object GeoDataParser {
                 reader.skip(wireType)
             }
         }
+        domainCache = key to result
         return result
     }
 
     fun resolveCidrs(file: File, tags: Set<String>): Map<String, List<String>> {
         if (tags.isEmpty() || !file.exists()) return emptyMap()
         val wanted = tags.map { it.uppercase() }.toSet()
+        val key = CacheKey(file.absolutePath, file.lastModified(), file.length(), wanted)
+        cidrCache?.let { (cachedKey, cachedValue) -> if (cachedKey == key) return cachedValue }
         val result = mutableMapOf<String, MutableList<String>>()
         val buf = file.readBytes()
         val reader = ProtoReader(buf, 0, buf.size)
@@ -61,6 +83,7 @@ object GeoDataParser {
                 reader.skip(wireType)
             }
         }
+        cidrCache = key to result
         return result
     }
 
