@@ -112,6 +112,14 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                         color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 13.sp
                     )
                     Text(Loc.s.plansUntil(state.expiryLabel), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.5.sp)
+                    if (state.personalDiscountPercent > 0) {
+                        Text(
+                            Loc.s.plansPersonalDiscount(state.personalDiscountPercent),
+                            color = GodjiColors.TealDeep,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.5.sp
+                        )
+                    }
                 }
                 ActiveStatusPill()
             }
@@ -206,6 +214,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
         if (state.subscriptionId != null) {
             DevicesSection(
                 devices = state.devices,
+                deviceLimit = state.deviceLimit,
                 deleteSupportOnly = state.devicesDeleteSupportOnly,
                 onRename = viewModel::renameDevice,
                 onDelete = viewModel::deleteDevice,
@@ -358,6 +367,7 @@ private fun NewsCard(item: NewsUi) {
 @Composable
 private fun DevicesSection(
     devices: List<DeviceUi>,
+    deviceLimit: Int,
     deleteSupportOnly: Boolean,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
@@ -367,7 +377,18 @@ private fun DevicesSection(
     var deleteTarget by remember { mutableStateOf<DeviceUi?>(null) }
 
     Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansDevicesTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(Loc.s.plansDevicesTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
+        if (deviceLimit > 0) {
+            Text(
+                Loc.s.plansDevicesCountLabel(devices.size, deviceLimit),
+                color = GodjiColors.TextSecondary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.5.sp,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+        }
+    }
     Spacer(Modifier.height(8.dp))
     Column(
         Modifier
@@ -384,9 +405,13 @@ private fun DevicesSection(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(device.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                        val subtitle = listOfNotNull(device.platform, device.createdAtLabel).joinToString(" · ")
+                        val subtitle = listOfNotNull(
+                            device.platform,
+                            device.connectedVia?.let(Loc.s.plansDevicesConnectedVia),
+                            device.createdAtLabel
+                        ).joinToString(" · ")
                         if (subtitle.isNotEmpty()) {
-                            Text(subtitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.sp)
+                            Text(subtitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
                     }
                     if (device.busy) {

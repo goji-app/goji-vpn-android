@@ -50,6 +50,7 @@ data class DeviceUi(
     val name: String,
     val platform: String?,
     val createdAtLabel: String?,
+    val connectedVia: String?,
     val busy: Boolean = false
 )
 
@@ -76,7 +77,11 @@ data class PlansUiState(
     // На пробном/бесплатном тарифе — как на сайте, самостоятельное удаление устройства скрыто
     // за "обратитесь в поддержку" (см. комментарий у DeviceDto в Models.kt).
     val devicesDeleteSupportOnly: Boolean = false,
-    val devices: List<DeviceUi> = emptyList()
+    val devices: List<DeviceUi> = emptyList(),
+    val deviceLimit: Int = 0,
+    // customer_discount_percent с /api/dashboard/plans — 0, если у клиента нет персональной
+    // скидки (см. PlansResponse.customerDiscountPercent); тогда бейдж просто не показываем.
+    val personalDiscountPercent: Int = 0
 )
 
 /** Веб-версия маскирует половину имени/юзернейма/локальной части email точками —
@@ -98,7 +103,13 @@ private fun DeviceDto.toUi(): DeviceUi = DeviceUi(
     hwid = hwid,
     name = readableName?.takeIf { it.isNotBlank() } ?: platform?.takeIf { it.isNotBlank() } ?: hwid.take(8),
     platform = platform,
-    createdAtLabel = createdAt?.let(::formatDate)
+    createdAtLabel = createdAt?.let(::formatDate),
+    // Через что реально зарегистрировалось устройство на бэкенде (см. RemnawaveApi.getDevices)
+    // — тот же User-Agent, что уходил в запросе подписки (см. SubscriptionRepository.fetchNodes,
+    // там он намеренно подменяется на "v2rayNG/1.8.29" — этот же клиент бэкенд и запишет для
+    // ЛЮБОГО устройства на Goji, а не только для настоящего v2rayNG; отдаём как есть, без
+    // попытки угадать реальное имя клиента там, где бэкенд сам этого не различает).
+    connectedVia = userAgent?.takeIf { it.isNotBlank() }
 )
 
 private fun displayNameFor(e: ReferralEntry): String {
@@ -139,6 +150,7 @@ class PlansViewModel @Inject constructor(
                 customerId = subscriptionRepository.clientUuid(),
                 subscriptionId = sub?.id,
                 devicesDeleteSupportOnly = sub?.kind == "trial" || sub?.kind == "free",
+                deviceLimit = sub?.deviceLimit ?: 0,
                 news = subscriptionRepository.broadcasts.value
                     .sortedByDescending { it.createdAt }
                     .map { b ->
@@ -153,6 +165,9 @@ class PlansViewModel @Inject constructor(
 
             runCatching { api.getPlans() }.onSuccess { response ->
                 rawPlans = response.plans
+                _state.value = _state.value.copy(
+                    personalDiscountPercent = response.customerDiscountPercent?.toInt() ?: 0
+                )
                 val months = rawPlans.flatMap { it.prices }
                     .filter { it.priceType == "base" }
                     .map { it.periodValue }

@@ -117,7 +117,11 @@ data class TrafficInfo(
 
 @JsonClass(generateAdapter = true)
 data class PlansResponse(
-    val plans: List<PlanInfo>
+    val plans: List<PlanInfo>,
+    // Персональная скидка клиента в процентах (0-100) — то же поле, что веб-версия читает
+    // как customer_discount_percent на каталоге тарифов (см. PlansViewModel.getDiscountPercent
+    // в JS-бандле gojihub.xyz). null/отсутствует — скидки нет, тогда просто не показываем.
+    @Json(name = "customer_discount_percent") val customerDiscountPercent: Double? = null
 )
 
 @JsonClass(generateAdapter = true)
