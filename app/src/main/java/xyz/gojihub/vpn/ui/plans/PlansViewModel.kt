@@ -266,7 +266,12 @@ class PlansViewModel @Inject constructor(
         if (trimmed.isEmpty()) return
         setDeviceBusy(hwid, true)
         viewModelScope.launch {
-            runCatching { api.renameDevice(subId, hwid, RenameDeviceRequest(trimmed)) }
+            runCatching {
+                val response = api.renameDevice(subId, hwid, RenameDeviceRequest(trimmed))
+                if (!response.isSuccessful) {
+                    error("HTTP ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+                }
+            }
                 .onSuccess {
                     _state.value = _state.value.copy(devices = _state.value.devices.map {
                         if (it.hwid == hwid) it.copy(name = trimmed, busy = false) else it
@@ -282,7 +287,12 @@ class PlansViewModel @Inject constructor(
         val subId = _state.value.subscriptionId ?: return
         setDeviceBusy(hwid, true)
         viewModelScope.launch {
-            runCatching { api.deleteDevice(subId, hwid) }
+            runCatching {
+                val response = api.deleteDevice(subId, hwid)
+                if (!response.isSuccessful) {
+                    error("HTTP ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+                }
+            }
                 .onSuccess {
                     _state.value = _state.value.copy(devices = _state.value.devices.filterNot { it.hwid == hwid })
                 }
