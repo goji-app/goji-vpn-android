@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
+import xyz.gojihub.vpn.BuildConfig
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -127,31 +128,37 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                 }
                 ActiveStatusPill()
             }
-            val (extendInteraction, extendScale) = rememberPressScale()
-            Button(
-                onClick = {
-                    // Открываем сразу /checkout с уже известным тарифом и периодом (Custom Tabs,
-                    // не внешний браузер отдельным приложением — тот же приём, что для нативного
-                    // OAuth-логина, androidx.browser уже в зависимостях) — раньше кнопка вела на
-                    // общий /#/plans, откуда пользователь заново выбирал тариф на сайте, хотя
-                    // "Продлить" уже подразумевает именно текущий тариф на уже выбранный здесь
-                    // период. Сама оплата всё равно происходит на странице платёжного шлюза
-                    // (ЮKassa/Т-Банк/Robokassa/…) — приложение не участвует в передаче данных
-                    // карты. Без определённого текущего тарифа (например ещё не подгрузился
-                    // список) — прежнее поведение, общий /#/plans.
-                    val currentPlan = state.plans.firstOrNull { it.isCurrent }
-                    val checkoutUrl = if (currentPlan != null) {
-                        "https://gojihub.xyz/#/checkout?plan=${currentPlan.id}&defaultPeriod=${state.selectedMonths}&defaultPeriodUnit=${currentPlan.periodUnit}"
-                    } else {
-                        "https://gojihub.xyz/#/plans"
-                    }
-                    CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(checkoutUrl))
-                },
-                interactionSource = extendInteraction,
-                colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
-                shape = RoundedCornerShape(50),
-                modifier = Modifier.fillMaxWidth().height(44.dp).scale(extendScale.value)
-            ) { Text(Loc.s.plansExtend, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp) }
+            // Google Play запрещает продажу цифровой подписки в приложении в обход Google Play
+            // Billing — во флейворе play кнопка оплаты не собирается вовсе (см. ENABLE_EXTERNAL_CHECKOUT
+            // в app/build.gradle.kts), а не просто прячется поверх экрана, чтобы не оставлять
+            // недоступный, но всё ещё присутствующий в APK путь на внешний чекаут.
+            if (BuildConfig.ENABLE_EXTERNAL_CHECKOUT) {
+                val (extendInteraction, extendScale) = rememberPressScale()
+                Button(
+                    onClick = {
+                        // Открываем сразу /checkout с уже известным тарифом и периодом (Custom Tabs,
+                        // не внешний браузер отдельным приложением — тот же приём, что для нативного
+                        // OAuth-логина, androidx.browser уже в зависимостях) — раньше кнопка вела на
+                        // общий /#/plans, откуда пользователь заново выбирал тариф на сайте, хотя
+                        // "Продлить" уже подразумевает именно текущий тариф на уже выбранный здесь
+                        // период. Сама оплата всё равно происходит на странице платёжного шлюза
+                        // (ЮKassa/Т-Банк/Robokassa/…) — приложение не участвует в передаче данных
+                        // карты. Без определённого текущего тарифа (например ещё не подгрузился
+                        // список) — прежнее поведение, общий /#/plans.
+                        val currentPlan = state.plans.firstOrNull { it.isCurrent }
+                        val checkoutUrl = if (currentPlan != null) {
+                            "https://gojihub.xyz/#/checkout?plan=${currentPlan.id}&defaultPeriod=${state.selectedMonths}&defaultPeriodUnit=${currentPlan.periodUnit}"
+                        } else {
+                            "https://gojihub.xyz/#/plans"
+                        }
+                        CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(checkoutUrl))
+                    },
+                    interactionSource = extendInteraction,
+                    colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.fillMaxWidth().height(44.dp).scale(extendScale.value)
+                ) { Text(Loc.s.plansExtend, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp) }
+            }
         }
 
         if (state.periods.size > 1) {

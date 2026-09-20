@@ -23,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 51
-        versionName = "1.0.69"
+        versionCode = 52
+        versionName = "1.0.70"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
@@ -49,10 +49,16 @@ android {
         create("direct") {
             dimension = "distribution"
             buildConfigField("boolean", "ENABLE_SELF_UPDATE", "true")
+            buildConfigField("boolean", "ENABLE_EXTERNAL_CHECKOUT", "true")
         }
         create("play") {
             dimension = "distribution"
             buildConfigField("boolean", "ENABLE_SELF_UPDATE", "false")
+            // Google Play запрещает продажу цифровой подписки в приложении в обход Google Play
+            // Billing — кнопка "Продлить" на внешнюю страницу оплаты (gojihub.xyz/checkout,
+            // ЮKassa/Т-Банк/Robokassa/крипта) должна быть скрыта именно в Play-сборке. Продление
+            // для таких пользователей — через сайт/бота вне приложения.
+            buildConfigField("boolean", "ENABLE_EXTERNAL_CHECKOUT", "false")
         }
     }
 
