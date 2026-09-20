@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Флейвор "play" (см. app/build.gradle.kts) — снимает разрешение, нужное только
+     самообновлению по GitHub Releases (см. AppUpdateChecker/AppUpdateDownloader). Google Play
+     не разрешает приложению обновлять себя в обход собственного механизма Play, поэтому у
+     сборки для Play не должно быть даже разрешения ставить APK, а не только выключенного в
+     интерфейсе пункта "Проверить обновления" (см. BuildConfig.ENABLE_SELF_UPDATE). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+
+</manifest>

@@ -1,6 +1,7 @@
 package xyz.gojihub.vpn.ui.settings
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.compose.ui.graphics.ImageBitmap
@@ -35,8 +36,8 @@ data class AppTunnelingUiState(
 )
 
 /** Отдельная ViewModel, а не часть SettingsViewModel — единственный экран, которому нужен
- *  список ВСЕХ установленных приложений (PackageManager.getInstalledApplications), это
- *  заметно тяжелее обычных настроек и не должно грузиться вместе с остальным экраном Settings. */
+ *  список установленных приложений, это заметно тяжелее обычных настроек и не должно
+ *  грузиться вместе с остальным экраном Settings. */
 @HiltViewModel
 class AppTunnelingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
@@ -60,11 +61,24 @@ class AppTunnelingViewModel @Inject constructor(
         }
     }
 
+    /** Приложения, у которых есть иконка на "рабочем столе" (ACTION_MAIN/CATEGORY_LAUNCHER) —
+     *  а не буквально ВСЕ установленные пакеты (PackageManager.getInstalledApplications):
+     *  тот способ требовал QUERY_ALL_PACKAGES, а это разрешение Google Play разрешает только
+     *  считаному числу категорий приложений (антивирусы, файловые менеджеры и т.п.) и требует
+     *  отдельного заявления в консоли на каждую публикацию — для функции "прокси для выбранных
+     *  приложений" с гарантией отклонят или как минимум задержат публикацию. queryIntentActivities
+     *  с соответствующим <queries> в манифесте — официально задокументированный Android-способ
+     *  получить список запускаемых пользователем приложений без специальных разрешений вообще,
+     *  и как побочный эффект не показывает в списке голые системные компоненты без своего экрана,
+     *  которые всё равно не имеет смысла явно пускать/не пускать в тоннель. */
     private suspend fun loadApps() {
         val pm = appContext.packageManager
         val apps = withContext(Dispatchers.Default) {
+            val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
             @Suppress("DEPRECATION")
-            pm.getInstalledApplications(0)
+            pm.queryIntentActivities(launcherIntent, 0)
+                .distinctBy { it.activityInfo.packageName }
+                .map { it.activityInfo.applicationInfo }
                 .map { info ->
                     InstalledAppUi(
                         packageName = info.packageName,

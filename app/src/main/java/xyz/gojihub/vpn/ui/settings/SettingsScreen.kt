@@ -2,6 +2,7 @@ package xyz.gojihub.vpn.ui.settings
 
 import android.content.Intent
 import android.provider.Settings
+import xyz.gojihub.vpn.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -152,8 +153,12 @@ fun SettingsScreen(
             AboutRow(Loc.s.settingsDeviceInfo, state.deviceInfo)
         }
 
-        SettingsSection(Loc.s.settingsUpdatesTitle) {
-            UpdateSectionContent(state, viewModel)
+        // Флейвор "play" (см. app/build.gradle.kts) — самообновление по GitHub Releases не
+        // существует в сборке для Google Play даже как показанный, но неработающий пункт меню.
+        if (BuildConfig.ENABLE_SELF_UPDATE) {
+            SettingsSection(Loc.s.settingsUpdatesTitle) {
+                UpdateSectionContent(state, viewModel)
+            }
         }
 
         SettingsSection(Loc.s.settingsLogs) {

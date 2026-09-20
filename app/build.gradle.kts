@@ -23,14 +23,36 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 50
-        versionName = "1.0.68"
+        versionCode = 51
+        versionName = "1.0.69"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
         // для эмуляторов и раздувают APK в ~2 раза без всякой пользы для реальных устройств.
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    // Два способа распространения одного и того же приложения — различаются ровно в одном:
+    // самообновление по GitHub Releases (см. AppUpdateChecker/AppUpdateDownloader). Google Play
+    // прямо запрещает приложению обновлять свой APK каким-либо способом, кроме собственного
+    // механизма Play ("An app downloaded from Google Play may not change, replace, or update
+    // itself using any method other than Google Play's update mechanism") — сборка для Play
+    // обязана не только не показывать эту функцию в интерфейсе, но и не иметь ни фонового
+    // воркера, ни разрешения REQUEST_INSTALL_PACKAGES (снимается в app/src/play/AndroidManifest.xml).
+    // "direct" — это ровно то, что все команды в этом проекте раньше называли просто "release":
+    // GitHub Releases, тот же APK, что архивируется в builds/android/. Собирать: assembleDirectRelease
+    // (или bundlePlayRelease для Play — .aab, не .apk, см. builds/android/README, если он есть).
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("direct") {
+            dimension = "distribution"
+            buildConfigField("boolean", "ENABLE_SELF_UPDATE", "true")
+        }
+        create("play") {
+            dimension = "distribution"
+            buildConfigField("boolean", "ENABLE_SELF_UPDATE", "false")
         }
     }
 

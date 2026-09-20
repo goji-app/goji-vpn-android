@@ -12,12 +12,19 @@
          попытке install-интента сам покажет системный экран "Разрешить установку из этого
          источника" для Godji VPN, если он ещё не выдан. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- Без этого на Android 11+ (API 30+) PackageManager.getInstalledApplications() видит
-         только сами себя и приложения, с которыми уже было явное взаимодействие (package
-         visibility) — экран "Прокси для выбранных приложений" получал бы почти пустой список
-         вместо всех установленных пакетов. Не требует ручной проверки в Google Play, потому
-         что приложение распространяется не через Play Store. -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <!-- Экрану "Прокси для выбранных приложений" нужен список запускаемых пользователем
+         приложений (см. AppTunnelingViewModel.loadApps) — это заявление о видимости пакетов
+         (Android 11+), а не QUERY_ALL_PACKAGES: то разрешение Google Play одобряет только
+         узкому списку категорий (антивирусы, файловые менеджеры и т.п.) и требует отдельного
+         заявления в консоли на каждую публикацию — для этой функции почти наверняка отклонят
+         или задержат. queryIntentActivities с этим же intent-фильтром — официальный способ
+         получить список запускаемых приложений вообще без специальных разрешений. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".GodjiApplication"

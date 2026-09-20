@@ -90,12 +90,17 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
         schedulePeriodicRefresh()
         scheduleGeoDataRefresh()
         scheduleMobileWhitelistRefresh()
-        scheduleUpdateCheck()
-        // Разовая проверка сразу после запуска — периодический воркер и так проверит в
-        // течение суток, но пользователь может обновиться и раньше, если сам откроет
-        // приложение и увидит уведомление сразу, а не через сутки ожидания фонового воркера.
-        CoroutineScope(Dispatchers.IO).launch {
-            AppUpdateChecker.checkForUpdate()?.let { AppUpdateNotifier.notifyIfNew(this@GodjiApplication, it) }
+        // Флейвор "play" (см. app/build.gradle.kts): Google Play не разрешает приложению
+        // обновлять себя в обход собственного механизма Play — ни фонового воркера, ни
+        // разовой проверки на старте быть не должно в сборке для Play.
+        if (BuildConfig.ENABLE_SELF_UPDATE) {
+            scheduleUpdateCheck()
+            // Разовая проверка сразу после запуска — периодический воркер и так проверит в
+            // течение суток, но пользователь может обновиться и раньше, если сам откроет
+            // приложение и увидит уведомление сразу, а не через сутки ожидания фонового воркера.
+            CoroutineScope(Dispatchers.IO).launch {
+                AppUpdateChecker.checkForUpdate()?.let { AppUpdateNotifier.notifyIfNew(this@GodjiApplication, it) }
+            }
         }
         // Разовая попытка сразу после установки/первого запуска — периодический воркер и так
         // рано или поздно скачает свежие geoip.dat/geosite.dat, но при первом же реальном
