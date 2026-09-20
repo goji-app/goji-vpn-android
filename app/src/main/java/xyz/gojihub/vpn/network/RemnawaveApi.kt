@@ -54,8 +54,13 @@ interface RemnawaveApi {
     @GET("api/subscriptions/{id}")
     suspend fun getSubscription(@Path("id") id: Long): SubscriptionInfo
 
+    // subscriptionId — веб-версия (Mh.getCatalog в её бандле) передаёт его как ?subscription_id=,
+    // персональная скидка (customer_discount_percent) считается бэкендом ИМЕННО относительно
+    // конкретной подписки, а не аккаунта вообще; без него ответ — обобщённый каталог без
+    // привязки к подписке, где то же поле может означать что-то другое (см. живой тест: без
+    // subscription_id пришло 100%, что для обычного тарифа неправдоподобно).
     @GET("api/dashboard/plans")
-    suspend fun getPlans(): PlansResponse
+    suspend fun getPlans(@Query("subscription_id") subscriptionId: Long? = null): PlansResponse
 
     // Страница "Мои рассылки"/"Новости" веб-версии (#/my-broadcasts) — список уже
     // отправленных пользователю новостей/объявлений.

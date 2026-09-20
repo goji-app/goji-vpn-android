@@ -18,7 +18,16 @@ import xyz.gojihub.vpn.util.formatDate
 import javax.inject.Inject
 
 data class PeriodUi(val months: Int, val label: String)
-data class PlanUi(val id: Long, val name: String, val description: String, val priceLabel: String, val isCurrent: Boolean)
+data class PlanUi(
+    val id: Long,
+    val name: String,
+    val description: String,
+    val priceLabel: String,
+    val isCurrent: Boolean,
+    // Реальная единица периода у ЭТОЙ конкретной цены (обычно "month", но не гарантия — берём
+    // как есть, а не хардкодим), нужна для defaultPeriodUnit в /checkout (см. PlansScreen).
+    val periodUnit: String
+)
 data class NewsButtonUi(val url: String, val text: String)
 data class NewsUi(val id: String, val rawContent: String, val dateLabel: String, val buttons: List<NewsButtonUi>)
 
@@ -163,7 +172,7 @@ class PlansViewModel @Inject constructor(
                     }
             )
 
-            runCatching { api.getPlans() }.onSuccess { response ->
+            runCatching { api.getPlans(subscriptionId = sub?.id) }.onSuccess { response ->
                 rawPlans = response.plans
                 _state.value = _state.value.copy(
                     personalDiscountPercent = response.customerDiscountPercent?.toInt() ?: 0
@@ -246,7 +255,7 @@ class PlansViewModel @Inject constructor(
             val price = plan.prices.firstOrNull { it.priceType == "base" && it.periodValue == months }
                 ?: plan.prices.firstOrNull { it.priceType == "base" }
             val priceLabel = price?.let { "${it.price} ${it.currency}" } ?: "—"
-            PlanUi(plan.id, plan.name, plan.description, priceLabel, isCurrent = plan.name == current)
+            PlanUi(plan.id, plan.name, plan.description, priceLabel, isCurrent = plan.name == current, periodUnit = price?.periodUnit ?: "month")
         }
         _state.value = _state.value.copy(plans = cards)
     }

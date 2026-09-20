@@ -3,6 +3,7 @@ package xyz.gojihub.vpn.ui.plans
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -113,19 +114,39 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                     )
                     Text(Loc.s.plansUntil(state.expiryLabel), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.5.sp)
                     if (state.personalDiscountPercent > 0) {
-                        Text(
-                            Loc.s.plansPersonalDiscount(state.personalDiscountPercent),
-                            color = GodjiColors.TealDeep,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.5.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("🏷️", fontSize = 10.5.sp)
+                            Text(
+                                Loc.s.plansPersonalDiscount(state.personalDiscountPercent),
+                                color = GodjiColors.TealDeep,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.5.sp
+                            )
+                        }
                     }
                 }
                 ActiveStatusPill()
             }
             val (extendInteraction, extendScale) = rememberPressScale()
             Button(
-                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/plans"))) },
+                onClick = {
+                    // Открываем сразу /checkout с уже известным тарифом и периодом (Custom Tabs,
+                    // не внешний браузер отдельным приложением — тот же приём, что для нативного
+                    // OAuth-логина, androidx.browser уже в зависимостях) — раньше кнопка вела на
+                    // общий /#/plans, откуда пользователь заново выбирал тариф на сайте, хотя
+                    // "Продлить" уже подразумевает именно текущий тариф на уже выбранный здесь
+                    // период. Сама оплата всё равно происходит на странице платёжного шлюза
+                    // (ЮKassa/Т-Банк/Robokassa/…) — приложение не участвует в передаче данных
+                    // карты. Без определённого текущего тарифа (например ещё не подгрузился
+                    // список) — прежнее поведение, общий /#/plans.
+                    val currentPlan = state.plans.firstOrNull { it.isCurrent }
+                    val checkoutUrl = if (currentPlan != null) {
+                        "https://gojihub.xyz/#/checkout?plan=${currentPlan.id}&defaultPeriod=${state.selectedMonths}&defaultPeriodUnit=${currentPlan.periodUnit}"
+                    } else {
+                        "https://gojihub.xyz/#/plans"
+                    }
+                    CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(checkoutUrl))
+                },
                 interactionSource = extendInteraction,
                 colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
                 shape = RoundedCornerShape(50),
