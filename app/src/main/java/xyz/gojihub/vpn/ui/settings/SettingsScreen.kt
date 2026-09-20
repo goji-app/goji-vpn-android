@@ -41,6 +41,7 @@ fun SettingsScreen(
     onOpenPingSettings: () -> Unit,
     onOpenLogLevel: () -> Unit,
     onOpenAppTunneling: () -> Unit,
+    onOpenSupport: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -138,6 +139,10 @@ fun SettingsScreen(
                     runCatching { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
                 }
             )
+        }
+
+        SettingsSection(Loc.s.support.settingsSupportTitle) {
+            SettingsLinkRow(title = Loc.s.support.settingsSupportLink, subtitle = Loc.s.support.settingsSupportLinkDesc, onClick = onOpenSupport)
         }
 
         SettingsSection(Loc.s.settingsAbout) {

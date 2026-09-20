@@ -1,5 +1,51 @@
 package xyz.gojihub.vpn.i18n
 
+/** Строки экранов поддержки (список обращений/новое обращение/чат/FAQ) — вынесены из
+ *  основного Strings в отдельный класс-параметр (см. комментарий у Strings.support), чтобы
+ *  не превышать жёсткий лимит JVM/DEX в 255 параметров у конструктора Strings. */
+data class SupportStrings(
+    val settingsSupportTitle: String,
+    val settingsSupportLink: String,
+    val settingsSupportLinkDesc: String,
+    val supportTitle: String,
+    val supportTabOpen: String,
+    val supportTabClosed: String,
+    val supportEmptyOpen: String,
+    val supportEmptyClosed: String,
+    val supportLoadError: String,
+    val supportRetry: String,
+    val supportNewTicket: String,
+    val supportLoadMore: String,
+    val supportFaqEntry: String,
+    val supportStatusOpen: String,
+    val supportStatusWaitingCustomer: String,
+    val supportStatusAwaitingReply: String,
+    val supportStatusOnHold: String,
+    val supportStatusClosed: String,
+    val supportNewTicketTitle: String,
+    val supportNewTicketQueueLabel: String,
+    val supportNewTicketSubjectLabel: String,
+    val supportNewTicketMessagePlaceholder: String,
+    val supportNewTicketSubmit: String,
+    val supportNewTicketMessageRequired: String,
+    val supportNewTicketQueueRequired: String,
+    val supportNewTicketLimitTitle: String,
+    val supportNewTicketLimitText: String,
+    val supportNewTicketLimitGoTo: String,
+    val supportNewTicketLimitClose: String,
+    val supportNewTicketError: String,
+    val supportChatInputPlaceholder: String,
+    val supportChatSendError: String,
+    val supportChatLoadError: String,
+    val supportChatClosedNotice: String,
+    val supportChatAttachment: (name: String) -> String,
+    val supportAttachMedia: String,
+    val supportAttachFile: String,
+    val supportAttachLogs: String,
+    val supportFaqTitle: String,
+    val supportFaqEmpty: String
+)
+
 /**
  * Весь текст интерфейса — захардкожен здесь как обычные Kotlin-строки (не strings.xml),
  * т.к. исторически весь UI и так был написан прямо в Composable-файлах литералами; заводить
@@ -276,7 +322,16 @@ data class Strings(
     val widgetConnect: String,
 
     // ── Прочее ──
-    val fallbackServerName: (n: Int) -> String
+    val fallbackServerName: (n: Int) -> String,
+
+    // ── Поддержка (собственная тикет-система бэкенда, /api/support/*) ──
+    // Вынесено в отдельный вложенный класс, а не 37 плоских полей прямо здесь — основной
+    // конструктор Strings уже был близко к жёсткому лимиту JVM/DEX в 255 параметров метода
+    // (constructor — тоже метод); ещё 37 полей переваливали за него и ронали верификацию
+    // байткода прямо на старте (VerifyError в <clinit>, живьём подтверждено на устройстве).
+    // Один параметр-объект вместо 37 отдельных — тот же приём на будущее для любых крупных
+    // новых разделов строк.
+    val support: SupportStrings
 ) {
     companion object {
         fun forLang(lang: AppLanguage): Strings = when (lang) {
@@ -538,7 +593,50 @@ data class Strings(
             widgetDisconnect = "Отключить",
             widgetConnect = "Подключить",
 
-            fallbackServerName = { n -> "Сервер $n" }
+            fallbackServerName = { n -> "Сервер $n" },
+
+            support = SupportStrings(
+                settingsSupportTitle = "Поддержка",
+                settingsSupportLink = "Написать в поддержку",
+                settingsSupportLinkDesc = "Обращения и переписка прямо в приложении",
+                supportTitle = "Поддержка",
+                supportTabOpen = "Открытые",
+                supportTabClosed = "История",
+                supportEmptyOpen = "Нет открытых обращений",
+                supportEmptyClosed = "Нет закрытых обращений",
+                supportLoadError = "Не удалось загрузить обращения",
+                supportRetry = "Повторить",
+                supportNewTicket = "Новое обращение",
+                supportLoadMore = "Показать ещё",
+                supportFaqEntry = "Часто задаваемые вопросы",
+                supportStatusOpen = "Открыто",
+                supportStatusWaitingCustomer = "Ожидаем ваш ответ",
+                supportStatusAwaitingReply = "Ожидаем ответ поддержки",
+                supportStatusOnHold = "В обработке",
+                supportStatusClosed = "Закрыто",
+                supportNewTicketTitle = "Новое обращение",
+                supportNewTicketQueueLabel = "Куда обратиться",
+                supportNewTicketSubjectLabel = "Тема (необязательно)",
+                supportNewTicketMessagePlaceholder = "Что случилось? Чем подробнее — тем быстрее поможем",
+                supportNewTicketSubmit = "Отправить",
+                supportNewTicketMessageRequired = "Введите сообщение",
+                supportNewTicketQueueRequired = "Выберите, куда задать вопрос",
+                supportNewTicketLimitTitle = "Уже есть активное обращение",
+                supportNewTicketLimitText = "Продолжите переписку в существующем обращении.",
+                supportNewTicketLimitGoTo = "Перейти к обращению",
+                supportNewTicketLimitClose = "Закрыть",
+                supportNewTicketError = "Не удалось создать обращение",
+                supportChatInputPlaceholder = "Сообщение…",
+                supportChatSendError = "Не удалось отправить сообщение",
+                supportChatLoadError = "Не удалось загрузить переписку",
+                supportChatClosedNotice = "Обращение закрыто",
+                supportChatAttachment = { name -> "📎 $name" },
+                supportAttachMedia = "Фото/видео",
+                supportAttachFile = "PDF-файл",
+                supportAttachLogs = "Логи приложения",
+                supportFaqTitle = "Частые вопросы",
+                supportFaqEmpty = "Пока нет вопросов"
+            )
         )
 
         val EN = Strings(
@@ -784,7 +882,50 @@ data class Strings(
             widgetDisconnect = "Disconnect",
             widgetConnect = "Connect",
 
-            fallbackServerName = { n -> "Server $n" }
+            fallbackServerName = { n -> "Server $n" },
+
+            support = SupportStrings(
+                settingsSupportTitle = "Support",
+                settingsSupportLink = "Contact support",
+                settingsSupportLinkDesc = "Tickets and chat right in the app",
+                supportTitle = "Support",
+                supportTabOpen = "Open",
+                supportTabClosed = "History",
+                supportEmptyOpen = "No open tickets",
+                supportEmptyClosed = "No closed tickets",
+                supportLoadError = "Failed to load tickets",
+                supportRetry = "Retry",
+                supportNewTicket = "New ticket",
+                supportLoadMore = "Show more",
+                supportFaqEntry = "Frequently asked questions",
+                supportStatusOpen = "Open",
+                supportStatusWaitingCustomer = "Waiting for your reply",
+                supportStatusAwaitingReply = "Waiting for support",
+                supportStatusOnHold = "In progress",
+                supportStatusClosed = "Closed",
+                supportNewTicketTitle = "New ticket",
+                supportNewTicketQueueLabel = "Where to ask",
+                supportNewTicketSubjectLabel = "Subject (optional)",
+                supportNewTicketMessagePlaceholder = "What happened? The more detail, the faster we can help",
+                supportNewTicketSubmit = "Send",
+                supportNewTicketMessageRequired = "Enter a message",
+                supportNewTicketQueueRequired = "Choose where to ask",
+                supportNewTicketLimitTitle = "You already have an active ticket",
+                supportNewTicketLimitText = "Continue the conversation in your existing ticket.",
+                supportNewTicketLimitGoTo = "Go to ticket",
+                supportNewTicketLimitClose = "Close",
+                supportNewTicketError = "Failed to create the ticket",
+                supportChatInputPlaceholder = "Message…",
+                supportChatSendError = "Failed to send the message",
+                supportChatLoadError = "Failed to load the conversation",
+                supportChatClosedNotice = "Ticket closed",
+                supportChatAttachment = { name -> "📎 $name" },
+                supportAttachMedia = "Photo/video",
+                supportAttachFile = "PDF file",
+                supportAttachLogs = "App logs",
+                supportFaqTitle = "FAQ",
+                supportFaqEmpty = "No questions yet"
+            )
         )
 
         val ZH = Strings(
@@ -1030,7 +1171,50 @@ data class Strings(
             widgetDisconnect = "断开",
             widgetConnect = "连接",
 
-            fallbackServerName = { n -> "服务器 $n" }
+            fallbackServerName = { n -> "服务器 $n" },
+
+            support = SupportStrings(
+            settingsSupportTitle = "客服支持",
+            settingsSupportLink = "联系客服",
+            settingsSupportLinkDesc = "在应用内直接查看工单和聊天",
+            supportTitle = "客服支持",
+            supportTabOpen = "进行中",
+            supportTabClosed = "历史记录",
+            supportEmptyOpen = "暂无进行中的工单",
+            supportEmptyClosed = "暂无历史工单",
+            supportLoadError = "加载工单失败",
+            supportRetry = "重试",
+            supportNewTicket = "新建工单",
+            supportLoadMore = "加载更多",
+            supportFaqEntry = "常见问题",
+            supportStatusOpen = "已开启",
+            supportStatusWaitingCustomer = "等待您的回复",
+            supportStatusAwaitingReply = "等待客服回复",
+            supportStatusOnHold = "处理中",
+            supportStatusClosed = "已关闭",
+            supportNewTicketTitle = "新建工单",
+            supportNewTicketQueueLabel = "选择部门",
+            supportNewTicketSubjectLabel = "主题（可选）",
+            supportNewTicketMessagePlaceholder = "发生了什么？描述越详细，我们帮您越快",
+            supportNewTicketSubmit = "发送",
+            supportNewTicketMessageRequired = "请输入消息",
+            supportNewTicketQueueRequired = "请选择咨询部门",
+            supportNewTicketLimitTitle = "您已有一个进行中的工单",
+            supportNewTicketLimitText = "请继续在现有工单中沟通。",
+            supportNewTicketLimitGoTo = "前往工单",
+            supportNewTicketLimitClose = "关闭",
+            supportNewTicketError = "创建工单失败",
+            supportChatInputPlaceholder = "输入消息…",
+            supportChatSendError = "消息发送失败",
+            supportChatLoadError = "加载对话失败",
+            supportChatClosedNotice = "工单已关闭",
+            supportChatAttachment = { name -> "📎 $name" },
+            supportAttachMedia = "照片/视频",
+            supportAttachFile = "PDF 文件",
+            supportAttachLogs = "应用日志",
+            supportFaqTitle = "常见问题",
+            supportFaqEmpty = "暂无问题"
+            )
         )
     }
 }

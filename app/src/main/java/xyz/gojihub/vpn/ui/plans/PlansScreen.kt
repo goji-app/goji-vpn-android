@@ -49,7 +49,7 @@ import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
-fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
+fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -239,7 +239,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                 deleteSupportOnly = state.devicesDeleteSupportOnly,
                 onRename = viewModel::renameDevice,
                 onDelete = viewModel::deleteDevice,
-                context = context
+                onOpenSupport = onOpenSupport
             )
         }
 
@@ -322,9 +322,7 @@ fun PlansScreen(viewModel: PlansViewModel = hiltViewModel()) {
                 .fillMaxWidth()
                 .scale(supportScale.value)
                 .godjiCard(tint = GodjiColors.TerracottaTint, borderColor = GodjiColors.TerracottaTintBorder)
-                .clickable(interactionSource = supportInteraction, indication = LocalIndication.current) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/support-chat")))
-                }
+                .clickable(interactionSource = supportInteraction, indication = LocalIndication.current, onClick = onOpenSupport)
                 .padding(13.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -392,7 +390,7 @@ private fun DevicesSection(
     deleteSupportOnly: Boolean,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
-    context: Context
+    onOpenSupport: () -> Unit
 ) {
     var renameTarget by remember { mutableStateOf<DeviceUi?>(null) }
     var deleteTarget by remember { mutableStateOf<DeviceUi?>(null) }
@@ -495,7 +493,7 @@ private fun DevicesSection(
             confirmButton = {
                 if (deleteSupportOnly) {
                     TextButton(onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/support-chat")))
+                        onOpenSupport()
                         deleteTarget = null
                     }) { Text(Loc.s.plansDevicesContactSupport) }
                 } else {

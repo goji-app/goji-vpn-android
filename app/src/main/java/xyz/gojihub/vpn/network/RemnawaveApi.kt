@@ -1,11 +1,15 @@
 package xyz.gojihub.vpn.network
 
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 import xyz.gojihub.vpn.network.models.*
@@ -88,4 +92,53 @@ interface RemnawaveApi {
 
     @DELETE("api/subscriptions/{id}/devices/{hwid}")
     suspend fun deleteDevice(@Path("id") id: Long, @Path("hwid") hwid: String): Response<Void>
+
+    // ── Поддержка (gojihub.xyz/api/support/*, customer-режим) ────────────
+    // Пути сверены с JS-бандлом веб-версии: у customer-роли префикс "/api/support" (у
+    // оператора — "/api/admin/support", у партнёра — "/api/partner-admin/support", это нам
+    // не подходит); customer видит только свои тикеты — сервер сам их фильтрует по сессии,
+    // отдельного query-параметра "мои" для этой роли нет (в отличие от оператора/партнёра).
+
+    @GET("api/support/tickets")
+    suspend fun getSupportTickets(
+        @Query("status") status: String,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): SupportTicketsResponse
+
+    @GET("api/support/tickets/{id}")
+    suspend fun getSupportTicket(@Path("id") ticketId: Long): SupportTicketDto
+
+    // Nullable, не List<> напрямую — тот же nil-срез-как-null бэкенда, что и у
+    // SupportTicketsResponse.tickets (подтверждено живым логом на пустом списке тикетов;
+    // здесь на всякий случай та же защита, реального теста на пустой список сообщений не было).
+    @GET("api/support/tickets/{id}/messages")
+    suspend fun getSupportMessages(@Path("id") ticketId: Long): List<SupportMessageDto>?
+
+    @POST("api/support/tickets")
+    suspend fun createSupportTicket(@Body body: CreateSupportTicketRequest): CreateSupportTicketResponse
+
+    @POST("api/support/tickets/{id}/messages")
+    suspend fun sendSupportMessage(@Path("id") ticketId: Long, @Body body: SendSupportMessageRequest): Response<Void>
+
+    // Тот же эндпоинт, что и sendSupportMessage выше, но multipart с вложениями — ровно
+    // fallback-путь веб-клиента (простой FormData: message + повторяющиеся files, без
+    // отдельного протокола init/finalize/abort для прогресс-бара по каждому файлу — тот
+    // сложнее и не нужен мобильному клиенту без пошагового прогресса закачки).
+    @Multipart
+    @POST("api/support/tickets/{id}/messages")
+    suspend fun sendSupportMessageWithFiles(
+        @Path("id") ticketId: Long,
+        @Part("message") message: RequestBody,
+        @Part files: List<MultipartBody.Part>
+    ): Response<Void>
+
+    @GET("api/support/ticket-limit")
+    suspend fun getSupportTicketLimit(): SupportTicketLimitResponse
+
+    @GET("api/support/queues")
+    suspend fun getSupportQueues(): List<SupportQueueDto>?
+
+    @GET("api/faq")
+    suspend fun getFaq(): FaqResponse
 }

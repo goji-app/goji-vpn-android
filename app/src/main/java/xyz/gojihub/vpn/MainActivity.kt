@@ -37,6 +37,10 @@ import xyz.gojihub.vpn.ui.settings.AppTunnelingScreen
 import xyz.gojihub.vpn.ui.settings.LogLevelScreen
 import xyz.gojihub.vpn.ui.settings.PingSettingsScreen
 import xyz.gojihub.vpn.ui.settings.SettingsScreen
+import xyz.gojihub.vpn.ui.support.FaqScreen
+import xyz.gojihub.vpn.ui.support.NewTicketScreen
+import xyz.gojihub.vpn.ui.support.SupportListScreen
+import xyz.gojihub.vpn.ui.support.TicketChatScreen
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
 import xyz.gojihub.vpn.ui.theme.ThemeMode
@@ -216,7 +220,7 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                 enterTransition = { EnterTransition.None },
                 exitTransition = { ExitTransition.None }
             ) {
-                PlansScreen()
+                PlansScreen(onOpenSupport = { navController.navigate(GodjiDestinations.SUPPORT_LIST) })
             }
             composable(
                 GodjiDestinations.SETTINGS,
@@ -231,8 +235,56 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                     },
                     onOpenPingSettings = { navController.navigate(GodjiDestinations.PING_SETTINGS) },
                     onOpenLogLevel = { navController.navigate(GodjiDestinations.LOG_LEVEL) },
-                    onOpenAppTunneling = { navController.navigate(GodjiDestinations.APP_TUNNELING) }
+                    onOpenAppTunneling = { navController.navigate(GodjiDestinations.APP_TUNNELING) },
+                    onOpenSupport = { navController.navigate(GodjiDestinations.SUPPORT_LIST) }
                 )
+            }
+            composable(
+                GodjiDestinations.SUPPORT_LIST,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) {
+                SupportListScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenTicket = { ticketId -> navController.navigate(GodjiDestinations.supportTicket(ticketId)) },
+                    onNewTicket = { navController.navigate(GodjiDestinations.SUPPORT_NEW) },
+                    onOpenFaq = { navController.navigate(GodjiDestinations.SUPPORT_FAQ) }
+                )
+            }
+            composable(
+                GodjiDestinations.SUPPORT_NEW,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) {
+                NewTicketScreen(
+                    onBack = { navController.popBackStack() },
+                    onCreated = { ticketId ->
+                        navController.navigate(GodjiDestinations.supportTicket(ticketId)) {
+                            popUpTo(GodjiDestinations.SUPPORT_LIST) { inclusive = false }
+                        }
+                    },
+                    onGoToTicket = { ticketId ->
+                        navController.navigate(GodjiDestinations.supportTicket(ticketId)) {
+                            popUpTo(GodjiDestinations.SUPPORT_LIST) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = GodjiDestinations.SUPPORT_TICKET,
+                arguments = listOf(navArgument("ticketId") { type = NavType.LongType }),
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) { backStackEntry ->
+                val ticketId = backStackEntry.arguments?.getLong("ticketId") ?: 0L
+                TicketChatScreen(ticketId = ticketId, onBack = { navController.popBackStack() })
+            }
+            composable(
+                GodjiDestinations.SUPPORT_FAQ,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) {
+                FaqScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 GodjiDestinations.PING_SETTINGS,
