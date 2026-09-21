@@ -245,7 +245,23 @@ class SubscriptionRepository @Inject constructor(
         }.getOrElse { emptyList() }
     }
 
-    /** Реальный формат: JSON-массив готовых профилей `{remarks, dns, routing, outbounds, ...}`. */
+    /** Протоколы, которые Xray-core (через libXray) умеет поднимать как proxy-outbound — тот
+     *  же список, что и в Windows-клиенте (см. SubscriptionService.ProxyProtocols там), и то же
+     *  разделение по формату settings ниже. TUIC сюда не входит — xray-core его не поддерживает
+     *  ни в каком виде, это отдельная, не связанная с этой правкой задача. */
+    private val proxyProtocols = setOf("vless", "vmess", "trojan", "shadowsocks", "hysteria")
+
+    /** Реальный формат: JSON-массив готовых профилей `{remarks, dns, routing, outbounds, ...}`.
+     *
+     *  Раньше здесь распознавался только формат settings.vnext (VLESS/VMess) — Trojan/
+     *  Shadowsocks/Hysteria-узлы от Remnawave молча пропадали из списка серверов ещё на этом
+     *  этапе парсинга, хотя establishTunnel() передаёт весь profile.toString() как есть и
+     *  Xray-core прекрасно умеет их поднимать (сам движок тут ни при чём — это чисто клиентский
+     *  парсинг списка для UI/пинга). Три разные структуры settings:
+     *   - VLESS/VMess: settings.vnext[0] (адрес+порт+users[].id — отдельный UUID клиента);
+     *   - Trojan/Shadowsocks: settings.servers[0] (адрес+порт+пароль/метод, без UUID);
+     *   - Hysteria (v2): settings.address/settings.port ПРЯМО в settings (не в массиве), пароль
+     *     — отдельно, в streamSettings.hysteriaSettings.auth, для списка серверов не нужен. */
     private fun parseJsonProfiles(raw: String): List<VlessNode>? = runCatching {
         val array = JSONArray(raw.trim())
         (0 until array.length()).mapNotNull { index ->
@@ -253,12 +269,36 @@ class SubscriptionRepository @Inject constructor(
             val outbounds = profile.optJSONArray("outbounds") ?: return@mapNotNull null
             val proxyOutbound = (0 until outbounds.length())
                 .map { outbounds.getJSONObject(it) }
-                .firstOrNull { it.optJSONObject("settings")?.optJSONArray("vnext") != null }
+                .firstOrNull { ob ->
+                    ob.optString("protocol") in proxyProtocols &&
+                        ob.optJSONObject("settings")?.let { s ->
+                            s.optJSONArray("vnext") != null || s.optJSONArray("servers") != null || s.has("address")
+                        } == true
+                }
                 ?: return@mapNotNull null
-            val vnext = proxyOutbound.getJSONObject("settings").getJSONArray("vnext").getJSONObject(0)
-            val host = vnext.optString("address").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            val port = vnext.optInt("port").takeIf { it > 0 } ?: 443
-            val uuid = vnext.optJSONArray("users")?.optJSONObject(0)?.optString("id")?.takeIf { it.isNotBlank() }
+            val settings = proxyOutbound.getJSONObject("settings")
+            val vnext = settings.optJSONArray("vnext")?.optJSONObject(0)
+            val server = settings.optJSONArray("servers")?.optJSONObject(0)
+            val host: String
+            val port: Int
+            val uuid: String?
+            when {
+                vnext != null -> {
+                    host = vnext.optString("address").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    port = vnext.optInt("port").takeIf { it > 0 } ?: 443
+                    uuid = vnext.optJSONArray("users")?.optJSONObject(0)?.optString("id")?.takeIf { it.isNotBlank() }
+                }
+                server != null -> {
+                    host = server.optString("address").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    port = server.optInt("port").takeIf { it > 0 } ?: 443
+                    uuid = null
+                }
+                else -> {
+                    host = settings.optString("address").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    port = settings.optInt("port").takeIf { it > 0 } ?: 443
+                    uuid = null
+                }
+            }
             val remark = profile.optString("remarks").takeIf { it.isNotBlank() } ?: Loc.s.fallbackServerName(index + 1)
             VlessNode(
                 id = index.toString(),
