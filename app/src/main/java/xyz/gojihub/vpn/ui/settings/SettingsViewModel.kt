@@ -97,10 +97,15 @@ class SettingsViewModel @Inject constructor(
         // libXray.invoke() в этой сборке AAR поддерживает только 8 методов (runXray, testXray,
         // pingBatch, getFreePorts, countGeoData, generateAgeKeyPair, convertShareLinksToXrayJson,
         // convertXrayJsonToShareLinks) — метода "версия ядра" среди них нет, поэтому его нельзя
-        // спросить в рантайме. Версия взята из строки внутри самого нативного .so ("REALITY: the
-        // default minimal client version is Xray-core vX.Y.Z", которую xray-core формирует из
-        // своей же core.Version()) — при обновлении libs/libXray.aar нужно обновить и эту константу.
-        const val BUNDLED_XRAY_VERSION = "v26.3.27"
+        // спросить в рантайме. До v26.9.9 версию можно было вытащить строкой из самого нативного
+        // .so ("REALITY: the default minimal client version is Xray-core vX.Y.Z", которую
+        // xray-core формировал из своей же core.Version()) — начиная с этого AAR (обновление
+        // XTLS/libXray "Updated Xray-core to v26.9.9 and refreshed dependencies") эта строка из
+        // бинарника пропала (grep по libgojni.so на "Xray-core" не находит ничего), так что
+        // источник версии теперь — только release notes XTLS/libXray на момент замены AAR.
+        // При следующем обновлении libs/libXray.aar сверяться с https://github.com/XTLS/libXray/releases
+        // и обновлять эту константу вручную.
+        const val BUNDLED_XRAY_VERSION = "v26.9.9"
     }
 
     fun setPinNotification(pinned: Boolean) {
