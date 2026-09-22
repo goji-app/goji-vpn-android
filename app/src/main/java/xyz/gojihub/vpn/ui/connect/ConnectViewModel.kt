@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import xyz.gojihub.vpn.geo.CountryGeo
@@ -165,7 +166,17 @@ class ConnectViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            networkMonitor.state.collect { net -> onNetworkChanged(net) }
+            // NetworkMonitor.onLost() безусловно обнуляет и hasWifi, и hasCellular в момент,
+            // когда система на мгновение теряет текущую default-сеть — а это штатно случается
+            // при роуминге между точками Wi-Fi, обновлении DHCP-адреса, повторной проверке
+            // captive portal, пробуждении экрана: не только при реальном отсутствии связи.
+            // recompute() в этот момент попадает в ветку JAMMED (её "else" означает буквально
+            // "нет default-сети прямо сейчас", а не "сотовая сеть заглушена"), и без дебаунса
+            // ниже WIFI -> JAMMED -> WIFI за доли секунды успевало реально переключить узел на
+            // российский и показать баннер "Глушат мобильную", хотя пользователь всё это время
+            // был на стабильном Wi-Fi. 1с — с запасом больше типичной вспышки при роуминге/DHCP,
+            // но пренебрежимо мало по сравнению с реальным затягиванием при настоящем глушении.
+            networkMonitor.state.debounce(1000L).collect { net -> onNetworkChanged(net) }
         }
     }
 
