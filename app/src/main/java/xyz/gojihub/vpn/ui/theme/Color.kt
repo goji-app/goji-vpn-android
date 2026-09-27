@@ -88,11 +88,11 @@ object GodjiColors {
     // не требуя реального сэмплинга фона.
     var GlassTint by mutableStateOf(Color(0xFFFFFFFF))
     var GlassTintAlpha by mutableStateOf(0.55f)
-    var GlassHighlight by mutableStateOf(Color(0x99FFFFFF))
+    var GlassHighlight by mutableStateOf(Color(0x4DFFFFFF))
     var GlassHighlightFade by mutableStateOf(Color(0x00FFFFFF))
-    var GlassStroke by mutableStateOf(Color(0x66FFFFFF))
-    var GlassStrokeFade by mutableStateOf(Color(0x14FFFFFF))
-    var GlassShadow by mutableStateOf(Color(0x1F503320))
+    var GlassStroke by mutableStateOf(Color(0x40FFFFFF))
+    var GlassStrokeFade by mutableStateOf(Color(0x0AFFFFFF))
+    var GlassShadow by mutableStateOf(Color(0x14503320))
 
     fun applyLight() {
         isDark = false
@@ -109,9 +109,9 @@ object GodjiColors {
         ButtonBorder = Color(0xFFD8CFB8); Chip = Color(0xFFECE5DA); TrackBg = Color(0xFFECE5DA)
         BorderTeal = Color(0x2600875A); Purple = Color(0xFF00838F)
         GlassTint = Color(0xFFFFFFFF); GlassTintAlpha = 0.55f
-        GlassHighlight = Color(0xCCFFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
-        GlassStroke = Color(0xB3FFFFFF); GlassStrokeFade = Color(0x1FFFFFFF)
-        GlassShadow = Color(0x1F503320)
+        GlassHighlight = Color(0x4DFFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
+        GlassStroke = Color(0x40FFFFFF); GlassStrokeFade = Color(0x0AFFFFFF)
+        GlassShadow = Color(0x14503320)
     }
 
     fun applyDark() {
@@ -132,8 +132,8 @@ object GodjiColors {
         ButtonBorder = Color(0xFF2E363B); Chip = Color(0xFF181C21); TrackBg = Color(0xFF262A30)
         BorderTeal = Color(0x2600F5A0); Purple = Color(0xFF00D2FF)
         GlassTint = Color(0xFF1E242B); GlassTintAlpha = 0.62f
-        GlassHighlight = Color(0x40FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
-        GlassStroke = Color(0x38FFFFFF); GlassStrokeFade = Color(0x08FFFFFF)
-        GlassShadow = Color(0x40000000)
+        GlassHighlight = Color(0x24FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
+        GlassStroke = Color(0x22FFFFFF); GlassStrokeFade = Color(0x05FFFFFF)
+        GlassShadow = Color(0x2E000000)
     }
 }

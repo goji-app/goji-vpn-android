@@ -15,6 +15,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,12 +85,21 @@ class MainActivity : ComponentActivity() {
  *  переключением только по тапу на NavigationBarItem. Теперь — одна и та же вкладка/индекс
  *  страницы что для тапа по нижней панели, что для свайпа пальцем по контенту (HorizontalPager
  *  из коробки поддерживает drag) — оба способа переключения читают/двигают один и тот же
- *  PagerState, так что рассинхронизации между ними в принципе не может быть. */
-private enum class GodjiTab(val label: () -> String, val icon: String) {
-    CONNECT({ Loc.s.tabHome }, "🏠"),
-    SERVERS({ Loc.s.tabServers }, "🌐"),
-    PLANS({ Loc.s.tabPlans }, "💳"),
-    SETTINGS({ Loc.s.tabSettings }, "⚙️"),
+ *  PagerState, так что рассинхронизации между ними в принципе не может быть.
+ *
+ *  Иконки — векторные (Filled/Outlined из material-icons-extended), не эмодзи: цветные эмодзи
+ *  (🏠🌐💳⚙️) в нижней панели были самым "не-Apple" элементом при переходе к минималистичной
+ *  премиум-эстетике (правка "минимализм/премиум", тот же день) — выбранная вкладка рисуется
+ *  Filled-версией, невыбранная — Outlined, вместо смены цвета/эмодзи. */
+private enum class GodjiTab(
+    val label: () -> String,
+    val iconSelected: androidx.compose.ui.graphics.vector.ImageVector,
+    val iconUnselected: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    CONNECT({ Loc.s.tabHome }, Icons.Filled.Shield, Icons.Outlined.Shield),
+    SERVERS({ Loc.s.tabServers }, Icons.Filled.Public, Icons.Outlined.Public),
+    PLANS({ Loc.s.tabPlans }, Icons.Filled.CreditCard, Icons.Outlined.CreditCard),
+    SETTINGS({ Loc.s.tabSettings }, Icons.Filled.Settings, Icons.Outlined.Settings),
 }
 
 @Composable
@@ -348,7 +366,12 @@ private fun GlassTabBar(
                         .padding(horizontal = 14.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(tab.icon, fontSize = 19.sp, modifier = Modifier.scale(scale))
+                    Icon(
+                        imageVector = if (selected) tab.iconSelected else tab.iconUnselected,
+                        contentDescription = tab.label(),
+                        tint = if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary,
+                        modifier = Modifier.size(22.dp).scale(scale)
+                    )
                 }
                 Text(
                     tab.label(),

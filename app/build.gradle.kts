@@ -23,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 60
-        versionName = "1.0.78"
+        versionCode = 61
+        versionName = "1.0.79"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
@@ -125,6 +125,11 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+    // Редизайн "минимализм/премиум/Apple-style" (2026-09-28) — тонкие векторные иконки вместо
+    // цветных эмодзи в нижней навигации (🏠🌐💳⚙️). Core-набора не хватает (Public/CreditCard
+    // там нет) — extended тянет тысячи иконок, но R8 (isMinifyEnabled+isShrinkResources уже
+    // включены) вырезает неиспользуемые, реальный прирост APK — только те 4 иконки, что рисуются.
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
