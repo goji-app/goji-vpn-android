@@ -3,6 +3,13 @@ package xyz.gojihub.vpn.ui.navigation
 object GodjiDestinations {
     const val LOGIN = "login"
     const val VERIFY_EMAIL = "verify_email/{email}"
+    // До редизайна "Apple Glass" (2026-09-28) это были 4 независимых NavHost-назначения —
+    // теперь это одна страница MAIN, внутри которой HorizontalPager листает те же 4 экрана как
+    // страницы (см. MainActivity.GodjiApp/MainTabsScreen). CONNECT/SERVERS/PLANS/SETTINGS
+    // оставлены как есть (не route, а просто стабильные ID вкладок) — используются как индексы
+    // в GodjiTab и там, где раньше был navController.navigate(SERVERS) и т.п., теперь
+    // pagerState.animateScrollToPage(GodjiTab.entries.indexOf(...)).
+    const val MAIN = "main"
     const val CONNECT = "connect"
     const val SERVERS = "servers"
     const val PLANS = "plans"
