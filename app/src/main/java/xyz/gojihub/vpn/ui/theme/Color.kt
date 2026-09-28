@@ -76,24 +76,6 @@ object GodjiColors {
     var BorderTeal by mutableStateOf(Color(0x2600875A))
     var Purple by mutableStateOf(Color(0xFF00838F))
 
-    // ── "Apple Glass" (Liquid Glass) — редизайн 2026-09-28 ──────────────────────────────
-    // Настоящий backdrop-blur (сэмплинг того, что реально находится позади поверхности)
-    // на Compose требует RenderEffect с захватом графического слоя (API 31+, плюс отдельная
-    // прокладка через GraphicsLayer.record для КАЖДОЙ стеклянной поверхности) — сознательно
-    // не стали тащить это ради стабильности на minSdk 24 и предсказуемой производительности
-    // при частой перерисовке (глобус, счётчики скорости). Вместо этого — тот же приём, что
-    // уже был у тёмной темы карточек (полупрозрачная заливка + верхний specular-блик
-    // градиентом), но усиленный и одинаковый в обеих темах: выше прозрачность, мягче тень,
-    // более контрастный блик по верхней кромке — визуально читается как настоящее стекло,
-    // не требуя реального сэмплинга фона.
-    var GlassTint by mutableStateOf(Color(0xFFFFFFFF))
-    var GlassTintAlpha by mutableStateOf(0.55f)
-    var GlassHighlight by mutableStateOf(Color(0x4DFFFFFF))
-    var GlassHighlightFade by mutableStateOf(Color(0x00FFFFFF))
-    var GlassStroke by mutableStateOf(Color(0x40FFFFFF))
-    var GlassStrokeFade by mutableStateOf(Color(0x0AFFFFFF))
-    var GlassShadow by mutableStateOf(Color(0x14503320))
-
     fun applyLight() {
         isDark = false
         Background = Color(0xFFF4EFE6); Surface = Color(0xFFFFFFFF); SurfaceGlass = Color(0xFFFAF7F2)
@@ -108,10 +90,6 @@ object GodjiColors {
         CardBorder = Color(0xFFECE5DA); CardBorderStrong = Color(0xFFE4DCC8)
         ButtonBorder = Color(0xFFD8CFB8); Chip = Color(0xFFECE5DA); TrackBg = Color(0xFFECE5DA)
         BorderTeal = Color(0x2600875A); Purple = Color(0xFF00838F)
-        GlassTint = Color(0xFFFFFFFF); GlassTintAlpha = 0.55f
-        GlassHighlight = Color(0x4DFFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
-        GlassStroke = Color(0x40FFFFFF); GlassStrokeFade = Color(0x0AFFFFFF)
-        GlassShadow = Color(0x14503320)
     }
 
     fun applyDark() {
@@ -131,9 +109,5 @@ object GodjiColors {
         CardBorder = Color(0xFF262C31); CardBorderStrong = Color(0xFF303840)
         ButtonBorder = Color(0xFF2E363B); Chip = Color(0xFF181C21); TrackBg = Color(0xFF262A30)
         BorderTeal = Color(0x2600F5A0); Purple = Color(0xFF00D2FF)
-        GlassTint = Color(0xFF1E242B); GlassTintAlpha = 0.62f
-        GlassHighlight = Color(0x24FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
-        GlassStroke = Color(0x22FFFFFF); GlassStrokeFade = Color(0x05FFFFFF)
-        GlassShadow = Color(0x2E000000)
     }
 }
