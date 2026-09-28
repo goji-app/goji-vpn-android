@@ -12,4 +12,5 @@ import androidx.compose.runtime.setValue
 object Loc {
     var lang by mutableStateOf(AppLanguage.RU)
     val s: Strings get() = Strings.forLang(lang)
+    val f: FeatureStrings get() = FeatureStrings.forLang(lang)
 }

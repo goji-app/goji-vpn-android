@@ -36,6 +36,7 @@ import xyz.gojihub.vpn.update.UpdateCheckWorker
 import xyz.gojihub.vpn.util.AppLogger
 import xyz.gojihub.vpn.vpn.GeoAssets
 import xyz.gojihub.vpn.vpn.GodjiVpnService
+import xyz.gojihub.vpn.vpn.VpnStateObserver
 import xyz.gojihub.vpn.vpn.geo.GeoDataDownloader
 import xyz.gojihub.vpn.vpn.geo.GeoDataRefreshWorker
 import xyz.gojihub.vpn.vpn.geo.MobileWhitelistDownloader
@@ -49,6 +50,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var subscriptionRepository: SubscriptionRepository
+    @Inject lateinit var vpnStateObserver: VpnStateObserver
 
     @Volatile private var lastForegroundRefreshAt = 0L
 
@@ -97,6 +99,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             Loc.lang = settingsRepository.appLanguageNow()
             AppLogger.level = settingsRepository.logLevelNow()
         }
+        vpnStateObserver.start()
         schedulePeriodicRefresh()
         scheduleGeoDataRefresh()
         scheduleMobileWhitelistRefresh()

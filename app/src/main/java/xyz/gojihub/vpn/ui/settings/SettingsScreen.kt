@@ -141,6 +141,8 @@ fun SettingsScreen(
             Hair()
             ToggleRow(Loc.s.settingsKillSwitch, Loc.s.settingsKillSwitchDesc, state.killSwitch, viewModel::setKillSwitch)
             Hair()
+            ToggleRow(Loc.f.hapticsTitle, Loc.f.hapticsDesc, state.haptics, viewModel::setHaptics)
+            Hair()
             LinkRow(Loc.s.settingsAppTunneling, Loc.s.settingsAppTunnelingDesc, onOpenAppTunneling)
             Hair()
             // Программно включить Always-on VPN нельзя — ограничение Android; открываем

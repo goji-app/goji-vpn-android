@@ -40,6 +40,7 @@ data class SettingsUiState(
     val fontSize: FontSizePreset = FontSizePreset.NORMAL,
     val autoConnectOnWifi: Boolean = false,
     val killSwitch: Boolean = false,
+    val haptics: Boolean = true,
     val pingMethod: PingMethod = PingMethod.PROXY_GET,
     val pingTestUrl: String = SettingsRepository.DEFAULT_PING_URL,
     val logLevel: LogLevel = LogLevel.DEBUG,
@@ -83,6 +84,7 @@ class SettingsViewModel @Inject constructor(
                 fontSize = settingsRepository.fontSizeNow(),
                 autoConnectOnWifi = settingsRepository.autoConnectOnWifi.first(),
                 killSwitch = settingsRepository.killSwitchEnabled.first(),
+                haptics = settingsRepository.hapticsEnabled.first(),
                 logLevel = settingsRepository.logLevelNow(),
                 hwid = subscriptionRepository.hwidNow()
             )
@@ -150,6 +152,11 @@ class SettingsViewModel @Inject constructor(
     fun setKillSwitch(enabled: Boolean) {
         _state.value = _state.value.copy(killSwitch = enabled)
         viewModelScope.launch { settingsRepository.setKillSwitchEnabled(enabled) }
+    }
+
+    fun setHaptics(enabled: Boolean) {
+        _state.value = _state.value.copy(haptics = enabled)
+        viewModelScope.launch { settingsRepository.setHapticsEnabled(enabled) }
     }
 
     fun setPingMethod(method: PingMethod) {

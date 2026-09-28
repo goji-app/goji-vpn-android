@@ -36,6 +36,7 @@ class GodjiVpnService : VpnService() {
         const val SOCKS_PORT = 10808
 
         val isRunning = MutableStateFlow(false)
+        val isConnecting = MutableStateFlow(false)
         val lastError = MutableStateFlow<String?>(null)
         val actualCountry = MutableStateFlow<String?>(null)
         val connectedSinceMillis = MutableStateFlow<Long?>(null)

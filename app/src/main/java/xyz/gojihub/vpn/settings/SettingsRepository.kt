@@ -55,6 +55,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val perAppProxyModeKey = stringPreferencesKey("per_app_proxy_mode")
     private val perAppProxyPackagesKey = stringSetPreferencesKey("per_app_proxy_packages")
     private val favoriteServerIdsKey = stringSetPreferencesKey("favorite_server_ids")
+    private val hapticsKey = booleanPreferencesKey("haptics_enabled")
 
     val preferredNodeId: Flow<String?> = context.dataStore.data.map { it[preferredNodeKey] }
 
@@ -171,6 +172,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             val current = prefs[favoriteServerIdsKey] ?: emptySet()
             prefs[favoriteServerIdsKey] = if (id in current) current - id else current + id
         }
+    }
+
+    /** Короткая вибрация при подключении/отключении VPN (см. VpnStateObserver) — по
+     *  умолчанию включена. */
+    val hapticsEnabled: Flow<Boolean> = context.dataStore.data.map { it[hapticsKey] ?: true }
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[hapticsKey] = enabled }
     }
 
     companion object {
