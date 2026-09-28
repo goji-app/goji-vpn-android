@@ -3,12 +3,20 @@ package xyz.gojihub.vpn.ui.login
 import android.content.Intent
 import android.net.Uri
 import xyz.gojihub.vpn.auth.WebLoginActivity
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Constraints
+import xyz.gojihub.vpn.R
+import xyz.gojihub.vpn.ui.theme.godjiGlassPill
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.scale
 import xyz.gojihub.vpn.ui.util.rememberPressScale
@@ -55,21 +63,43 @@ fun LoginScreen(
     }
 
     GlassBackdrop {
-        // Глобус во весь экран фоном — как в макете, без карточки-обрамления. Спутники
-        // (GLOBE.md §7) — только на этом экране.
-        GojiGlobe(status = "off", node = null, satellites = true, modifier = Modifier.fillMaxSize())
+      // Эталон: колонка padding 16/18/20, gap 12 — плашка "Goji", глобус со спутниками
+      // (flex:1, min-height 250, холст вынесен на −20dp по вертикали и −18dp по бокам),
+      // стеклянный лист снизу.
+      Column(
+        Modifier.fillMaxSize().padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+      ) {
+        Row(
+            Modifier.godjiGlassPill().padding(start = 5.dp, top = 5.dp, end = 13.dp, bottom = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Box(Modifier.size(30.dp).clip(CircleShape).background(GodjiColors.Ink), contentAlignment = Alignment.Center) {
+                Image(painterResource(R.drawable.ic_notification), contentDescription = null, modifier = Modifier.size(19.dp))
+            }
+            Text("Goji", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+
+        Box(Modifier.fillMaxWidth().weight(1f).heightIn(min = 250.dp)) {
+            GojiGlobe(
+                status = "off", node = null, satellites = true,
+                modifier = Modifier.layout { measurable, constraints ->
+                    val dx = 18.dp.roundToPx()
+                    val dy = 20.dp.roundToPx()
+                    val placeable = measurable.measure(
+                        Constraints.fixed(constraints.maxWidth + dx * 2, constraints.maxHeight + dy * 2)
+                    )
+                    layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(-dx, -dy) }
+                }
+            )
+        }
 
         // verticalScroll — на невысоких экранах (особенно в режиме email с показанной
-        // ошибкой) весь этот блок не помещается по высоте; так как колонка прижата к низу
-        // экрана, без скролла верхняя часть (заголовок, баннер "Впервые здесь?") просто
-        // уезжала за пределы экрана вверх без возможности прокрутки к ней.
-        // Стеклянный лист снизу (godjiGlassStrong) — как в эталоне, вместо текста, лежащего
-        // прямо на фоне без собственной подложки.
+        // ошибкой) лист не помещается по высоте целиком.
         Column(
             Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .godjiGlassStrong(RoundedCornerShape(32.dp))
                 .padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 16.dp)
                 .verticalScroll(rememberScrollState()),
@@ -196,5 +226,6 @@ fun LoginScreen(
                 )
             }
         }
+      }
     }
 }

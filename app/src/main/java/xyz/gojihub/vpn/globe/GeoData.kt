@@ -10,8 +10,7 @@ class GeoData(
     val coastLines: FloatArray,   // vec3-тройки, по 2 вершины на отрезок — для GL_LINES
     val borderLines: FloatArray,  // то же для государственных границ
     val countryRings: Map<String, List<FloatArray>>, // properties.name -> кольца (vec3 по GL_LINE_LOOP)
-    // Те же кольца, но в исходных (lon, lat) — для Triangulator.earClip (заливка страны):
-    // плоская 2D-триангуляция по долготе/широте, не по проекции на сферу, см. комментарий там.
+    // Те же кольца в исходных (lon, lat) — контур подсветки строится из них на своём радиусе (R·1.014).
     val countryRingsLonLat: Map<String, List<DoubleArray>>
 ) {
     companion object {

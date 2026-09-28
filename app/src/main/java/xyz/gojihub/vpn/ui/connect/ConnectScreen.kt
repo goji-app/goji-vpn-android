@@ -47,6 +47,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
@@ -115,16 +117,17 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
             .fillMaxSize()
             .background(GodjiColors.Background)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp, 16.dp, 16.dp, 8.dp),
+            .padding(16.dp, 14.dp, 16.dp, 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        // z-index:2 в эталоне — шапка лежит поверх верхнего края глобуса (он заходит под неё на 24dp).
+        Row(Modifier.fillMaxWidth().zIndex(2f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier
                     .godjiGlassPill()
                     .padding(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(Modifier.size(28.dp).clip(CircleShape).background(GodjiColors.Ink), contentAlignment = Alignment.Center) {
                     Image(painterResource(R.drawable.ic_notification), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -223,14 +226,20 @@ private fun dotColor(s: ConnectUiState) = when {
 
 @Composable
 private fun GlobeCard(state: ConnectUiState) {
+    // Эталон: height:430px; margin:-24px -60px -20px — блок 430dp, но в раскладке занимает
+    // 430−24−20 = 386dp (заходит на 24dp под шапку и на 20dp под кнопку), по ширине — +60dp с
+    // каждой стороны. Прозрачный холст: вокруг сферы виден общий фон.
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
-            .height(430.dp)
-            .offset(y = (-24).dp)
+            .layout { measurable, constraints ->
+                val full = 430.dp.roundToPx()
+                val top = 24.dp.roundToPx()
+                val bottom = 20.dp.roundToPx()
+                val placeable = measurable.measure(constraints.copy(minHeight = full, maxHeight = full))
+                layout(placeable.width, full - top - bottom) { placeable.place(0, -top) }
+            }
     ) {
-        // Глобус выходит за края экрана (шире карточки на 120dp) — как в эталоне, без
-        // карточки-обрамления вокруг него.
         GojiGlobe(
             status = state.globeStatus,
             node = state.globeNode,
