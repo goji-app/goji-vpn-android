@@ -18,6 +18,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import kotlin.random.Random
 
 data class GlobeNode(val id: String, val lat: Double, val lon: Double, val country: String)
 
@@ -54,6 +55,7 @@ data class GlobeTheme(
 
 private val HOME_LAT = 55.75
 private val HOME_LON = 37.62
+private const val STREAM = 9
 
 private const val VS = """
     uniform mat4 uMVP;
@@ -75,6 +77,7 @@ private const val VS = """
 // "Кометный" блик вместо симметричной синусоиды: яркая голова ровно в uShimmerTime и
 // экспоненциально затухающий хвост позади неё (mod заворачивает дистанцию по кругу вдоль
 // дуги) — читается как бегущий пакет данных с шлейфом, а не просто пятно света туда-сюда.
+// GLOBE.md §3: glow уменьшен множителем ×0.35 — раньше пик блика почти перебивал цвет линии.
 private const val FS = """
     precision mediump float;
     uniform vec4 uColor;
@@ -85,13 +88,21 @@ private const val FS = """
     void main() {
         if (uShimmer > 0.5) {
             float behind = mod(uShimmerTime - vT, 1.0);
-            float glow = exp(-behind * 9.0);
+            float glow = exp(-behind * 9.0) * 0.35;
             gl_FragColor = vec4(mix(uColor.rgb, uHighlight, glow), uColor.a * (0.55 + 0.45 * glow));
         } else {
             gl_FragColor = uColor;
         }
     }
 """
+
+/** Один спутник орбитальной группы (GLOBE.md §7) — статичные параметры орбиты, сгенерированные
+ *  один раз при создании поверхности; сама орбита не вращается вместе с глобусом. */
+private class SatelliteSpec(
+    val r: Float, val planeRotX: Float, val planeRotY: Float, val planeRotZ: Float,
+    var angle: Float, val speed: Float, val phase: Float, val scale: Float,
+    val blinkRed: Boolean, val drawOrbitRing: Boolean
+)
 
 class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme = GlobeTheme.Light) : GLSurfaceView.Renderer {
 
@@ -102,6 +113,9 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
 
     @Volatile var status: String = "off"
     @Volatile var currentNode: GlobeNode? = null
+
+    /** GLOBE.md §7 — спутники показываются только на экране входа (LoginScreen передаёт true). */
+    @Volatile var satellites: Boolean = false
 
     /** Экранные координаты (0..1 от размера вьюпорта) и видимость плавающей подписи узла. */
     var onLabelUpdate: ((visible: Boolean, x: Float, y: Float, title: String) -> Unit)? = null
@@ -133,12 +147,16 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
     private lateinit var pinBuf: FloatBuffer // единичная сфера (r=1), масштабируется матрицей модели
     private var pinLatSeg = 6
     private var pinBandVerts = 0
-    private lateinit var ringBuf: FloatBuffer
-    private var ringVerts = 0
+    private lateinit var annulusBuf: FloatBuffer // залитое кольцо (0.038–0.044) для маркера узла — GLOBE.md §2
+    private var annulusVerts = 0
+    private lateinit var unitCircleBuf: FloatBuffer // единичная окружность (r=1) — орбиты спутников, масштабируется
+    private var unitCircleVerts = 0
     private lateinit var graticuleBuf: FloatBuffer // сетка параллелей/меридианов — доп. детализация
     private var graticuleVerts = 0
     private lateinit var glowDiskBuf: FloatBuffer // залитый круг (r=1) для внешнего "атмосферного" ободка
     private var glowDiskVerts = 0
+
+    private val satelliteSpecs = ArrayList<SatelliteSpec>()
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -198,9 +216,12 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         pinBandVerts = (pinLonSeg + 1) * 2
         pinBuf = buildSphere(1f, pinLonSeg, pinLatSeg)
 
-        ringBuf = buildRingLine(0.065f, 40).also { ringVerts = it.capacity() / 3 }
+        annulusBuf = buildAnnulus(0.038f, 0.044f, 40)
+        unitCircleBuf = buildRingLine(1f, 96).also { unitCircleVerts = it.capacity() / 3 }
         graticuleBuf = buildGraticule()
         glowDiskBuf = buildDisk(48)
+
+        buildSatellites()
 
         // Гео-данные грузим асинхронно и заливаем в GL на следующем кадре (см. onDrawFrame).
         pendingGeoLoad = true
@@ -267,12 +288,18 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             lastStatus = status; lastNodeId = node?.id
         }
 
+        // GLOBE.md §5 — доворот по Y кратчайшим путём: без этого при пересечении границы ±π
+        // глобус проворачивался "в обход", а не по короткой дуге.
+        fun wrapY(): Float {
+            val d = targetY - rotY
+            return d - Math.round(d / (2 * PI)).toFloat() * (2 * PI).toFloat()
+        }
         if (on) {
-            val dy = targetY - rotY; val dx = targetX - rotX
+            val dy = wrapY(); val dx = targetX - rotX
             if (abs(dy) < 0.002f && abs(dx) < 0.002f) locked = true
             if (!locked) { rotY += dy * 0.06f; rotX += dx * 0.06f }
         } else if (connecting) {
-            rotY += (targetY - rotY) * 0.05f + 0.001f
+            rotY += wrapY() * 0.05f
             rotX += (targetX - rotX) * 0.05f
         } else {
             rotY += 0.0013f
@@ -330,46 +357,77 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         // экранах даже при альфе, близкой к 1.0.
         coastBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 1f) }
         borderBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 0.8f) }
-        // подсветка страны назначения — сперва мягкая заливка территории, поверх неё чёткий контур
+
+        // подсветка страны назначения — сперва мягкая заливка территории (наша собственная
+        // добавка поверх эталона), поверх неё контур в ДВА прохода как в GLOBE.md §4: широкая
+        // тусклая "глоу"-линия снизу + узкая яркая "ядро"-линия сверху (в оригинале — два
+        // TubeGeometry разной толщины 0.016/0.0055; здесь имитируем толщину экранным пиксельным
+        // офсетом, как и берега/границы).
         highlightFillBuf?.let { if (highlightFillVerts > 0) drawFill(it, highlightFillVerts, theme.hi, if (on) 0.22f else 0.12f) }
-        highlightBuf?.let { if (highlightVerts > 0) drawThickLine(it, highlightVerts, GLES20.GL_LINES, theme.hi, if (on) 1f else 0.45f + 0.25f * sin(t * 4), pixelRadius = 1.6f) }
+        highlightBuf?.let { buf ->
+            if (highlightVerts > 0) {
+                val glowAlpha = (if (on) 0.3f else 0.15f) + 0.1f * sin(t * 2.2f)
+                val coreAlpha = if (on) 1f else 0.5f + 0.3f * sin(t * 4f)
+                drawThickLine(buf, highlightVerts, GLES20.GL_LINES, theme.hi, glowAlpha.coerceIn(0f, 1f), pixelRadius = 4.5f)
+                drawThickLine(buf, highlightVerts, GLES20.GL_LINES, theme.hi, coreAlpha.coerceIn(0f, 1f), pixelRadius = 1.4f)
+            }
+        }
 
         // Обе точки маршрута (дом и узел подключения) показываем только пока реально что-то
         // происходит (подключение/подключено) — в состоянии "off" глобус остаётся полностью
         // пустым, без единой метки, вместо того чтобы точка А (дом) горела там постоянно.
         if (status != "off") {
-            // точка А (дом) — мягкое свечение того же тона вокруг компактного ядра, по мотивам
-            // референсного видео (простая светящаяся точка, а не сплошной плоский кружок).
-            drawPinAt(homePos, theme.home, 0.020f, 0.20f)
-            drawPinAt(homePos, theme.home, 0.009f)
+            // точка А (дом) — одна сплошная сфера, без отдельного слоя свечения (GLOBE.md §2:
+            // радиус 0.015, было 0.032 — и в эталонном JS у домашней точки нет halo, только
+            // сплошной шарик).
+            drawPinAt(homePos, theme.home, 0.015f)
 
-            // точка Б (узел подключения) — тот же приём: мягкий ореол + маленькое яркое ядро +
-            // один тонкий пульсирующий обод (вместо прежних двух разноцветных колец — по видео
-            // это одна чистая светящаяся точка, а не "радар" из нескольких окружностей). Размеры
-            // уменьшены относительно прежней версии — точки не должны спорить по вниманию с
-            // самой картой/линией передачи данных.
-            val glowOp = (if (on) 0.32f else 0.2f) + 0.07f * sin(t * 2.4f)
-            drawPinAt(nodePos, theme.hi, 0.028f, glowOp)
-            drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.010f)
-            drawPinAt(nodePos, theme.hi, 0.014f, 0.85f)
-            val p = (t * 0.5f) % 1f
-            drawRingAt(nodePos, theme.hi, 0.9f + p * 1.6f, (if (on) 0.5f else 0.35f) * (1f - p))
-        }
-
-        // дуга дом → узел — одна тонкая сплошная линия (вместо прежних пунктира + отдельной
-        // толстой подложки-свечения — визуально спорило с самой линией и точками), поверх
-        // которой едет "кометный" блик с хвостом от точки А к точке Б.
-        if (node != null) {
-            val control = GlobeMath.midControlPoint(homePos, nodePos, GlobeMath.RADIUS * 1.5f)
-            val arcVerts = buildArc(homePos, control, nodePos, 48)
-            val arcOp = if (on) 0.9f else if (connecting) 0.3f + 0.22f * sin(t * 5) else 0.05f
-            drawThickLine(toBuffer(arcVerts), arcVerts.size / 3, GLES20.GL_LINE_STRIP, theme.arc, arcOp, pixelRadius = 1.3f)
-            if (on || connecting) {
-                val speed = if (on) 0.35f else 0.2f
-                val arcVertsWithT = buildArcWithT(homePos, control, nodePos, 48)
-                drawShimmerArc(toBuffer(arcVertsWithT), 49, theme.arc, arcOp, floatArrayOf(1f, 0.82f, 0.55f), t * speed)
+            // точка Б (узел подключения): белое ядро 0.02 + "дышащий" ореол 0.036 + два
+            // расходящихся залитых кольца 0.038–0.044, масштаб ×0.6→×2.5 за цикл ~1.8с со
+            // сдвигом фазы 0.5 между кольцами (GLOBE.md §2, 1:1 с goji-globe.js).
+            drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.020f)
+            val haloAlpha = (if (on) 0.42f else 0.25f) + 0.08f * sin(t * 2.4f)
+            drawPinAt(nodePos, theme.hi, 0.036f, haloAlpha.coerceIn(0f, 1f))
+            for (i in 0 until 2) {
+                val p = ((t * 0.55f) + i * 0.5f).mod(1f)
+                val ringScale = 0.6f + p * 1.9f
+                val ringAlpha = (if (on) 0.75f else 0.5f) * (1f - p)
+                drawAnnulusAt(nodePos, theme.hi, ringScale, ringAlpha.coerceIn(0f, 1f))
             }
         }
+
+        // дуга дом → узел — по GLOBE.md §3: контрольная точка ниже (×1.32, было ×1.5), тонкая
+        // сплошная линия видна только пока идёт подключение/подключено (в покое — полностью
+        // скрыта, как arc.visible в эталоне), поверх — "кометный" блик и поток из 9 бусин.
+        if (node != null && (on || connecting)) {
+            val control = GlobeMath.midControlPoint(homePos, nodePos, GlobeMath.RADIUS * 1.32f)
+            val arcVerts = buildArc(homePos, control, nodePos, 96)
+            val arcOp = if (on) 0.35f else 0.15f + 0.1f * sin(t * 5f)
+            drawThickLine(toBuffer(arcVerts), arcVerts.size / 3, GLES20.GL_LINE_STRIP, theme.arc, arcOp.coerceIn(0f, 1f), pixelRadius = 1.3f)
+
+            val speed = if (on) 0.45f else 0.25f
+            val arcVertsWithT = buildArcWithT(homePos, control, nodePos, 96)
+            drawShimmerArc(toBuffer(arcVertsWithT), 97, theme.arc, arcOp.coerceIn(0f, 1f), floatArrayOf(1f, 0.82f, 0.55f), t * speed)
+
+            // поток бусин вдоль дуги — голова белая покрупнее, хвост тускнеет и уменьшается
+            // (GLOBE.md §3: 9 бусин, шаг параметра 0.022, alpha = (1 - i/9) * sin(p·π)).
+            val head = (t * speed).mod(1f)
+            val p = FloatArray(3)
+            for (i in 0 until STREAM) {
+                val bp = head - i * 0.022f
+                if (bp < 0f || bp > 1f) continue
+                GlobeMath.quadBezier(homePos, control, nodePos, bp, p)
+                val beadAlpha = (1f - i.toFloat() / STREAM) * sin(bp * PI.toFloat()) * (if (on) 1f else 0.7f)
+                val beadColor = if (i == 0) floatArrayOf(1f, 1f, 1f) else theme.arc
+                val beadRadius = if (i == 0) 0.013f else (0.009f - i * 0.0005f).coerceAtLeast(0.002f)
+                drawPinAt(p.copyOf(), beadColor, beadRadius, beadAlpha.coerceIn(0f, 1f))
+            }
+        }
+
+        // Спутники — только на экране входа (satellites=true из LoginScreen), не вращаются
+        // вместе с глобусом (собственная плоскость орбиты, только vpMatrix без model) —
+        // GLOBE.md §7.
+        if (satellites) drawSatellites()
 
         // проекция маркера в экранные координаты — для плавающей подписи в Compose
         if (status != "off" && node != null) {
@@ -515,12 +573,13 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         }
     }
 
-    private fun drawRingAt(pos: FloatArray, color: FloatArray, scale: Float, alpha: Float) {
+    /** Залитое кольцо-маркер узла (GLOBE.md §2) — та же ориентация "плашмя на поверхности",
+     *  что и drawRingAt, но заливка (GL_TRIANGLE_STRIP по annulusBuf), а не линия. */
+    private fun drawAnnulusAt(pos: FloatArray, color: FloatArray, scale: Float, alpha: Float) {
         val normal = GlobeMath.normalize(pos)
         val m = FloatArray(16)
         Matrix.setIdentityM(m, 0)
         Matrix.translateM(m, 0, pos[0], pos[1], pos[2])
-        // ориентация кольца по нормали поверхности (приблизительно — поворот к "up")
         val angle = Math.toDegrees(atan2(normal[0].toDouble(), normal[2].toDouble())).toFloat()
         Matrix.rotateM(m, 0, angle, 0f, 1f, 0f)
         val tilt = Math.toDegrees(atan2(hypot(normal[0].toDouble(), normal[2].toDouble()), normal[1].toDouble())).toFloat()
@@ -528,11 +587,107 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         Matrix.scaleM(m, 0, scale, scale, scale)
         val localMvp = FloatArray(16)
         Matrix.multiplyMM(localMvp, 0, mvp, 0, m, 0)
-        ringBuf.position(0)
-        GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, 0, ringBuf)
+        annulusBuf.position(0)
+        GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, 0, annulusBuf)
         GLES20.glUniformMatrix4fv(uMVP, 1, false, localMvp, 0)
         GLES20.glUniform4f(uColor, color[0], color[1], color[2], alpha)
-        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, ringVerts)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, annulusVerts)
+    }
+
+    /** GLOBE.md §7 — 16 спутников на случайных орбитах вокруг глобуса, не привязанных к его
+     *  вращению. Тело/панели рисуются как немного сплюснутые сферы (масштабированный pinBuf) —
+     *  упрощение вместо честной кубической геометрии, на размере в доли процента экрана
+     *  разница неразличима, а код и число буферов заметно меньше. */
+    private fun buildSatellites() {
+        satelliteSpecs.clear()
+        val rnd = Random(20260929)
+        for (i in 0 until 16) {
+            val r = GlobeMath.RADIUS * (1.16f + (i % 4) * 0.07f + rnd.nextFloat() * 0.03f)
+            val planeRotX = (rnd.nextFloat() - 0.5f) * 2.2f
+            val planeRotY = rnd.nextFloat() * (2f * PI.toFloat())
+            val planeRotZ = (rnd.nextFloat() - 0.5f) * 1.2f
+            val speed = (0.0025f + rnd.nextFloat() * 0.004f) * (if (i % 3 == 0) -1f else 1f)
+            satelliteSpecs.add(
+                SatelliteSpec(
+                    r = r,
+                    planeRotX = Math.toDegrees(planeRotX.toDouble()).toFloat(),
+                    planeRotY = Math.toDegrees(planeRotY.toDouble()).toFloat(),
+                    planeRotZ = Math.toDegrees(planeRotZ.toDouble()).toFloat(),
+                    angle = rnd.nextFloat() * (2f * PI.toFloat()),
+                    speed = speed,
+                    phase = rnd.nextFloat() * 6f,
+                    scale = 0.6f + rnd.nextFloat() * 0.5f,
+                    blinkRed = i % 3 != 0,
+                    drawOrbitRing = i % 2 == 0
+                )
+            )
+        }
+    }
+
+    private fun drawSatellites() {
+        val white = floatArrayOf(0.914f, 0.933f, 0.949f) // #E9EEF2
+        val red = floatArrayOf(1f, 0.353f, 0.306f) // #FF5A4E
+        for (spec in satelliteSpecs) {
+            spec.angle += spec.speed
+            // Плоскость орбиты — собственная матрица (angle/x/y/z), БЕЗ model глобуса: спутники
+            // не вращаются вместе с планетой (GLOBE.md §7).
+            val plane = FloatArray(16)
+            Matrix.setIdentityM(plane, 0)
+            Matrix.rotateM(plane, 0, spec.planeRotZ, 0f, 0f, 1f)
+            Matrix.rotateM(plane, 0, spec.planeRotX, 1f, 0f, 0f)
+            Matrix.rotateM(plane, 0, spec.planeRotY, 0f, 1f, 0f)
+
+            if (spec.drawOrbitRing) {
+                val ringM = FloatArray(16)
+                Matrix.scaleM(ringM, 0, plane, 0, spec.r, spec.r, spec.r)
+                val ringMvp = FloatArray(16)
+                Matrix.multiplyMM(ringMvp, 0, vpMatrix, 0, ringM, 0)
+                unitCircleBuf.position(0)
+                GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, 0, unitCircleBuf)
+                GLES20.glUniformMatrix4fv(uMVP, 1, false, ringMvp, 0)
+                GLES20.glUniform4f(uColor, theme.hi[0], theme.hi[1], theme.hi[2], 0.12f)
+                GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, unitCircleVerts)
+            }
+
+            val localPos = floatArrayOf(cos(spec.angle) * spec.r, 0f, sin(spec.angle) * spec.r, 1f)
+            val worldPos = FloatArray(4)
+            Matrix.multiplyMV(worldPos, 0, plane, 0, localPos, 0)
+
+            val satBase = FloatArray(16)
+            Matrix.setIdentityM(satBase, 0)
+            Matrix.translateM(satBase, 0, worldPos[0], worldPos[1], worldPos[2])
+
+            val s = spec.scale
+            // корпус — сплюснутая сфера ~0.022×0.022×0.03
+            val bodyM = FloatArray(16)
+            Matrix.scaleM(bodyM, 0, satBase, 0, 0.022f * s, 0.022f * s, 0.03f * s)
+            val bodyMvp = FloatArray(16)
+            Matrix.multiplyMM(bodyMvp, 0, vpMatrix, 0, bodyM, 0)
+            drawSphereBands(pinBuf, pinLatSeg, pinBandVerts, bodyMvp, white, 1f)
+
+            // две панели по бокам, цвет hi — тонкие сплюснутые сферы со смещением по X
+            for (side in intArrayOf(1, -1)) {
+                val panel = FloatArray(16)
+                Matrix.setIdentityM(panel, 0)
+                Matrix.translateM(panel, 0, worldPos[0], worldPos[1], worldPos[2])
+                Matrix.translateM(panel, 0, side * 0.04f * s, 0f, 0f)
+                Matrix.scaleM(panel, 0, 0.05f * s, 0.003f * s, 0.022f * s)
+                val panelMvp = FloatArray(16)
+                Matrix.multiplyMM(panelMvp, 0, vpMatrix, 0, panel, 0)
+                drawSphereBands(pinBuf, pinLatSeg, pinBandVerts, panelMvp, theme.hi, 0.9f)
+            }
+
+            // мигающий огонёк сверху корпуса
+            val blink = FloatArray(16)
+            Matrix.setIdentityM(blink, 0)
+            Matrix.translateM(blink, 0, worldPos[0], worldPos[1], worldPos[2])
+            Matrix.translateM(blink, 0, 0f, 0.016f * s, 0f)
+            Matrix.scaleM(blink, 0, 0.006f * s, 0.006f * s, 0.006f * s)
+            val blinkMvp = FloatArray(16)
+            Matrix.multiplyMM(blinkMvp, 0, vpMatrix, 0, blink, 0)
+            val blinkAlpha = if (sin(t * 5f + spec.phase) > 0.6f) 1f else 0.15f
+            drawSphereBands(pinBuf, pinLatSeg, pinBandVerts, blinkMvp, if (spec.blinkRed) red else white, blinkAlpha)
+        }
     }
 
     private fun buildHighlight(country: String?): FloatBuffer? {
@@ -685,6 +840,20 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             verts[i * 3 + 2] = 0f
         }
         return toBuffer(verts)
+    }
+
+    /** Залитое кольцо (annulus, triangle strip между внутренней и внешней окружностью) в
+     *  плоскости XY — заготовка для drawAnnulusAt (кольца маркера узла, GLOBE.md §2). */
+    private fun buildAnnulus(inner: Float, outer: Float, segments: Int): FloatBuffer {
+        val verts = ArrayList<Float>()
+        for (i in 0..segments) {
+            val a = 2.0 * PI * i / segments
+            val cx = cos(a).toFloat(); val sy = sin(a).toFloat()
+            verts.add(cx * outer); verts.add(sy * outer); verts.add(0f)
+            verts.add(cx * inner); verts.add(sy * inner); verts.add(0f)
+        }
+        annulusVerts = verts.size / 3
+        return toBuffer(verts.toFloatArray())
     }
 
     private fun toBuffer(arr: FloatArray): FloatBuffer =

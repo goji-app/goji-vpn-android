@@ -55,8 +55,9 @@ fun LoginScreen(
     }
 
     GlassBackdrop {
-        // Глобус во весь экран фоном — как в макете, без карточки-обрамления.
-        GojiGlobe(status = "off", node = null, modifier = Modifier.fillMaxSize())
+        // Глобус во весь экран фоном — как в макете, без карточки-обрамления. Спутники
+        // (GLOBE.md §7) — только на этом экране.
+        GojiGlobe(status = "off", node = null, satellites = true, modifier = Modifier.fillMaxSize())
 
         // verticalScroll — на невысоких экранах (особенно в режиме email с показанной
         // ошибкой) весь этот блок не помещается по высоте; так как колонка прижата к низу
