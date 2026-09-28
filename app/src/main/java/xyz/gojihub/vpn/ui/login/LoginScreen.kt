@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
+import xyz.gojihub.vpn.ui.theme.GlassBackdrop
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
@@ -52,7 +53,7 @@ fun LoginScreen(
         context.startActivity(Intent(context, WebLoginActivity::class.java))
     }
 
-    Box(Modifier.fillMaxSize().background(GodjiColors.Background)) {
+    GlassBackdrop {
         // Глобус во весь экран фоном — как в макете, без карточки-обрамления.
         GojiGlobe(status = "off", node = null, modifier = Modifier.fillMaxSize())
 

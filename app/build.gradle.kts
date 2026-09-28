@@ -23,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 62
-        versionName = "1.0.80"
+        versionCode = 63
+        versionName = "1.0.81"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
@@ -130,6 +130,10 @@ dependencies {
     // там нет) — extended тянет тысячи иконок, но R8 (isMinifyEnabled+isShrinkResources уже
     // включены) вырезает неиспользуемые, реальный прирост APK — только те 4 иконки, что рисуются.
     implementation("androidx.compose.material:material-icons-extended")
+    // Редизайн v5 "Стекло" (2026-09-28) — настоящий backdrop-blur стеклянных поверхностей
+    // (CardStyle.kt/GlassBackdrop.kt): на API 31+ сэмплирует то, что реально позади карточки,
+    // на 24-30 сам откатывается на полупрозрачную заливку (minSdk 24 не нарушается).
+    implementation("dev.chrisbanes.haze:haze:1.6.0")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")

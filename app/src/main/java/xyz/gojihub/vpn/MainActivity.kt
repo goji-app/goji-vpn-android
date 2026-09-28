@@ -60,6 +60,7 @@ import xyz.gojihub.vpn.ui.support.FaqScreen
 import xyz.gojihub.vpn.ui.support.NewTicketScreen
 import xyz.gojihub.vpn.ui.support.SupportListScreen
 import xyz.gojihub.vpn.ui.support.TicketChatScreen
+import xyz.gojihub.vpn.ui.theme.GlassBackdrop
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
 import xyz.gojihub.vpn.ui.theme.ThemeMode
@@ -262,7 +263,7 @@ private fun MainTabsScreen(navController: NavHostController) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
-    Box(Modifier.fillMaxSize().background(GodjiColors.Background)) {
+    GlassBackdrop {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
