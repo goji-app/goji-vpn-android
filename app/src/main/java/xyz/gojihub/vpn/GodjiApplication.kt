@@ -1,6 +1,9 @@
 package xyz.gojihub.vpn
 
 import android.app.Application
+import android.os.Build
+import xyz.gojihub.vpn.subscription.PingProcessService
+import java.io.File
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -66,10 +69,17 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             }
             .build()
 
+    private fun currentProcessName(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) getProcessName()
+        else runCatching { File("/proc/self/cmdline").readText().trimEnd('\u0000') }.getOrDefault("")
+
     override fun onCreate() {
         super.onCreate()
         // Заведомо раньше первого обращения к libXray где-либо в приложении — см. GeoAssets.
         GeoAssets.applyEnv(this)
+        // Процесс ":ping" (PingProcessService) — только исполнитель pingBatch: ни темы, ни
+        // воркеров, ни проверки обновлений там не нужно, иначе они запускались бы дважды.
+        if (currentProcessName().endsWith(PingProcessService.PROCESS_SUFFIX)) return
         // Синхронно (runBlocking) и до первой отрисовки — иначе первый кадр рисуется светлой
         // темой по умолчанию, и при включённой тёмной теме экран на миг "мигает" светлым.
         // DataStore-чтение тут — попадание в уже прогретый на диске файл на несколько КБ,

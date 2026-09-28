@@ -16,6 +16,7 @@ import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.settings.SettingsRepository
 import xyz.gojihub.vpn.util.AppLogger
 import xyz.gojihub.vpn.util.LogCategory
+import xyz.gojihub.vpn.vpn.GodjiVpnService
 import libXray.LibXray
 import org.json.JSONArray
 import org.json.JSONObject
@@ -38,6 +39,7 @@ import javax.inject.Singleton
 class PingRepository @Inject constructor(
     private val subscriptionRepository: SubscriptionRepository,
     private val settingsRepository: SettingsRepository,
+    private val isolatedXray: IsolatedXrayInvoker,
     @ApplicationContext private val appContext: Context
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -210,12 +212,25 @@ class PingRepository @Inject constructor(
         }
     }
 
-    private fun invokeLibXray(method: String, payload: JSONObject): JSONObject {
+    /** Пока в этом процессе работает ядро VPN (GodjiVpnService), libXray не выполняет pingBatch
+     *  ("requires an isolated process without a managed Xray instance") — запрос уходит в
+     *  отдельный процесс ":ping" (PingProcessService). Без VPN — как раньше, прямо здесь; если
+     *  ядро успело подняться между проверкой и вызовом — тот же отказ ловим и повторяем там. */
+    private suspend fun invokeLibXray(method: String, payload: JSONObject): JSONObject {
         val request = JSONObject()
             .put("apiVersion", LibXray.LibXrayAPIVersion)
             .put("method", method)
             .put("payload", payload)
-        return JSONObject(LibXray.invoke(request.toString()))
+            .toString()
+        if (GodjiVpnService.isRunning.value || GodjiVpnService.isConnecting.value) {
+            return JSONObject(isolatedXray.invoke(request, ISOLATED_TIMEOUT_MS))
+        }
+        val local = JSONObject(LibXray.invoke(request))
+        if (!local.optBoolean("success") && local.optString("error").contains("isolated process")) {
+            AppLogger.d(appContext, LogCategory.SUBSCRIPTION, TAG, "pingBatch: ядро уже запущено — повторяю в процессе :ping")
+            return JSONObject(isolatedXray.invoke(request, ISOLATED_TIMEOUT_MS))
+        }
+        return local
     }
 
     /** Запасной вариант только для легаси-формата подписки (сырая vless://-ссылка без
@@ -256,6 +271,8 @@ class PingRepository @Inject constructor(
         // периодически уходила в "недоступен" при пакетном "обновить всё".
         const val TIMEOUT_SECONDS = 4
         const val MAX_BATCH_SIZE = 5
+        // Пачка до MAX_BATCH_SIZE конфигов по TIMEOUT_SECONDS каждый + запуск процесса ":ping".
+        const val ISOLATED_TIMEOUT_MS = 30_000L
         const val TAG = "GodjiPing"
     }
 }

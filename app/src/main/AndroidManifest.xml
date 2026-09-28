@@ -82,6 +82,13 @@
             </intent-filter>
         </service>
 
+        <!-- Проверка пинга при подключённом VPN (см. PingProcessService): libXray не выполняет
+             pingBatch в процессе, где уже работает ядро туннеля, поэтому — отдельный процесс. -->
+        <service
+            android:name=".subscription.PingProcessService"
+            android:process=":ping"
+            android:exported="false" />
+
         <!-- Виджет на главный экран (см. GojiWidgetProvider) — статус + кнопка подключения.
              exported=true обязателен для AppWidgetProvider: APPWIDGET_UPDATE шлёт system_server
              от имени лончера, и на части прошивок/версий Android такая доставка не проходит до
