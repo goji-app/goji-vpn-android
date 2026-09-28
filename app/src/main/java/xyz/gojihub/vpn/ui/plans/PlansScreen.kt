@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -205,7 +207,19 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                            if (plan.isCurrent) {
+                                Box(
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(GodjiColors.Teal)
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Text(Loc.s.plansCurrentLabel, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 8.5.sp)
+                                }
+                            }
+                        }
                         // Длинные описания тарифов раньше разворачивали карточку на пол-экрана —
                         // сжимаем до 2 строк и прячем остальное за "читать полностью", сам тоггл
                         // показываем только если текст реально не поместился (hasVisualOverflow),
@@ -721,32 +735,29 @@ private fun PartnerActionButton(label: String, context: Context) {
     }
 }
 
-/** Пульсирующая точка вместо статичной обводки — читается как "живой" статус, а не просто
- *  ярлык. Пилл теперь залит мягким тил-тоном вместо тонкой рамки — тот же приём, что уже
- *  используется для активного тарифа в списке ниже (TealTint/TealDeep). */
+/** Сплошная заливка (не мягкий тил-тон) + белая галочка вместо точки — читается более чётким,
+ *  "настоящим" бейджем-статусом, а не просто окрашенной подписью. Лёгкий пульс остаётся у
+ *  самой заливки (через тень), а не у внутренней точки — меньше суеты на маленьком элементе. */
 @Composable
 private fun ActiveStatusPill() {
     val infiniteTransition = rememberInfiniteTransition(label = "activePulse")
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(animation = tween(900), repeatMode = RepeatMode.Reverse),
+        initialValue = 0.25f,
+        targetValue = 0.55f,
+        animationSpec = infiniteRepeatable(animation = tween(1400), repeatMode = RepeatMode.Reverse),
         label = "activePulseAlpha"
     )
     Row(
         Modifier
+            .shadow(8.dp, RoundedCornerShape(50), ambientColor = GodjiColors.Teal.copy(alpha = pulseAlpha), spotColor = GodjiColors.Teal.copy(alpha = pulseAlpha))
             .clip(RoundedCornerShape(50))
-            .background(GodjiColors.TealTint)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .background(GodjiColors.Teal)
+            .padding(horizontal = 11.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Box(
-            Modifier
-                .size(6.dp)
-                .background(GodjiColors.TealDeep.copy(alpha = pulseAlpha), CircleShape)
-        )
-        Text(Loc.s.plansActive, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+        Icon(Icons.Filled.Check, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(11.dp))
+        Text(Loc.s.plansActive, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 9.sp)
     }
 }
 

@@ -327,7 +327,9 @@ private fun GlobeCard(state: ConnectUiState) {
         // Точки всех доступных локаций больше не показываем — только точки маршрута
         // (дом/узел), и то лишь пока идёт подключение или оно уже установлено (см.
         // GojiGlobeRenderer: обе точки скрыты целиком при status == "off").
-        GojiGlobe(status = state.globeStatus, node = state.globeNode, label = state.currentGeo?.displayCityCountry(Loc.lang).orEmpty(), modifier = Modifier.fillMaxSize())
+        // Подпись "страна · город" на самом глобусе убрана по просьбе — то же название уже
+        // читается в карточке текущего узла ниже, дублировать его прямо на карте не нужно.
+        GojiGlobe(status = state.globeStatus, node = state.globeNode, label = "", modifier = Modifier.fillMaxSize())
 
         if (state.connected) {
             Column(

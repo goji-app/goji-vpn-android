@@ -29,13 +29,18 @@ data class GlobeTheme(
     /** Цвет широтно-долготной сетки и внешнего атмосферного ободка — по референсу Stitch
      *  (Three.js wireframe 0x00d2ff) это отдельный холодный "cyan", а не land/grid как раньше,
      *  тот же тон, что и GodjiColors.Purple (секондари-акцент приложения). */
-    val wire: FloatArray
+    val wire: FloatArray,
+    /** Отдельный цвет обводки страны назначения — раньше использовался тот же "hi", что и у
+     *  узла/атмосферного кольца (зелёный), из-за чего контур страны почти сливался с остальной
+     *  зелёной акцентикой на глобусе и был еле заметен. Золотисто-жёлтый не пересекается ни с
+     *  зелёным (hi/home), ни с террактотовым (arc), поэтому обводка страны всегда читается. */
+    val highlight: FloatArray
 ) {
     companion object {
         val Light = GlobeTheme(
             ocean = hex(0xece5da), land = hex(0x152220), grid = hex(0x152220),
             home = hex(0xd84a2a), hi = hex(0x00875a), arc = hex(0xd84a2a), dot = hex(0x7b8a85),
-            wire = hex(0x00838f)
+            wire = hex(0x00838f), highlight = hex(0xe0a412)
         )
         // Та же композиция ролей (песочный океан → чернильно-угольный, тёмные берега → почти
         // белые, акценты — неоновый изумруд/корал вместо приглушённой бирюзы), а не случайные
@@ -44,7 +49,7 @@ data class GlobeTheme(
         val Dark = GlobeTheme(
             ocean = hex(0x101419), land = hex(0xe0e2ea), grid = hex(0xe0e2ea),
             home = hex(0xff5e3a), hi = hex(0x00f5a0), arc = hex(0xff5e3a), dot = hex(0x849588),
-            wire = hex(0x00d2ff)
+            wire = hex(0x00d2ff), highlight = hex(0xffd23f)
         )
         private fun hex(v: Int) = floatArrayOf(
             ((v shr 16) and 0xFF) / 255f, ((v shr 8) and 0xFF) / 255f, (v and 0xFF) / 255f
@@ -325,39 +330,37 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         // экранах даже при альфе, близкой к 1.0.
         coastBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 1f) }
         borderBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 0.8f) }
-        // подсветка страны назначения
-        highlightBuf?.let { if (highlightVerts > 0) drawThickLine(it, highlightVerts, GLES20.GL_LINES, theme.hi, if (on) 1f else 0.45f + 0.25f * sin(t * 4), pixelRadius = 1.6f) }
+        // подсветка страны назначения — отдельный золотисто-жёлтый цвет (theme.highlight, а не
+        // theme.hi), толще и ярче, чтобы контур страны было хорошо видно, а не сливался с
+        // зелёными точками/кольцом узла.
+        highlightBuf?.let { if (highlightVerts > 0) drawThickLine(it, highlightVerts, GLES20.GL_LINES, theme.highlight, if (on) 1f else 0.55f + 0.25f * sin(t * 4), pixelRadius = 2.4f) }
 
         // Обе точки маршрута (дом и узел подключения) показываем только пока реально что-то
         // происходит (подключение/подключено) — в состоянии "off" глобус остаётся полностью
         // пустым, без единой метки, вместо того чтобы точка А (дом) горела там постоянно.
         if (status != "off") {
-            // точка А (дом) — мягкое свечение того же тона вокруг компактного ядра, по мотивам
-            // референсного видео (простая светящаяся точка, а не сплошной плоский кружок).
-            drawPinAt(homePos, theme.home, 0.032f, 0.22f)
-            drawPinAt(homePos, theme.home, 0.015f)
+            // точка А (дом) — уменьшена (было 0.032/0.015): по просьбе — точки маршрута менее
+            // заметны на глаз, читаются как метка, а не крупное пятно.
+            drawPinAt(homePos, theme.home, 0.020f, 0.20f)
+            drawPinAt(homePos, theme.home, 0.009f)
 
-            // точка Б (узел подключения) — тот же приём: мягкий ореол + маленькое яркое ядро +
-            // один тонкий пульсирующий обод (вместо прежних двух разноцветных колец — по видео
-            // это одна чистая светящаяся точка, а не "радар" из нескольких окружностей).
-            val glowOp = (if (on) 0.32f else 0.2f) + 0.07f * sin(t * 2.4f)
-            drawPinAt(nodePos, theme.hi, 0.044f, glowOp)
-            drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.016f)
-            drawPinAt(nodePos, theme.hi, 0.022f, 0.85f)
+            // точка Б (узел подключения) — тот же приём, тоже уменьшена (было 0.044/0.016/0.022).
+            val glowOp = (if (on) 0.30f else 0.18f) + 0.06f * sin(t * 2.4f)
+            drawPinAt(nodePos, theme.hi, 0.028f, glowOp)
+            drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.010f)
+            drawPinAt(nodePos, theme.hi, 0.014f, 0.85f)
             val p = (t * 0.5f) % 1f
             drawRingAt(nodePos, theme.hi, 0.9f + p * 1.6f, (if (on) 0.5f else 0.35f) * (1f - p))
         }
 
-        // дуга дом → узел — мягкое свечение под пунктирной линией (эффект луча/кабеля передачи
-        // данных вместо плоской сплошной нити — как на референсном глобусе), поверх которой
-        // едет "кометный" блик с хвостом от точки А к точке Б.
+        // дуга дом → узел — одна тонкая сплошная линия (вместо пунктира с отдельной широкой
+        // подсветкой — меньше визуального шума), поверх которой едет "кометный" блик с хвостом
+        // от точки А к точке Б, дающий ощущение передачи данных.
         if (node != null) {
             val control = GlobeMath.midControlPoint(homePos, nodePos, GlobeMath.RADIUS * 1.5f)
             val arcVerts = buildArc(homePos, control, nodePos, 48)
-            val dashVerts = buildDashedArc(homePos, control, nodePos, 40)
-            val arcOp = if (on) 0.9f else if (connecting) 0.3f + 0.22f * sin(t * 5) else 0.05f
-            if (on || connecting) drawThickLine(toBuffer(arcVerts), arcVerts.size / 3, GLES20.GL_LINE_STRIP, theme.arc, arcOp * 0.35f, pixelRadius = 4.5f)
-            draw(toBuffer(dashVerts), dashVerts.size / 3, GLES20.GL_LINES, theme.arc, arcOp)
+            val arcOp = if (on) 0.85f else if (connecting) 0.3f + 0.22f * sin(t * 5) else 0.05f
+            drawThickLine(toBuffer(arcVerts), arcVerts.size / 3, GLES20.GL_LINE_STRIP, theme.arc, arcOp * 0.6f, pixelRadius = 1.3f)
             if (on || connecting) {
                 val speed = if (on) 0.35f else 0.2f
                 val arcVertsWithT = buildArcWithT(homePos, control, nodePos, 48)
@@ -543,23 +546,6 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             out[i * 3] = p[0]; out[i * 3 + 1] = p[1]; out[i * 3 + 2] = p[2]
         }
         return out
-    }
-
-    /** Та же дуга, но не сплошной GL_LINE_STRIP, а набор коротких отрезков с зазорами для
-     *  GL_LINES — как пунктирная линия связи на референсном глобусе, а не сплошная нить. */
-    private fun buildDashedArc(a: FloatArray, control: FloatArray, b: FloatArray, segments: Int, dashRatio: Float = 0.55f): FloatArray {
-        val out = ArrayList<Float>((segments * 6))
-        val p = FloatArray(3)
-        for (i in 0 until segments) {
-            val t0 = i.toFloat() / segments
-            val t1 = (i + dashRatio) / segments
-            if (t1 > 1f) continue
-            GlobeMath.quadBezier(a, control, b, t0, p)
-            out.add(p[0]); out.add(p[1]); out.add(p[2])
-            GlobeMath.quadBezier(a, control, b, t1, p)
-            out.add(p[0]); out.add(p[1]); out.add(p[2])
-        }
-        return out.toFloatArray()
     }
 
     /** То же самое, но с 4-м компонентом на вершину — параметром 0..1 вдоль дуги (для

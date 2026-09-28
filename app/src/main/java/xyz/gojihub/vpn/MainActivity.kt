@@ -149,9 +149,15 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
         }
     }
 
+    // targetSdk 35+ навязывает edge-to-edge на уровне системы — Activity больше не может
+    // "отказаться" от рисования под статус-баром/жестовой навигацией, а window.statusBarColor
+    // выше (для управления только цветом иконок) на таких версиях уже ничего не красит. Без
+    // этой отступа контент (шапка с логотипом на Главной, заголовки на других вкладках) заезжал
+    // под сам статус-бар и частично перекрывался системными иконками времени/батареи.
     NavHost(
         navController = navController,
-        startDestination = if (startLoggedIn) GodjiDestinations.MAIN else GodjiDestinations.LOGIN
+        startDestination = if (startLoggedIn) GodjiDestinations.MAIN else GodjiDestinations.LOGIN,
+        modifier = Modifier.statusBarsPadding()
     ) {
         composable(GodjiDestinations.LOGIN) {
             LoginScreen(
@@ -270,7 +276,7 @@ private fun MainTabsScreen(navController: NavHostController) {
             // (списки серверов, тарифы, настройки) не прятался под ней навсегда, а
             // останавливался чуть выше — тот же приём, что раньше делал Scaffold(bottomBar=…)
             // через свой padding, просто явно, раз панель теперь не в Scaffold.
-            contentPadding = PaddingValues(bottom = 96.dp)
+            contentPadding = PaddingValues(bottom = 82.dp)
         ) { page ->
             when (tabs[page]) {
                 GodjiTab.CONNECT -> ConnectScreen(
@@ -323,9 +329,9 @@ private fun GlassTabBar(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .padding(bottom = 20.dp)
-            .height(68.dp)
-            .godjiGlassBar(shape = RoundedCornerShape(34.dp)),
+            .padding(bottom = 14.dp)
+            .height(56.dp)
+            .godjiGlassBar(shape = RoundedCornerShape(26.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         tabs.forEachIndexed { index, tab ->
@@ -334,7 +340,7 @@ private fun GlassTabBar(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -358,24 +364,24 @@ private fun GlassTabBar(
                 )
                 Box(
                     Modifier
-                        .padding(vertical = 6.dp)
+                        .padding(vertical = 3.dp)
                         .background(
                             GodjiColors.TealDeep.copy(alpha = 0.16f * pillAlpha),
-                            RoundedCornerShape(18.dp)
+                            RoundedCornerShape(14.dp)
                         )
-                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                        .padding(horizontal = 11.dp, vertical = 3.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = if (selected) tab.iconSelected else tab.iconUnselected,
                         contentDescription = tab.label(),
                         tint = if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary,
-                        modifier = Modifier.size(22.dp).scale(scale)
+                        modifier = Modifier.size(18.dp).scale(scale)
                     )
                 }
                 Text(
                     tab.label(),
-                    fontSize = 10.5.sp,
+                    fontSize = 9.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                     color = if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary,
                     maxLines = 1,
