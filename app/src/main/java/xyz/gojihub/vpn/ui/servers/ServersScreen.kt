@@ -33,7 +33,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import xyz.gojihub.vpn.i18n.Loc
+import xyz.gojihub.vpn.settings.ServerSort
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
@@ -58,6 +63,8 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
         Modifier
             .fillMaxSize()
             .background(GodjiColors.Background)
+            // Со строкой сортировки 8+ узлов уже не всегда влезают на невысокий экран.
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -82,6 +89,8 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
                 ) { Icon(Icons.Filled.Bolt, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(16.dp)) }
             }
         }
+
+        SortSegments(state.sort, onSelect = viewModel::setSort)
 
         AnimatedContent(
             targetState = refreshMessage,
@@ -163,6 +172,55 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
                             fontWeight = FontWeight.Bold, fontSize = 11.5.sp
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Сортировка списка — тот же сегмент-контрол, что "Язык приложения" в Настройках
+ *  (дорожка chip + stroke, бегунок thumb + stroke), только ниже: 32dp, 12sp. */
+@Composable
+private fun SortSegments(selected: ServerSort, onSelect: (ServerSort) -> Unit) {
+    val options = listOf(
+        ServerSort.FAVORITES to Loc.f.sortFavorites,
+        ServerSort.PING to Loc.f.sortPing,
+        ServerSort.NAME to Loc.f.sortName
+    )
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(50))
+            .background(GodjiColors.Chip)
+            .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))
+            .padding(3.dp)
+    ) {
+        val slotWidth = maxWidth / options.size
+        val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+        val thumbX by animateDpAsState(slotWidth * index, spring(dampingRatio = 0.62f, stiffness = 380f), label = "sortThumb")
+        Box(
+            Modifier
+                .offset(x = thumbX)
+                .width(slotWidth)
+                .height(32.dp)
+                .clip(RoundedCornerShape(50))
+                .background(GodjiColors.Thumb)
+                .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))
+        )
+        Row(Modifier.fillMaxWidth()) {
+            options.forEachIndexed { i, (sort, label) ->
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(32.dp)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(sort) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        color = if (i == index) GodjiColors.TextPrimary else GodjiColors.TextSecondary,
+                        fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1
+                    )
                 }
             }
         }

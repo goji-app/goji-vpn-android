@@ -36,6 +36,10 @@ enum class PingMethod { PROXY_GET, PROXY_HEAD, TCP, ICMP }
  *  остальное — через VPN (addDisallowedApplication, объединяется со встроенным RU-списком). */
 enum class PerAppProxyMode { OFF, ALLOW, BYPASS }
 
+/** Порядок списка на экране "Серверы": избранные сверху (иначе — порядок подписки), по пингу
+ *  (непроверенные и недоступные — в конце), по алфавиту. */
+enum class ServerSort { FAVORITES, PING, NAME }
+
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
 
@@ -56,6 +60,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val perAppProxyPackagesKey = stringSetPreferencesKey("per_app_proxy_packages")
     private val favoriteServerIdsKey = stringSetPreferencesKey("favorite_server_ids")
     private val hapticsKey = booleanPreferencesKey("haptics_enabled")
+    private val serverSortKey = stringPreferencesKey("server_sort")
 
     val preferredNodeId: Flow<String?> = context.dataStore.data.map { it[preferredNodeKey] }
 
@@ -179,6 +184,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     val hapticsEnabled: Flow<Boolean> = context.dataStore.data.map { it[hapticsKey] ?: true }
     suspend fun setHapticsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[hapticsKey] = enabled }
+    }
+
+    val serverSort: Flow<ServerSort> = context.dataStore.data.map {
+        runCatching { ServerSort.valueOf(it[serverSortKey] ?: ServerSort.FAVORITES.name) }.getOrDefault(ServerSort.FAVORITES)
+    }
+    suspend fun setServerSort(sort: ServerSort) {
+        context.dataStore.edit { it[serverSortKey] = sort.name }
     }
 
     companion object {

@@ -9,6 +9,10 @@ data class FeatureStrings(
     // ── Вибрация ──
     val hapticsTitle: String,
     val hapticsDesc: String,
+    // ── Сортировка серверов ──
+    val sortFavorites: String,
+    val sortPing: String,
+    val sortName: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -20,16 +24,25 @@ data class FeatureStrings(
         private val RU = FeatureStrings(
             hapticsTitle = "Вибрация",
             hapticsDesc = "Короткий отклик при подключении и отключении VPN",
+            sortFavorites = "Избранные",
+            sortPing = "Пинг",
+            sortName = "А–Я",
         )
 
         private val EN = FeatureStrings(
             hapticsTitle = "Vibration",
             hapticsDesc = "A short buzz when the VPN connects or disconnects",
+            sortFavorites = "Favorites",
+            sortPing = "Ping",
+            sortName = "A–Z",
         )
 
         private val ZH = FeatureStrings(
             hapticsTitle = "振动",
             hapticsDesc = "VPN 连接或断开时短暂振动",
+            sortFavorites = "收藏",
+            sortPing = "延迟",
+            sortName = "名称",
         )
     }
 }

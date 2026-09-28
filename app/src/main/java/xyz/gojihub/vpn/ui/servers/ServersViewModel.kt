@@ -13,7 +13,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import xyz.gojihub.vpn.geo.CountryGeoLookup
+import xyz.gojihub.vpn.settings.ServerSort
 import xyz.gojihub.vpn.settings.SettingsRepository
+import java.text.Collator
+import java.util.Locale
 import xyz.gojihub.vpn.subscription.PingRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
 import xyz.gojihub.vpn.util.stripLeadingFlag
@@ -37,7 +40,8 @@ data class ServersUiState(
     val selectedId: String? = null,
     val checkingId: String? = null,
     val checkingAll: Boolean = false,
-    val loading: Boolean = true
+    val loading: Boolean = true,
+    val sort: ServerSort = ServerSort.FAVORITES
 )
 
 @HiltViewModel
@@ -74,14 +78,31 @@ class ServersViewModel @Inject constructor(
     // отдельным вторым combine поверх уже собранного состояния, а не переписываем всё на
     // вариант с Array<Flow<*>> ради одного лишнего источника.
     val state: StateFlow<ServersUiState> = combine(
-        baseState, settingsRepository.favoriteServerIds
-    ) { base, favorites ->
-        if (favorites.isEmpty()) base else base.copy(
-            servers = base.servers
-                .map { it.copy(isFavorite = it.id in favorites) }
-                .sortedByDescending { it.isFavorite }
-        )
+        baseState, settingsRepository.favoriteServerIds, settingsRepository.serverSort
+    ) { base, favorites, sort ->
+        val marked = base.servers.map { it.copy(isFavorite = it.id in favorites) }
+        base.copy(servers = sortServers(marked, sort), sort = sort)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ServersUiState())
+
+    /** Сортировки стабильные: при равенстве остаётся порядок подписки. Избранные всегда
+     *  идут первыми только в режиме FAVORITES — в остальных режимах порядок строго по ключу. */
+    private fun sortServers(list: List<NodeUi>, sort: ServerSort): List<NodeUi> = when (sort) {
+        ServerSort.FAVORITES -> list.sortedByDescending { it.isFavorite }
+        // -2 — ещё не проверен, -1 — недоступен: оба в конец, недоступные — самыми последними.
+        ServerSort.PING -> list.sortedWith(compareBy<NodeUi> {
+            when {
+                it.pingMs >= 0 -> 0
+                it.pingMs == -2 -> 1
+                else -> 2
+            }
+        }.thenBy { if (it.pingMs >= 0) it.pingMs else Int.MAX_VALUE })
+        ServerSort.NAME -> {
+            val collator = Collator.getInstance(Locale.getDefault())
+            list.sortedWith { a, b -> collator.compare(a.name, b.name) }
+        }
+    }
+
+    fun setSort(sort: ServerSort) = viewModelScope.launch { settingsRepository.setServerSort(sort) }
 
     private val _refreshingSubscription = MutableStateFlow(false)
     val refreshingSubscription: StateFlow<Boolean> = _refreshingSubscription.asStateFlow()
