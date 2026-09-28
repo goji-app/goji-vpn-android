@@ -60,6 +60,7 @@ import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.network.NetState
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
+import xyz.gojihub.vpn.ui.theme.AutoBadge
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
@@ -431,7 +432,14 @@ private fun AutoSwitchCard(state: ConnectUiState) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column {
-            Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+                AutoBadge()
+            }
             Text(
                 Loc.s.autoSwitchDesc,
                 color = GodjiColors.TextSecondary, fontSize = 10.sp, lineHeight = 13.sp

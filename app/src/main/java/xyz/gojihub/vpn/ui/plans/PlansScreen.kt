@@ -9,7 +9,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
@@ -43,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
+import xyz.gojihub.vpn.ui.theme.ActiveBadge
+import xyz.gojihub.vpn.ui.theme.CurrentBadge
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
@@ -126,7 +127,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                         }
                     }
                 }
-                ActiveStatusPill()
+                ActiveBadge(label = Loc.s.plansActive)
             }
             // Google Play запрещает продажу цифровой подписки в приложении в обход Google Play
             // Billing — во флейворе play кнопка оплаты не собирается вовсе (см. ENABLE_EXTERNAL_CHECKOUT
@@ -205,7 +206,10 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                            if (plan.isCurrent) CurrentBadge()
+                        }
                         // Длинные описания тарифов раньше разворачивали карточку на пол-экрана —
                         // сжимаем до 2 строк и прячем остальное за "читать полностью", сам тоггл
                         // показываем только если текст реально не поместился (hasVisualOverflow),
@@ -718,35 +722,6 @@ private fun PartnerActionButton(label: String, context: Context) {
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-    }
-}
-
-/** Пульсирующая точка вместо статичной обводки — читается как "живой" статус, а не просто
- *  ярлык. Пилл теперь залит мягким тил-тоном вместо тонкой рамки — тот же приём, что уже
- *  используется для активного тарифа в списке ниже (TealTint/TealDeep). */
-@Composable
-private fun ActiveStatusPill() {
-    val infiniteTransition = rememberInfiniteTransition(label = "activePulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(animation = tween(900), repeatMode = RepeatMode.Reverse),
-        label = "activePulseAlpha"
-    )
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(GodjiColors.TealTint)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        Box(
-            Modifier
-                .size(6.dp)
-                .background(GodjiColors.TealDeep.copy(alpha = pulseAlpha), CircleShape)
-        )
-        Text(Loc.s.plansActive, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 9.sp)
     }
 }
 
