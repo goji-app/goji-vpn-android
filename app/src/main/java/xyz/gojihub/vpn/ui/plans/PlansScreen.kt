@@ -6,17 +6,13 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import xyz.gojihub.vpn.BuildConfig
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,11 +21,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -39,8 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -54,9 +49,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
+import xyz.gojihub.vpn.ui.theme.ActiveBadge
 import xyz.gojihub.vpn.ui.theme.GodjiColors
+import xyz.gojihub.vpn.ui.theme.HoloBadge
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
+import xyz.gojihub.vpn.ui.theme.godjiGlassPill
 import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
@@ -80,7 +78,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text(Loc.s.plansTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
+                Text(Loc.s.plansTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp)
                 Text(Loc.s.plansSubtitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.5.sp)
                 state.customerId?.let { id ->
                     Row(
@@ -97,9 +95,9 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     }
                 }
             }
-            IconButton(onClick = viewModel::refresh) {
+            Box(Modifier.size(40.dp).godjiGlassPill().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = viewModel::refresh), contentAlignment = Alignment.Center) {
                 if (state.refreshing) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
-                else Icon(Icons.Filled.Refresh, contentDescription = Loc.s.serversRefresh, tint = GodjiColors.TealDeep)
+                else Icon(Icons.Filled.Refresh, contentDescription = Loc.s.serversRefresh, tint = GodjiColors.TealDeep, modifier = Modifier.size(18.dp))
             }
         }
 
@@ -108,7 +106,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
         Column(
             Modifier
                 .fillMaxWidth()
-                .godjiCard(borderColor = GodjiColors.Ink)
+                .godjiCard(RoundedCornerShape(28.dp), tint = GodjiColors.TealTint)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -137,7 +135,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                         }
                     }
                 }
-                ActiveStatusPill()
+                ActiveBadge(label = Loc.s.plansActive)
             }
             // Google Play запрещает продажу цифровой подписки в приложении в обход Google Play
             // Billing — во флейворе play кнопка оплаты не собирается вовсе (см. ENABLE_EXTERNAL_CHECKOUT
@@ -145,72 +143,79 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
             // недоступный, но всё ещё присутствующий в APK путь на внешний чекаут.
             if (BuildConfig.ENABLE_EXTERNAL_CHECKOUT) {
                 val (extendInteraction, extendScale) = rememberPressScale()
-                Button(
-                    onClick = {
-                        // Открываем сразу /checkout с уже известным тарифом и периодом (Custom Tabs,
-                        // не внешний браузер отдельным приложением — тот же приём, что для нативного
-                        // OAuth-логина, androidx.browser уже в зависимостях) — раньше кнопка вела на
-                        // общий /#/plans, откуда пользователь заново выбирал тариф на сайте, хотя
-                        // "Продлить" уже подразумевает именно текущий тариф на уже выбранный здесь
-                        // период. Сама оплата всё равно происходит на странице платёжного шлюза
-                        // (ЮKassa/Т-Банк/Robokassa/…) — приложение не участвует в передаче данных
-                        // карты. Без определённого текущего тарифа (например ещё не подгрузился
-                        // список) — прежнее поведение, общий /#/plans.
-                        val currentPlan = state.plans.firstOrNull { it.isCurrent }
-                        val checkoutUrl = if (currentPlan != null) {
-                            "https://gojihub.xyz/#/checkout?plan=${currentPlan.id}&defaultPeriod=${state.selectedMonths}&defaultPeriodUnit=${currentPlan.periodUnit}"
-                        } else {
-                            "https://gojihub.xyz/#/plans"
-                        }
-                        CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(checkoutUrl))
-                    },
-                    interactionSource = extendInteraction,
-                    colors = ButtonDefaults.buttonColors(containerColor = GodjiColors.Ink),
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier.fillMaxWidth().height(44.dp).scale(extendScale.value)
-                ) { Text(Loc.s.plansExtend, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp) }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .scale(extendScale.value)
+                        .clip(RoundedCornerShape(50))
+                        .background(Brush.verticalGradient(listOf(GodjiColors.AccentGradTop, GodjiColors.AccentGradMid, GodjiColors.AccentGradBottom)))
+                        .clickable(interactionSource = extendInteraction, indication = LocalIndication.current) {
+                            // Открываем сразу /checkout с уже известным тарифом и периодом (Custom Tabs,
+                            // не внешний браузер отдельным приложением — тот же приём, что для нативного
+                            // OAuth-логина, androidx.browser уже в зависимостях) — раньше кнопка вела на
+                            // общий /#/plans, откуда пользователь заново выбирал тариф на сайте, хотя
+                            // "Продлить" уже подразумевает именно текущий тариф на уже выбранный здесь
+                            // период. Сама оплата всё равно происходит на странице платёжного шлюза
+                            // (ЮKassa/Т-Банк/Robokassa/…) — приложение не участвует в передаче данных
+                            // карты. Без определённого текущего тарифа (например ещё не подгрузился
+                            // список) — прежнее поведение, общий /#/plans.
+                            val currentPlan = state.plans.firstOrNull { it.isCurrent }
+                            val checkoutUrl = if (currentPlan != null) {
+                                "https://gojihub.xyz/#/checkout?plan=${currentPlan.id}&defaultPeriod=${state.selectedMonths}&defaultPeriodUnit=${currentPlan.periodUnit}"
+                            } else {
+                                "https://gojihub.xyz/#/plans"
+                            }
+                            CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(checkoutUrl))
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text(Loc.s.plansExtend, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             }
         }
 
         if (state.periods.size > 1) {
             Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth().background(GodjiColors.Chip, RoundedCornerShape(16.dp)).padding(5.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                state.periods.forEach { p ->
-                    val selected = p.months == state.selectedMonths
-                    val (chipInteraction, chipScale) = rememberPressScale()
-                    val chipBg by animateColorAsState(if (selected) GodjiColors.Ink else androidx.compose.ui.graphics.Color.Transparent, label = "chipBg")
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .height(38.dp)
-                            .scale(chipScale.value)
-                            .clip(RoundedCornerShape(50))
-                            .background(chipBg)
-                            .clickable(interactionSource = chipInteraction, indication = LocalIndication.current) { viewModel.selectPeriod(p.months) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            p.label, color = if (selected) GodjiColors.Surface else GodjiColors.TextSecondary,
-                            fontWeight = FontWeight.Bold, fontSize = 11.5.sp,
-                            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
+            BoxWithConstraints(Modifier.fillMaxWidth().godjiGlassPill().padding(4.dp)) {
+                val slotWidth = maxWidth / state.periods.size
+                val selectedIndex = state.periods.indexOfFirst { it.months == state.selectedMonths }.coerceAtLeast(0)
+                val thumbX by animateDpAsState(slotWidth * selectedIndex, spring(dampingRatio = 0.62f, stiffness = 380f), label = "periodThumb")
+                Box(
+                    Modifier
+                        .offset(x = thumbX)
+                        .width(slotWidth)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(GodjiColors.Thumb)
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    state.periods.forEach { p ->
+                        val selected = p.months == state.selectedMonths
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.selectPeriod(p.months) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                p.label, color = if (selected) GodjiColors.TextPrimary else GodjiColors.TextSecondary,
+                                fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.plans.forEach { plan ->
-                val planBg by animateColorAsState(if (plan.isCurrent) GodjiColors.TealTint else GodjiColors.Surface, label = "planBg")
-                val planBorder by animateColorAsState(if (plan.isCurrent) GodjiColors.Teal else GodjiColors.CardBorder, label = "planBorder")
+        Column(Modifier.fillMaxWidth().godjiCard()) {
+            state.plans.forEachIndexed { index, plan ->
+                if (index > 0) HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .godjiCard(tint = planBg, borderColor = planBorder)
+                        .background(if (plan.isCurrent) GodjiColors.SelBg else Color.Transparent)
                         .padding(14.dp),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -218,21 +223,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
-                            if (plan.isCurrent) {
-                                Box(
-                                    Modifier
-                                        .clip(RoundedCornerShape(50))
-                                        .background(GodjiColors.Teal)
-                                        .padding(horizontal = 7.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        Loc.s.plansCurrentLabel,
-                                        color = androidx.compose.ui.graphics.Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 8.5.sp
-                                    )
-                                }
-                            }
+                            if (plan.isCurrent) HoloBadge(Loc.s.plansCurrentLabel, "★")
                         }
                         // Длинные описания тарифов раньше разворачивали карточку на пол-экрана —
                         // сжимаем до 2 строк и прячем остальное за "читать полностью", сам тоггл
@@ -262,7 +253,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                             )
                         }
                     }
-                    Text(plan.priceLabel, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(plan.priceLabel, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 }
             }
         }
@@ -284,7 +275,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
 
         if (state.news.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
-            Text(Loc.s.plansNewsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
+            SectionLabel(Loc.s.plansNewsTitle)
             Spacer(Modifier.height(8.dp))
             if (!state.newsExpanded) {
                 // Свёрнутый вид — только самые свежие NEWS_PREVIEW_COUNT, остальное скрыто
@@ -360,12 +351,28 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Filled.Email, contentDescription = null, tint = GodjiColors.TerracottaDeep, modifier = Modifier.size(19.dp))
+            Box(Modifier.size(34.dp).clip(CircleShape).background(GodjiColors.Terracotta), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Chat, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
             Text(Loc.s.plansSupportText, color = GodjiColors.TerracottaDeep, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp)
         }
 
         Spacer(Modifier.height(4.dp))
     }
+}
+
+/** Подпись секции ("НОВОСТИ", "ПРИГЛАСИ ДРУЗЕЙ" в эталоне) — капс мелким текстом с трекингом,
+ *  как в "Настройках" (SettingsSection), а не крупный заголовок. */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text.uppercase(),
+        color = GodjiColors.TextSecondary,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp,
+        letterSpacing = 0.66.sp,
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)
+    )
 }
 
 /** Карточка одной новости/рассылки (gojihub.xyz/api/broadcasts) — content рендерится через
@@ -413,6 +420,212 @@ private fun NewsCard(item: NewsUi) {
     }
 }
 
+/** Рефералы и партнёрка раньше были двумя отдельными секциями подряд — визуально дублировали
+ *  друг друга (у обеих ссылка/сводка/список) и вместе растягивали экран подписки на пол-ленты.
+ *  Объединили в одно меню "Программа" с переключателем вкладок, когда доступны обе программы
+ *  сразу; если доступна только одна — показываем её карточку без лишнего переключателя. */
+@Composable
+private fun ProgramSection(
+    referral: ReferralUi?,
+    partner: PartnerUi?,
+    clipboard: androidx.compose.ui.platform.ClipboardManager,
+    context: Context
+) {
+    // 0 = рефералы, 1 = партнёрка — по умолчанию открываем ту, что вообще доступна.
+    var tab by remember(referral != null, partner != null) { mutableIntStateOf(if (referral != null) 0 else 1) }
+
+    Spacer(Modifier.height(16.dp))
+    SectionLabel(Loc.s.plansProgramTitle)
+    Spacer(Modifier.height(8.dp))
+
+    if (referral != null && partner != null) {
+        Row(
+            Modifier.fillMaxWidth().godjiGlassPill().padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            ProgramTab(Loc.s.plansProgramTabReferral, selected = tab == 0, modifier = Modifier.weight(1f)) { tab = 0 }
+            ProgramTab(Loc.s.plansProgramTabPartner, selected = tab == 1, modifier = Modifier.weight(1f)) { tab = 1 }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+
+    when {
+        referral != null && tab == 0 -> ReferralCard(referral, clipboard, context)
+        partner != null -> PartnerCard(partner, context)
+    }
+}
+
+@Composable
+private fun ProgramTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val bg by animateColorAsState(if (selected) GodjiColors.Thumb else Color.Transparent, label = "programTabBg")
+    Box(
+        modifier
+            .height(38.dp)
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label, color = if (selected) GodjiColors.TextPrimary else GodjiColors.TextSecondary,
+            fontWeight = FontWeight.Bold, fontSize = 11.5.sp,
+            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.platform.ClipboardManager, context: Context) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .godjiCard()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(GodjiColors.Chip)
+                .clickable { clipboard.setText(AnnotatedString(referral.link)) }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(referral.link, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(15.dp))
+            // Открывает системный share-sheet — иконка "поделиться" точнее отражает действие,
+            // чем условная стрелка "открыть во внешнем".
+            Icon(
+                Icons.Filled.Share,
+                contentDescription = null,
+                tint = GodjiColors.TealDeep,
+                modifier = Modifier.size(16.dp).clickable {
+                    // Системный share-sheet — раньше ссылку можно было только скопировать в
+                    // буфер, что лишний шаг перед отправкой в Telegram/WhatsApp/куда угодно.
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, referral.link)
+                    }
+                    context.startActivity(Intent.createChooser(send, null))
+                }
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            ReferralStat(Loc.s.plansReferralInvited, "${referral.totalReferrals}")
+            ReferralStat(Loc.s.plansReferralActive, "${referral.activeReferrals}", GodjiColors.TealDeep)
+            ReferralStat(Loc.s.plansReferralBonusDays, "${referral.totalBonusDays}", GodjiColors.TerracottaDeep)
+        }
+        if (referral.entries.isNotEmpty()) {
+            HorizontalDivider(color = GodjiColors.Hair)
+            Text(Loc.s.plansReferralListTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                referral.entries.forEach { e ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(e.displayName, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (e.bonusDays > 0) {
+                                Text(Loc.s.plansReferralBonusSuffix(e.bonusDays), color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 10.5.sp)
+                            }
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (e.isActive) GodjiColors.TealTint else GodjiColors.Chip)
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    if (e.isActive) Loc.s.plansReferralActiveBadge else Loc.s.plansReferralInactiveBadge,
+                                    color = if (e.isActive) GodjiColors.TealDeep else GodjiColors.TextSecondary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Text(Loc.s.plansReferralEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun ReferralStat(label: String, value: String, valueColor: Color = GodjiColors.TextPrimary) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = valueColor, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+        Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 9.sp)
+    }
+}
+
+/** Только статус/сводка — подача заявки и запрос вывода средств делаются на сайте (та же
+ *  логика, что и "Продлить" для тарифов: не переизобретаем денежные формы нативно). */
+@Composable
+private fun PartnerCard(partner: PartnerUi, context: Context) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .godjiCard()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        when {
+            partner.isPartner && !partner.isActive ->
+                Text(Loc.s.plansPartnerDeactivated, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
+            partner.isPartner -> {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ReferralStat(Loc.s.plansPartnerCommission, "${partner.commissionRate}%")
+                    ReferralStat(Loc.s.plansPartnerClients, "${partner.clientCount}")
+                    ReferralStat(Loc.s.plansPartnerEarned, "${partner.totalEarned.toInt()} ₽", GodjiColors.TerracottaDeep)
+                }
+                HorizontalDivider(color = GodjiColors.Hair)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(Loc.s.plansPartnerBalance, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+                    Text("${partner.availableBalance.toInt()} ₽", color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+                if (partner.pendingBalance > 0) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(Loc.s.plansPartnerPendingBalance, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+                        Text("${partner.pendingBalance.toInt()} ₽", color = GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+                PartnerActionButton(Loc.s.plansPartnerOpenDashboard, context)
+            }
+            partner.applicationStatus == "pending" -> {
+                Text(Loc.s.plansPartnerPending, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
+            }
+            partner.applicationStatus == "rejected" -> {
+                Text(Loc.s.plansPartnerRejected, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
+                PartnerActionButton(Loc.s.plansPartnerApply, context)
+            }
+            else -> {
+                Text(Loc.s.plansPartnerNotPartnerText, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
+                PartnerActionButton(Loc.s.plansPartnerApply, context)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PartnerActionButton(label: String, context: Context) {
+    val (interaction, scale) = rememberPressScale()
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .scale(scale.value)
+            .clip(RoundedCornerShape(50))
+            .background(Brush.verticalGradient(listOf(GodjiColors.AccentGradTop, GodjiColors.AccentGradMid, GodjiColors.AccentGradBottom)))
+            .clickable(interactionSource = interaction, indication = LocalIndication.current) {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/partner-dashboard")))
+            }
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    }
+}
+
 /** Сводка + ссылка + список приглашённых (gojihub.xyz/api/dashboard/referrals). Имена/
  *  юзернеймы/email приглашённых уже замаскированы во ViewModel (см. displayNameFor) — это
  *  чужие персональные данные, не наши. */
@@ -445,7 +658,7 @@ private fun DevicesSection(
     Column(
         Modifier
             .fillMaxWidth()
-            .godjiCard(borderColor = GodjiColors.Ink)
+            .godjiCard()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -453,7 +666,7 @@ private fun DevicesSection(
             Text(Loc.s.plansDevicesEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
         } else {
             devices.forEachIndexed { index, device ->
-                if (index > 0) HorizontalDivider(color = GodjiColors.CardBorder)
+                if (index > 0) HorizontalDivider(color = GodjiColors.Hair)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(device.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -544,279 +757,21 @@ private fun DevicesSection(
     }
 }
 
-/** Рефералы и партнёрка раньше были двумя отдельными секциями подряд — визуально дублировали
- *  друг друга (у обеих ссылка/сводка/список) и вместе растягивали экран подписки на пол-ленты.
- *  Объединили в одно меню "Программа" с переключателем вкладок, когда доступны обе программы
- *  сразу; если доступна только одна — показываем её карточку без лишнего переключателя. */
-@Composable
-private fun ProgramSection(
-    referral: ReferralUi?,
-    partner: PartnerUi?,
-    clipboard: androidx.compose.ui.platform.ClipboardManager,
-    context: Context
-) {
-    // 0 = рефералы, 1 = партнёрка — по умолчанию открываем ту, что вообще доступна.
-    var tab by remember(referral != null, partner != null) { mutableIntStateOf(if (referral != null) 0 else 1) }
-
-    Spacer(Modifier.height(16.dp))
-    Text(Loc.s.plansProgramTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp)
-    Spacer(Modifier.height(8.dp))
-
-    if (referral != null && partner != null) {
-        Row(
-            Modifier.fillMaxWidth().background(GodjiColors.Chip, RoundedCornerShape(16.dp)).padding(5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            ProgramTab(Loc.s.plansProgramTabReferral, selected = tab == 0, modifier = Modifier.weight(1f)) { tab = 0 }
-            ProgramTab(Loc.s.plansProgramTabPartner, selected = tab == 1, modifier = Modifier.weight(1f)) { tab = 1 }
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-
-    when {
-        referral != null && tab == 0 -> ReferralCard(referral, clipboard, context)
-        partner != null -> PartnerCard(partner, context)
-    }
-}
-
-@Composable
-private fun ProgramTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val bg by animateColorAsState(if (selected) GodjiColors.Ink else androidx.compose.ui.graphics.Color.Transparent, label = "programTabBg")
-    Box(
-        modifier
-            .height(38.dp)
-            .clip(RoundedCornerShape(50))
-            .background(bg)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label, color = if (selected) GodjiColors.Surface else GodjiColors.TextSecondary,
-            fontWeight = FontWeight.Bold, fontSize = 11.5.sp,
-            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.platform.ClipboardManager, context: Context) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .godjiCard(borderColor = GodjiColors.Ink)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(GodjiColors.Chip)
-                .clickable { clipboard.setText(AnnotatedString(referral.link)) }
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(referral.link, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(15.dp))
-            // Открывает системный share-sheet — иконка "поделиться" точнее отражает действие,
-            // чем условная стрелка "открыть во внешнем".
-            Icon(
-                Icons.Filled.Share,
-                contentDescription = null,
-                tint = GodjiColors.TealDeep,
-                modifier = Modifier.size(16.dp).clickable {
-                    // Системный share-sheet — раньше ссылку можно было только скопировать в
-                    // буфер, что лишний шаг перед отправкой в Telegram/WhatsApp/куда угодно.
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, referral.link)
-                    }
-                    context.startActivity(Intent.createChooser(send, null))
-                }
-            )
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ReferralStat(Loc.s.plansReferralInvited, "${referral.totalReferrals}")
-            ReferralStat(Loc.s.plansReferralActive, "${referral.activeReferrals}", GodjiColors.TealDeep)
-            ReferralStat(Loc.s.plansReferralBonusDays, "${referral.totalBonusDays}", GodjiColors.TerracottaDeep)
-        }
-        if (referral.entries.isNotEmpty()) {
-            HorizontalDivider(color = GodjiColors.CardBorder)
-            Text(Loc.s.plansReferralListTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                referral.entries.forEach { e ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(e.displayName, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (e.bonusDays > 0) {
-                                Text(Loc.s.plansReferralBonusSuffix(e.bonusDays), color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 10.5.sp)
-                            }
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(if (e.isActive) GodjiColors.TealTint else GodjiColors.Chip)
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text(
-                                    if (e.isActive) Loc.s.plansReferralActiveBadge else Loc.s.plansReferralInactiveBadge,
-                                    color = if (e.isActive) GodjiColors.TealDeep else GodjiColors.TextSecondary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 9.sp
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            Text(Loc.s.plansReferralEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
-        }
-    }
-}
-
-@Composable
-private fun ReferralStat(label: String, value: String, valueColor: androidx.compose.ui.graphics.Color = GodjiColors.TextPrimary) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = valueColor, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-        Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 9.sp)
-    }
-}
-
-/** Только статус/сводка — подача заявки и запрос вывода средств делаются на сайте (та же
- *  логика, что и "Продлить" для тарифов: не переизобретаем денежные формы нативно). */
-@Composable
-private fun PartnerCard(partner: PartnerUi, context: Context) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .godjiCard(borderColor = GodjiColors.Ink)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        when {
-            partner.isPartner && !partner.isActive ->
-                Text(Loc.s.plansPartnerDeactivated, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
-            partner.isPartner -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    ReferralStat(Loc.s.plansPartnerCommission, "${partner.commissionRate}%")
-                    ReferralStat(Loc.s.plansPartnerClients, "${partner.clientCount}")
-                    ReferralStat(Loc.s.plansPartnerEarned, "${partner.totalEarned.toInt()} ₽", GodjiColors.TerracottaDeep)
-                }
-                HorizontalDivider(color = GodjiColors.CardBorder)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(Loc.s.plansPartnerBalance, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
-                    Text("${partner.availableBalance.toInt()} ₽", color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-                if (partner.pendingBalance > 0) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(Loc.s.plansPartnerPendingBalance, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
-                        Text("${partner.pendingBalance.toInt()} ₽", color = GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
-                PartnerActionButton(Loc.s.plansPartnerOpenDashboard, context)
-            }
-            partner.applicationStatus == "pending" -> {
-                Text(Loc.s.plansPartnerPending, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
-            }
-            partner.applicationStatus == "rejected" -> {
-                Text(Loc.s.plansPartnerRejected, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
-                PartnerActionButton(Loc.s.plansPartnerApply, context)
-            }
-            else -> {
-                Text(Loc.s.plansPartnerNotPartnerText, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
-                PartnerActionButton(Loc.s.plansPartnerApply, context)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PartnerActionButton(label: String, context: Context) {
-    val (interaction, scale) = rememberPressScale()
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .scale(scale.value)
-            .clip(RoundedCornerShape(50))
-            .background(GodjiColors.Ink)
-            .clickable(interactionSource = interaction, indication = LocalIndication.current) {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gojihub.xyz/#/partner-dashboard")))
-            }
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-    }
-}
-
-/** Залитый градиентный "премиум"-бейдж вместо прежнего бледного пилла с пульсирующей точкой:
- *  сплошная тил-заливка с мягким цветным свечением-тенью (читается на расстоянии, а не как
- *  тонкая техническая метка), молния как знак "включено/в деле", и бегущий по бейджу блик —
- *  тот же язык "живого" статуса, что и раньше, но заметно ярче и наряднее. */
-@Composable
-private fun ActiveStatusPill() {
-    val infiniteTransition = rememberInfiniteTransition(label = "activeShimmer")
-    val shimmerX by infiniteTransition.animateFloat(
-        initialValue = -34f,
-        targetValue = 96f,
-        animationSpec = infiniteRepeatable(animation = tween(2200, easing = LinearEasing), repeatMode = RepeatMode.Restart),
-        label = "activeShimmerX"
-    )
-    Box(
-        Modifier
-            .height(30.dp)
-            .shadow(3.dp, RoundedCornerShape(50), ambientColor = GodjiColors.Teal, spotColor = GodjiColors.Teal)
-            .clip(RoundedCornerShape(50))
-            .background(Brush.horizontalGradient(listOf(GodjiColors.TealDeep, GodjiColors.Teal)))
-    ) {
-        Box(
-            Modifier
-                .fillMaxHeight()
-                .width(26.dp)
-                .offset(x = shimmerX.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            androidx.compose.ui.graphics.Color.Transparent,
-                            androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f),
-                            androidx.compose.ui.graphics.Color.Transparent
-                        )
-                    )
-                )
-        )
-        Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Icon(Icons.Filled.Bolt, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(13.dp))
-            Text(Loc.s.plansActive, color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 10.sp)
-        }
-    }
-}
-
-/** Кольцо с закруглёнными краями штриха и градиентной заливкой вместо плоской заливки в один
- *  тон — плоский тонкий круг на бледном фоне выглядел скорее как техническая шкала, чем как
- *  акцентный элемент карточки. */
+/** Кольцо-таймер дней подписки — 68dp, кольцо Teal по TrackBg, "ядро" RingCore 54dp. */
 @Composable
 private fun DaysRing(days: Int) {
     val pct = (days / 30f).coerceIn(0f, 1f)
-    Box(Modifier.size(70.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(68.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            val stroke = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+            val stroke = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round)
             drawArc(GodjiColors.TrackBg, startAngle = -90f, sweepAngle = 360f, useCenter = false, style = stroke)
-            drawArc(
-                brush = Brush.linearGradient(listOf(GodjiColors.TealDeep, GodjiColors.Teal)),
-                startAngle = -90f,
-                sweepAngle = 360f * pct,
-                useCenter = false,
-                style = stroke
-            )
+            drawArc(GodjiColors.Teal, startAngle = -90f, sweepAngle = 360f * pct, useCenter = false, style = stroke)
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("$days", color = GodjiColors.TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp)
-            Text(Loc.s.plansDays, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 7.5.sp)
+        Box(Modifier.size(54.dp).clip(CircleShape).background(GodjiColors.RingCore), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("$days", color = GodjiColors.TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp)
+                Text(Loc.s.plansDays, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 7.5.sp)
+            }
         }
     }
 }
