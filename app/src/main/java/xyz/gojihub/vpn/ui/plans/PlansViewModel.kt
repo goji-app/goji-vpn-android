@@ -132,8 +132,12 @@ private fun displayNameFor(e: ReferralEntry): String {
 @HiltViewModel
 class PlansViewModel @Inject constructor(
     private val api: RemnawaveApi,
-    private val subscriptionRepository: SubscriptionRepository
+    private val subscriptionRepository: SubscriptionRepository,
+    private val authRepository: xyz.gojihub.vpn.auth.AuthRepository
 ) : ViewModel() {
+
+    /** Код переноса входа на другое устройство (см. AuthRepository.transferUri). */
+    fun transferUri(): String? = authRepository.transferUri()
 
     private val _state = MutableStateFlow(PlansUiState())
     val state: StateFlow<PlansUiState> = _state

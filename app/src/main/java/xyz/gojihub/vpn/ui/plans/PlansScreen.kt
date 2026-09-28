@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
@@ -182,6 +183,26 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                 onRename = viewModel::renameDevice,
                 onDelete = viewModel::deleteDevice,
                 onOpenSupport = onOpenSupport
+            )
+        }
+
+        // Перенос входа на другое устройство по QR — без почты и пароля.
+        var transferUri by remember { mutableStateOf<String?>(null) }
+        TransferCard(onClick = { transferUri = viewModel.transferUri() })
+        transferUri?.let { uri ->
+            // Код живёт 10 минут (см. AuthRepository.TRANSFER_TTL_SECONDS) — и на экране дольше
+            // не держим, чтобы его не "забыли" открытым.
+            LaunchedEffect(uri) {
+                kotlinx.coroutines.delay(10 * 60 * 1000L)
+                transferUri = null
+            }
+            QrDialog(
+                title = Loc.f.transferQrTitle,
+                subtitle = Loc.f.transferQrSubtitle,
+                content = uri,
+                warning = Loc.f.transferQrWarning,
+                closeLabel = Loc.f.qrClose,
+                onDismiss = { transferUri = null }
             )
         }
 
@@ -439,6 +460,32 @@ private fun NewsCard(item: NewsUi) {
                 Text(btn.text, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
+    }
+}
+
+/** "Перенести на другое устройство" — в стиле карточки партнёрской программы: круг с иконкой,
+ *  заголовок и пояснение, стрелка. */
+@Composable
+private fun TransferCard(onClick: () -> Unit) {
+    val (interaction, scale) = rememberPressScale()
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .scale(scale.value)
+            .godjiCard(RoundedCornerShape(24.dp))
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(GodjiColors.TealTint), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.QrCode2, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(Loc.f.transferTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+            Text(Loc.f.transferDesc, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.4.sp)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(16.dp))
     }
 }
 

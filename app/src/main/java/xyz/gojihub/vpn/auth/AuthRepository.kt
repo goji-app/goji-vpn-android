@@ -28,7 +28,9 @@ private const val OAUTH_REDIRECT_URI = "godjivpn://oauth2redirect"
 class AuthRepository @Inject constructor(
     private val api: RemnawaveApi,
     private val tokenManager: TokenManager,
-    @ApplicationContext private val appContext: Context
+    @ApplicationContext private val appContext: Context,
+    // Клиент без авторизационных интерсепторов (см. NetworkModule) — для проверки чужой сессии.
+    @javax.inject.Named("refresh") private val plainClient: okhttp3.OkHttpClient
 ) {
     // PKCE verifier/provider живут между стартом OAuth (открытие Custom Tabs) и возвратом
     // deeplink'ом — раньше держались только в памяти, и это было сознательно принятым риском
@@ -128,6 +130,57 @@ class AuthRepository @Inject constructor(
         AuthResult.Error(it.message ?: Loc.s.errorOAuthCompleteFailed)
     }
 
+    /**
+     * Перенос входа на другое устройство по QR-коду (Подписка → "Перенести на другое
+     * устройство"): в код кладём текущую сессию — тот же JWT и refresh-токен, что уже лежат в
+     * TokenManager, — и момент создания. Бэкенд принимает JWT как обычный Bearer с любого
+     * устройства (так же, как токен из WebView-входа); новое устройство при первом запросе
+     * подписки само зарегистрирует свой HWID и займёт место в лимите устройств.
+     * null — если на этом устройстве сейчас нет сессии.
+     */
+    fun transferUri(): String? {
+        val token = tokenManager.accessToken() ?: return null
+        val refresh = tokenManager.refreshToken()
+        return android.net.Uri.Builder()
+            .scheme(TRANSFER_SCHEME).authority(TRANSFER_HOST)
+            .appendQueryParameter("s", token)
+            .apply { if (refresh != null) appendQueryParameter("r", refresh) }
+            .appendQueryParameter("t", (System.currentTimeMillis() / 1000).toString())
+            .build().toString()
+    }
+
+    enum class TransferError { INVALID, EXPIRED, FAILED }
+
+    /** Вход по отсканированному коду переноса. Проверяет формат и срок (TRANSFER_TTL), затем
+     *  проверяет присланную сессию ОТДЕЛЬНЫМ запросом /api/auth/me — и только если бэкенд её
+     *  принял, сохраняет. Текущий вход на этом устройстве при неудаче не трогается. */
+    suspend fun loginWithTransfer(raw: String): TransferError? {
+        val uri = runCatching { android.net.Uri.parse(raw.trim()) }.getOrNull()
+        if (uri == null || uri.scheme != TRANSFER_SCHEME || uri.host != TRANSFER_HOST) return TransferError.INVALID
+        val session = uri.getQueryParameter("s")?.takeIf { it.isNotBlank() } ?: return TransferError.INVALID
+        val createdAt = uri.getQueryParameter("t")?.toLongOrNull() ?: return TransferError.INVALID
+        val age = System.currentTimeMillis() / 1000 - createdAt
+        if (age !in -300..TRANSFER_TTL_SECONDS) return TransferError.EXPIRED
+        if (!isSessionAccepted(session)) return TransferError.FAILED
+        val result = completeWebLogin(session, uri.getQueryParameter("r")?.takeIf { it.isNotBlank() })
+        return if (result is AuthResult.Error) TransferError.FAILED else null
+    }
+
+    /** GET /api/auth/me с присланным токеном — без authInterceptor основного клиента (тот
+     *  подставил бы текущий токен устройства и при 401 разлогинил бы его). */
+    private suspend fun isSessionAccepted(token: String): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val request = okhttp3.Request.Builder()
+                .url("https://gojihub.xyz/api/auth/me")
+                .header("Authorization", "Bearer $token")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("User-Agent", "Goji/${xyz.gojihub.vpn.BuildConfig.VERSION_NAME}/Android")
+                .build()
+            plainClient.newCall(request).execute().use { it.isSuccessful }
+        }.onFailure { AppLogger.e(appContext, LogCategory.MAIN, TAG, "isSessionAccepted failed", it) }
+            .getOrDefault(false)
+    }
+
     private suspend fun onAuthenticated(token: String, expiresInSeconds: Long) {
         tokenManager.save(token, expiresInSeconds)
         // Согласия на обработку данных / условия использования — требуются один раз после
@@ -154,5 +207,10 @@ class AuthRepository @Inject constructor(
         // TokenManager реально этим значением уже не пользуется (см. комментарий у isLoggedIn()) —
         // единственный источник правды о протухшем токене — 401 от бэкенда. Держим с запасом.
         const val WEB_LOGIN_EXPIRES_IN_SECONDS = 30L * 24 * 3600
+        const val TRANSFER_SCHEME = "godjivpn"
+        const val TRANSFER_HOST = "transfer"
+        // Код переноса показывают с экрана "здесь и сейчас" — старый снимок экрана не должен
+        // давать вход спустя дни.
+        const val TRANSFER_TTL_SECONDS = 10L * 60
     }
 }

@@ -22,6 +22,10 @@ import androidx.compose.ui.draw.scale
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,6 +64,17 @@ fun LoginScreen(
     // читаем сессионную куку напрямую (см. комментарий в WebLoginActivity).
     fun openWebLogin() {
         context.startActivity(Intent(context, WebLoginActivity::class.java))
+    }
+
+    val qrScanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val text = result.contents ?: return@rememberLauncherForActivityResult
+        viewModel.loginWithTransfer(text) {
+            // Как после OAuth/WebView-входа: новый onCreate() MainActivity с актуальным isLoggedIn().
+            context.startActivity(
+                Intent(context, xyz.gojihub.vpn.MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
+        }
     }
 
     GlassBackdrop {
@@ -162,6 +177,26 @@ fun LoginScreen(
 
                     TextButton(onClick = { viewModel.toggleEmailMode(true) }, modifier = Modifier.fillMaxWidth()) {
                         Text(Loc.s.loginEmailMode, color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    }
+
+                    // Перенос входа со старого устройства: там Подписка → "Перенести на другое
+                    // устройство" показывает QR, здесь его сканируем — без почты и паролей.
+                    TextButton(
+                        onClick = {
+                            qrScanner.launch(
+                                ScanOptions()
+                                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                    .setPrompt(Loc.f.loginQrPrompt)
+                                    .setBeepEnabled(false)
+                                    .setOrientationLocked(true)
+                            )
+                        },
+                        enabled = !state.loading,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text(Loc.f.loginByQr, color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     }
                 } else {
                     OutlinedTextField(

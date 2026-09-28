@@ -11,6 +11,12 @@ import xyz.gojihub.vpn.auth.AuthResult
 import xyz.gojihub.vpn.i18n.Loc
 import javax.inject.Inject
 
+fun transferErrorText(error: AuthRepository.TransferError): String = when (error) {
+    AuthRepository.TransferError.INVALID -> Loc.f.transferInvalid
+    AuthRepository.TransferError.EXPIRED -> Loc.f.transferExpired
+    AuthRepository.TransferError.FAILED -> Loc.f.transferFailed
+}
+
 data class LoginUiState(
     val email: String = "",
     val emailMode: Boolean = false,
@@ -44,6 +50,16 @@ class LoginViewModel @Inject constructor(
                 }
                 is AuthResult.Error -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
+        }
+    }
+
+    /** Вход по QR-коду переноса, отсканированному прямо на экране входа. */
+    fun loginWithTransfer(raw: String, onSuccess: () -> Unit) {
+        _state.value = _state.value.copy(loading = true, error = null)
+        viewModelScope.launch {
+            val error = authRepository.loginWithTransfer(raw)
+            _state.value = _state.value.copy(loading = false, error = error?.let(::transferErrorText))
+            if (error == null) onSuccess()
         }
     }
 

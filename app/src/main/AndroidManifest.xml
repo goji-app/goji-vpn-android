@@ -66,6 +66,30 @@
             </intent-filter>
         </activity>
 
+        <!-- Вход по QR-коду переноса (godjivpn://transfer), отсканированному системной камерой
+             (см. TransferLoginActivity) — всегда с явным подтверждением пользователя. -->
+        <activity
+            android:name=".auth.TransferLoginActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="godjivpn"
+                    android:host="transfer" />
+            </intent-filter>
+        </activity>
+
+        <!-- Встроенный сканер QR (zxing-android-embedded) — вертикально, как весь интерфейс. -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="portrait"
+            tools:replace="screenOrientation" />
+
         <!-- WebView-логин: обходной путь для сломанного на бэкенде 7.1.0 native/exchange (см.
              WebLoginActivity) — запускается только из LoginScreen, наружу не экспортируется. -->
         <activity

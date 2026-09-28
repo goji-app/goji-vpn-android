@@ -57,6 +57,22 @@ data class FeatureStrings(
     val qrClose: String,
     val referralQrTitle: String,
     val referralQrSubtitle: String,
+    // ── Перенос входа по QR ──
+    val transferTitle: String,
+    val transferDesc: String,
+    val transferQrTitle: String,
+    val transferQrSubtitle: String,
+    val transferQrWarning: String,
+    val loginByQr: String,
+    val loginQrPrompt: String,
+    val transferInvalid: String,
+    val transferExpired: String,
+    val transferFailed: String,
+    val transferConfirmTitle: String,
+    val transferConfirmText: String,
+    val transferConfirmReplace: String,
+    val transferConfirmYes: String,
+    val transferCancel: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -109,6 +125,21 @@ data class FeatureStrings(
             qrClose = "Закрыть",
             referralQrTitle = "Пригласи друга",
             referralQrSubtitle = "Друг наводит камеру телефона на код и сразу открывает твою пригласительную ссылку.",
+            transferTitle = "Перенести на другое устройство",
+            transferDesc = "Вход без почты: покажи QR-код новому телефону",
+            transferQrTitle = "Вход на другом устройстве",
+            transferQrSubtitle = "На новом устройстве открой Goji → «Войти по QR-коду» и наведи камеру на код. Устройство займёт одно место в лимите подписки.",
+            transferQrWarning = "Код даёт вход в твой аккаунт — не показывай и не отправляй его посторонним. Действует 10 минут.",
+            loginByQr = "Войти по QR-коду",
+            loginQrPrompt = "Наведи камеру на QR-код из Goji на другом устройстве (Подписка → Перенести на другое устройство)",
+            transferInvalid = "Это не QR-код входа Goji",
+            transferExpired = "QR-код устарел — открой новый на старом устройстве",
+            transferFailed = "Не удалось войти по QR-коду — попробуй ещё раз",
+            transferConfirmTitle = "Войти по QR-коду?",
+            transferConfirmText = "Goji войдёт в аккаунт, с устройства которого показан этот код.",
+            transferConfirmReplace = "Goji выйдет из текущего аккаунта и войдёт в аккаунт, с устройства которого показан этот код.",
+            transferConfirmYes = "Войти",
+            transferCancel = "Отмена",
         )
 
         private val EN = FeatureStrings(
@@ -155,6 +186,21 @@ data class FeatureStrings(
             qrClose = "Close",
             referralQrTitle = "Invite a friend",
             referralQrSubtitle = "Your friend points their phone camera at the code and opens your invite link right away.",
+            transferTitle = "Move to another device",
+            transferDesc = "Sign in without email: show a QR code to the new phone",
+            transferQrTitle = "Sign in on another device",
+            transferQrSubtitle = "On the new device open Goji → «Sign in with QR code» and point the camera at this code. The device takes one slot of your plan's device limit.",
+            transferQrWarning = "This code signs in to your account — don't show or send it to anyone. Valid for 10 minutes.",
+            loginByQr = "Sign in with QR code",
+            loginQrPrompt = "Point the camera at the QR code in Goji on your other device (Plan → Move to another device)",
+            transferInvalid = "This isn't a Goji sign-in QR code",
+            transferExpired = "The QR code has expired — open a new one on the old device",
+            transferFailed = "Couldn't sign in with the QR code — try again",
+            transferConfirmTitle = "Sign in with QR code?",
+            transferConfirmText = "Goji will sign in to the account of the device showing this code.",
+            transferConfirmReplace = "Goji will sign out of the current account and sign in to the account of the device showing this code.",
+            transferConfirmYes = "Sign in",
+            transferCancel = "Cancel",
         )
 
         private val ZH = FeatureStrings(
@@ -201,6 +247,21 @@ data class FeatureStrings(
             qrClose = "关闭",
             referralQrTitle = "邀请好友",
             referralQrSubtitle = "好友用手机相机扫描二维码，即可直接打开你的邀请链接。",
+            transferTitle = "转移到其他设备",
+            transferDesc = "无需邮箱登录：向新手机展示二维码",
+            transferQrTitle = "在其他设备上登录",
+            transferQrSubtitle = "在新设备上打开 Goji →「扫码登录」，用相机对准此二维码。新设备将占用订阅的一个设备名额。",
+            transferQrWarning = "此二维码可登录你的账户 — 请勿向他人展示或发送。有效期 10 分钟。",
+            loginByQr = "扫码登录",
+            loginQrPrompt = "用相机对准另一台设备上 Goji 显示的二维码（订阅 → 转移到其他设备）",
+            transferInvalid = "这不是 Goji 登录二维码",
+            transferExpired = "二维码已过期 — 请在旧设备上重新打开",
+            transferFailed = "扫码登录失败 — 请重试",
+            transferConfirmTitle = "扫码登录？",
+            transferConfirmText = "Goji 将登录展示此二维码的设备所使用的账户。",
+            transferConfirmReplace = "Goji 将退出当前账户，并登录展示此二维码的设备所使用的账户。",
+            transferConfirmYes = "登录",
+            transferCancel = "取消",
         )
     }
 }
