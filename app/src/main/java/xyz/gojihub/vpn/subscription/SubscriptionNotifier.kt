@@ -23,8 +23,8 @@ import java.time.temporal.ChronoUnit
  * данным, которые приложение и так уже получает при обычном обновлении подписки (см.
  * SubscriptionRefreshWorker, раз в час); отдельного push-сервера для этого не заводили.
  *
- * 1. Скорое окончание подписки — за 2 дня для обычных тарифов, за 12 часов для триала
- *    (kind:"trial"), один раз на каждый конкретный expire_at, чтобы не дублировать на
+ * 1. Скорое окончание подписки — за 3 дня и за 1 день для обычных тарифов, за 12 часов для
+ *    триала (kind:"trial"), каждое один раз на конкретный expire_at, чтобы не дублировать на
  *    каждый следующий часовой прогон воркера.
  * 2. Успешная оплата — обнаруживается косвенно: оплата происходит вне приложения (на сайте
  *    или через Telegram-бота), отдельного колбэка от бэкенда нет, поэтому сравниваем
@@ -38,6 +38,8 @@ object SubscriptionNotifier {
     private const val KEY_LAST_EXPIRE_AT = "last_expire_at"
     private const val KEY_LAST_KIND = "last_kind"
     private const val KEY_WARNED_FOR = "warned_for_expire_at"
+    private const val KEY_WARNED_3D_FOR = "warned_3d_for_expire_at"
+    private const val KEY_WARNED_1D_FOR = "warned_1d_for_expire_at"
     private const val NOTIF_ID_EXPIRY = 2001
     private const val NOTIF_ID_PAYMENT = 2002
 
@@ -61,9 +63,9 @@ object SubscriptionNotifier {
             val trialEnded = lastKind == "trial" && !isTrial
             if (extended || trialEnded) {
                 notifyPaymentSuccess(context, sub)
-                // Новый срок — новое окно "скоро закончится", прошлое предупреждение больше
-                // не актуально.
-                prefs.edit().remove(KEY_WARNED_FOR).apply()
+                // Новый срок — новое окно "скоро закончится", прошлые предупреждения больше
+                // не актуальны.
+                prefs.edit().remove(KEY_WARNED_FOR).remove(KEY_WARNED_3D_FOR).remove(KEY_WARNED_1D_FOR).apply()
             }
         }
         prefs.edit()
@@ -73,11 +75,42 @@ object SubscriptionNotifier {
 
         if (expireInstant == null) return
         val hoursLeft = ChronoUnit.MINUTES.between(Instant.now(), expireInstant) / 60.0
-        val thresholdHours = if (isTrial) 12.0 else 48.0
-        if (hoursLeft in 0.0..thresholdHours && prefs.getString(KEY_WARNED_FOR, null) != sub.expireAt) {
-            notifyExpirySoon(context, sub, isTrial)
-            prefs.edit().putString(KEY_WARNED_FOR, sub.expireAt).apply()
+        if (hoursLeft < 0.0) return
+        if (isTrial) {
+            if (hoursLeft <= 12.0 && prefs.getString(KEY_WARNED_FOR, null) != sub.expireAt) {
+                notifyExpirySoon(context, sub, isTrial = true)
+                prefs.edit().putString(KEY_WARNED_FOR, sub.expireAt).apply()
+            }
+            return
         }
+        // Обычный тариф — два напоминания: за 3 дня и за 1 день. Каждое — один раз на
+        // конкретный expire_at. Если приложение впервые увидело подписку уже в последние
+        // сутки, отправляем только "завтра" (и помечаем "3 дня" как пройденное, чтобы оно
+        // не пришло следом с устаревшим текстом).
+        when {
+            hoursLeft <= 24.0 && prefs.getString(KEY_WARNED_1D_FOR, null) != sub.expireAt -> {
+                notifyPlanReminder(context, sub, days = 1)
+                prefs.edit()
+                    .putString(KEY_WARNED_1D_FOR, sub.expireAt)
+                    .putString(KEY_WARNED_3D_FOR, sub.expireAt)
+                    .apply()
+            }
+            hoursLeft in 24.0..72.0 && prefs.getString(KEY_WARNED_3D_FOR, null) != sub.expireAt -> {
+                notifyPlanReminder(context, sub, days = 3)
+                prefs.edit().putString(KEY_WARNED_3D_FOR, sub.expireAt).apply()
+            }
+        }
+    }
+
+    private fun notifyPlanReminder(context: Context, sub: SubscriptionInfo, days: Int) {
+        val date = formatDate(sub.expireAt)
+        val (title, text) = if (days == 1) {
+            Loc.f.expiry1dTitle to Loc.f.expiry1dText(sub.planName, date)
+        } else {
+            Loc.f.expiry3dTitle to Loc.f.expiry3dText(sub.planName, date)
+        }
+        AppLogger.i(context, LogCategory.PUSH, TAG, "Напоминание об окончании подписки за $days дн. (planName=${sub.planName}, expireAt=${sub.expireAt})")
+        show(context, NOTIF_ID_EXPIRY, title, text)
     }
 
     private fun notifyExpirySoon(context: Context, sub: SubscriptionInfo, isTrial: Boolean) {
