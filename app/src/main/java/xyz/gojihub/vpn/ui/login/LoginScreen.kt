@@ -55,7 +55,7 @@ fun LoginScreen(
 
     GlassBackdrop {
         // Глобус во весь экран фоном — как в макете, без карточки-обрамления.
-        GojiGlobe(status = "off", node = null, modifier = Modifier.fillMaxSize())
+        GojiGlobe(status = "off", node = null, satellites = true, modifier = Modifier.fillMaxSize())
 
         // Плавный переход к цвету фона внизу, где сидят кнопки входа — тот же приём,
         // что и линейный градиент в макете поверх canvas.

@@ -34,6 +34,7 @@ fun GojiGlobe(
     // имя (должно совпадать с properties.name в geo_globe.json для подсветки полигона),
     // поэтому для текста, который видит пользователь, берём отдельно переданный перевод.
     label: String = "",
+    satellites: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var labelVisible by remember { mutableStateOf(false) }
@@ -60,6 +61,7 @@ fun GojiGlobe(
                 view.goji.status = status
                 view.goji.currentNode = node
                 view.goji.theme = if (dark) GlobeTheme.Dark else GlobeTheme.Light
+                view.goji.satellites = satellites
             },
             modifier = Modifier.fillMaxSize()
         )
