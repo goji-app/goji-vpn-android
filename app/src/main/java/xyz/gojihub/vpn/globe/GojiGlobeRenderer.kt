@@ -121,6 +121,10 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
     private var borderBuf: FloatBuffer? = null
     private var highlightBuf: FloatBuffer? = null
     private var highlightVerts = 0
+    // Заливка текущей страны треугольниками (Triangulator.earClip по lon/lat) — под чёткой
+    // контурной линией highlightBuf, тем же тоном theme.hi, но полупрозрачная.
+    private var highlightFillBuf: FloatBuffer? = null
+    private var highlightFillVerts = 0
     private var highlightedCountry: String? = null
 
     private lateinit var sphereBuf: FloatBuffer
@@ -259,6 +263,7 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         if (lastStatus != status || nodeChanged) {
             highlightedCountry = if (status == "off") null else node?.country
             highlightBuf = buildHighlight(highlightedCountry)
+            highlightFillBuf = buildHighlightFill(highlightedCountry)
             lastStatus = status; lastNodeId = node?.id
         }
 
@@ -325,7 +330,8 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         // экранах даже при альфе, близкой к 1.0.
         coastBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 1f) }
         borderBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 0.8f) }
-        // подсветка страны назначения
+        // подсветка страны назначения — сперва мягкая заливка территории, поверх неё чёткий контур
+        highlightFillBuf?.let { if (highlightFillVerts > 0) drawFill(it, highlightFillVerts, theme.hi, if (on) 0.22f else 0.12f) }
         highlightBuf?.let { if (highlightVerts > 0) drawThickLine(it, highlightVerts, GLES20.GL_LINES, theme.hi, if (on) 1f else 0.45f + 0.25f * sin(t * 4), pixelRadius = 1.6f) }
 
         // Обе точки маршрута (дом и узел подключения) показываем только пока реально что-то
@@ -334,30 +340,30 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         if (status != "off") {
             // точка А (дом) — мягкое свечение того же тона вокруг компактного ядра, по мотивам
             // референсного видео (простая светящаяся точка, а не сплошной плоский кружок).
-            drawPinAt(homePos, theme.home, 0.032f, 0.22f)
-            drawPinAt(homePos, theme.home, 0.015f)
+            drawPinAt(homePos, theme.home, 0.020f, 0.20f)
+            drawPinAt(homePos, theme.home, 0.009f)
 
             // точка Б (узел подключения) — тот же приём: мягкий ореол + маленькое яркое ядро +
             // один тонкий пульсирующий обод (вместо прежних двух разноцветных колец — по видео
-            // это одна чистая светящаяся точка, а не "радар" из нескольких окружностей).
+            // это одна чистая светящаяся точка, а не "радар" из нескольких окружностей). Размеры
+            // уменьшены относительно прежней версии — точки не должны спорить по вниманию с
+            // самой картой/линией передачи данных.
             val glowOp = (if (on) 0.32f else 0.2f) + 0.07f * sin(t * 2.4f)
-            drawPinAt(nodePos, theme.hi, 0.044f, glowOp)
-            drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.016f)
-            drawPinAt(nodePos, theme.hi, 0.022f, 0.85f)
+            drawPinAt(nodePos, theme.hi, 0.028f, glowOp)
+            drawPinAt(nodePos, floatArrayOf(1f, 1f, 1f), 0.010f)
+            drawPinAt(nodePos, theme.hi, 0.014f, 0.85f)
             val p = (t * 0.5f) % 1f
             drawRingAt(nodePos, theme.hi, 0.9f + p * 1.6f, (if (on) 0.5f else 0.35f) * (1f - p))
         }
 
-        // дуга дом → узел — мягкое свечение под пунктирной линией (эффект луча/кабеля передачи
-        // данных вместо плоской сплошной нити — как на референсном глобусе), поверх которой
-        // едет "кометный" блик с хвостом от точки А к точке Б.
+        // дуга дом → узел — одна тонкая сплошная линия (вместо прежних пунктира + отдельной
+        // толстой подложки-свечения — визуально спорило с самой линией и точками), поверх
+        // которой едет "кометный" блик с хвостом от точки А к точке Б.
         if (node != null) {
             val control = GlobeMath.midControlPoint(homePos, nodePos, GlobeMath.RADIUS * 1.5f)
             val arcVerts = buildArc(homePos, control, nodePos, 48)
-            val dashVerts = buildDashedArc(homePos, control, nodePos, 40)
             val arcOp = if (on) 0.9f else if (connecting) 0.3f + 0.22f * sin(t * 5) else 0.05f
-            if (on || connecting) drawThickLine(toBuffer(arcVerts), arcVerts.size / 3, GLES20.GL_LINE_STRIP, theme.arc, arcOp * 0.35f, pixelRadius = 4.5f)
-            draw(toBuffer(dashVerts), dashVerts.size / 3, GLES20.GL_LINES, theme.arc, arcOp)
+            drawThickLine(toBuffer(arcVerts), arcVerts.size / 3, GLES20.GL_LINE_STRIP, theme.arc, arcOp, pixelRadius = 1.3f)
             if (on || connecting) {
                 val speed = if (on) 0.35f else 0.2f
                 val arcVertsWithT = buildArcWithT(homePos, control, nodePos, 48)
@@ -416,6 +422,17 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         GLES20.glUniform4f(uColor, color[0], color[1], color[2], alpha)
         GLES20.glUniform2f(uOffset, 0f, 0f)
         GLES20.glDrawArrays(mode, 0, count)
+    }
+
+    /** Заливка треугольниками (GL_TRIANGLES) — без обводки, просто полупрозрачная заливка
+     *  территории под контурной линией (см. drawThickLine ниже для самого контура). */
+    private fun drawFill(buf: FloatBuffer, count: Int, color: FloatArray, alpha: Float) {
+        buf.position(0)
+        GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, 0, buf)
+        GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
+        GLES20.glUniform4f(uColor, color[0], color[1], color[2], alpha)
+        GLES20.glUniform2f(uOffset, 0f, 0f)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, count)
     }
 
     /** glLineWidth выше 1px не работает на многих мобильных GPU (Adreno и т.п. — реально
@@ -535,6 +552,27 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         return toBuffer(floats.toFloatArray())
     }
 
+    /** Заливка территории страны — Triangulator.earClip по кольцам в исходных (lon, lat), каждый
+     *  полученный индекс переводится в 3D той же проекцией и тем же радиусом, что и контур
+     *  (countryRings/buildHighlight выше) — см. комментарий в GeoData.kt про причину, по которой
+     *  это не даёт z-fighting с океаном без отдельного смещения радиуса. */
+    private fun buildHighlightFill(country: String?): FloatBuffer? {
+        val g = geo ?: return null
+        if (country == null) { highlightFillVerts = 0; return null }
+        val rings = g.countryRingsLonLat[country] ?: run { highlightFillVerts = 0; return null }
+        val floats = ArrayList<Float>()
+        rings.forEach { ring ->
+            val tris = Triangulator.earClip(ring)
+            for (idx in tris) {
+                val lon = ring[idx * 2]; val lat = ring[idx * 2 + 1]
+                val v = GlobeMath.toVec(lat, lon, GlobeMath.RADIUS)
+                floats.add(v[0]); floats.add(v[1]); floats.add(v[2])
+            }
+        }
+        highlightFillVerts = floats.size / 3
+        return toBuffer(floats.toFloatArray())
+    }
+
     private fun buildArc(a: FloatArray, control: FloatArray, b: FloatArray, segments: Int): FloatArray {
         val out = FloatArray((segments + 1) * 3)
         val p = FloatArray(3)
@@ -543,23 +581,6 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             out[i * 3] = p[0]; out[i * 3 + 1] = p[1]; out[i * 3 + 2] = p[2]
         }
         return out
-    }
-
-    /** Та же дуга, но не сплошной GL_LINE_STRIP, а набор коротких отрезков с зазорами для
-     *  GL_LINES — как пунктирная линия связи на референсном глобусе, а не сплошная нить. */
-    private fun buildDashedArc(a: FloatArray, control: FloatArray, b: FloatArray, segments: Int, dashRatio: Float = 0.55f): FloatArray {
-        val out = ArrayList<Float>((segments * 6))
-        val p = FloatArray(3)
-        for (i in 0 until segments) {
-            val t0 = i.toFloat() / segments
-            val t1 = (i + dashRatio) / segments
-            if (t1 > 1f) continue
-            GlobeMath.quadBezier(a, control, b, t0, p)
-            out.add(p[0]); out.add(p[1]); out.add(p[2])
-            GlobeMath.quadBezier(a, control, b, t1, p)
-            out.add(p[0]); out.add(p[1]); out.add(p[2])
-        }
-        return out.toFloatArray()
     }
 
     /** То же самое, но с 4-м компонентом на вершину — параметром 0..1 вдоль дуги (для

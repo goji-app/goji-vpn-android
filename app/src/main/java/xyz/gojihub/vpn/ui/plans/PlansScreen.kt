@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import xyz.gojihub.vpn.BuildConfig
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -213,7 +216,24 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(plan.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                            if (plan.isCurrent) {
+                                Box(
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(GodjiColors.Teal)
+                                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        Loc.s.plansCurrentLabel,
+                                        color = androidx.compose.ui.graphics.Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 8.5.sp
+                                    )
+                                }
+                            }
+                        }
                         // Длинные описания тарифов раньше разворачивали карточку на пол-экрана —
                         // сжимаем до 2 строк и прячем остальное за "читать полностью", сам тоггл
                         // показываем только если текст реально не поместился (hasVisualOverflow),
@@ -730,32 +750,49 @@ private fun PartnerActionButton(label: String, context: Context) {
     }
 }
 
-/** Пульсирующая точка вместо статичной обводки — читается как "живой" статус, а не просто
- *  ярлык. Пилл теперь залит мягким тил-тоном вместо тонкой рамки — тот же приём, что уже
- *  используется для активного тарифа в списке ниже (TealTint/TealDeep). */
+/** Залитый градиентный "премиум"-бейдж вместо прежнего бледного пилла с пульсирующей точкой:
+ *  сплошная тил-заливка с мягким цветным свечением-тенью (читается на расстоянии, а не как
+ *  тонкая техническая метка), молния как знак "включено/в деле", и бегущий по бейджу блик —
+ *  тот же язык "живого" статуса, что и раньше, но заметно ярче и наряднее. */
 @Composable
 private fun ActiveStatusPill() {
-    val infiniteTransition = rememberInfiniteTransition(label = "activePulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(animation = tween(900), repeatMode = RepeatMode.Reverse),
-        label = "activePulseAlpha"
+    val infiniteTransition = rememberInfiniteTransition(label = "activeShimmer")
+    val shimmerX by infiniteTransition.animateFloat(
+        initialValue = -34f,
+        targetValue = 96f,
+        animationSpec = infiniteRepeatable(animation = tween(2200, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "activeShimmerX"
     )
-    Row(
+    Box(
         Modifier
+            .height(30.dp)
+            .shadow(10.dp, RoundedCornerShape(50), ambientColor = GodjiColors.Teal, spotColor = GodjiColors.Teal)
             .clip(RoundedCornerShape(50))
-            .background(GodjiColors.TealTint)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+            .background(Brush.horizontalGradient(listOf(GodjiColors.TealDeep, GodjiColors.Teal)))
     ) {
         Box(
             Modifier
-                .size(6.dp)
-                .background(GodjiColors.TealDeep.copy(alpha = pulseAlpha), CircleShape)
+                .fillMaxHeight()
+                .width(26.dp)
+                .offset(x = shimmerX.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            androidx.compose.ui.graphics.Color.Transparent,
+                            androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f),
+                            androidx.compose.ui.graphics.Color.Transparent
+                        )
+                    )
+                )
         )
-        Text(Loc.s.plansActive, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Icon(Icons.Filled.Bolt, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(13.dp))
+            Text(Loc.s.plansActive, color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 10.sp)
+        }
     }
 }
 

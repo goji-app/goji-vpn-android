@@ -45,11 +45,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -385,30 +383,36 @@ private fun StatCard(value: String, label: String, accent: Color, history: List<
 }
 
 /** Мини-график последних ~30 замеров скорости (см. ConnectViewModel.SPEED_HISTORY_SIZE) —
- *  та самая "живая" телеметрия из референса редизайна вместо голого числа. Рисуется сразу
- *  заполненной область под линией (полупрозрачный accent), а не только сама линия — так
- *  читается лучше на маленькой высоте карточки. */
+ *  та самая "живая" телеметрия вместо голого числа. Столбики-эквалайзер вместо прежней
+ *  сплошной линии+заливки: каждый замер — отдельный столбик со скруглёнными краями и
+ *  градиентом по высоте, ярче и "живее" читается на маленькой площади карточки, а на
+ *  последнем (текущем) столбике — акцентная точка-маркер, как индикатор "сейчас". */
 @Composable
 private fun Sparkline(history: List<Float>, color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        if (history.size < 2) return@Canvas
+        if (history.isEmpty()) return@Canvas
         val maxV = (history.maxOrNull() ?: 0f).coerceAtLeast(0.01f)
-        val stepX = size.width / (history.size - 1)
-        val points = history.mapIndexed { i, v ->
-            Offset(i * stepX, size.height - (v / maxV) * size.height)
+        val barCount = history.size
+        val gap = 2.dp.toPx()
+        val barWidth = ((size.width - gap * (barCount - 1)) / barCount).coerceAtLeast(1.5f)
+        val radius = CornerRadius(barWidth / 2f, barWidth / 2f)
+        var lastX = 0f
+        var lastH = 0f
+        history.forEachIndexed { i, v ->
+            val ratio = (v / maxV).coerceIn(0f, 1f)
+            val h = (ratio * size.height).coerceAtLeast(barWidth)
+            val x = i * (barWidth + gap)
+            val isLast = i == barCount - 1
+            val barAlpha = if (isLast) 1f else 0.3f + 0.4f * ratio
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(color.copy(alpha = barAlpha), color.copy(alpha = barAlpha * 0.25f))),
+                topLeft = Offset(x, size.height - h),
+                size = Size(barWidth, h),
+                cornerRadius = radius
+            )
+            if (isLast) { lastX = x + barWidth / 2f; lastH = size.height - h }
         }
-        val linePath = Path().apply {
-            moveTo(points.first().x, points.first().y)
-            for (p in points.drop(1)) lineTo(p.x, p.y)
-        }
-        val fillPath = Path().apply {
-            addPath(linePath)
-            lineTo(points.last().x, size.height)
-            lineTo(points.first().x, size.height)
-            close()
-        }
-        drawPath(fillPath, brush = Brush.verticalGradient(listOf(color.copy(alpha = 0.28f), color.copy(alpha = 0f))))
-        drawPath(linePath, color = color, style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(color = color, radius = barWidth * 0.65f, center = Offset(lastX, lastH))
     }
 }
 
