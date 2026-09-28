@@ -53,6 +53,10 @@ data class FeatureStrings(
     val leakRowSiteIp: String,
     val leakRowRealIp: String,
     val leakRowDns: String,
+    // ── QR-коды ──
+    val qrClose: String,
+    val referralQrTitle: String,
+    val referralQrSubtitle: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -102,6 +106,9 @@ data class FeatureStrings(
             leakRowSiteIp = "IP для сайтов",
             leakRowRealIp = "Настоящий IP",
             leakRowDns = "DNS-резолвер",
+            qrClose = "Закрыть",
+            referralQrTitle = "Пригласи друга",
+            referralQrSubtitle = "Друг наводит камеру телефона на код и сразу открывает твою пригласительную ссылку.",
         )
 
         private val EN = FeatureStrings(
@@ -145,6 +152,9 @@ data class FeatureStrings(
             leakRowSiteIp = "IP seen by sites",
             leakRowRealIp = "Real IP",
             leakRowDns = "DNS resolver",
+            qrClose = "Close",
+            referralQrTitle = "Invite a friend",
+            referralQrSubtitle = "Your friend points their phone camera at the code and opens your invite link right away.",
         )
 
         private val ZH = FeatureStrings(
@@ -188,6 +198,9 @@ data class FeatureStrings(
             leakRowSiteIp = "网站看到的 IP",
             leakRowRealIp = "真实 IP",
             leakRowDns = "DNS 解析器",
+            qrClose = "关闭",
+            referralQrTitle = "邀请好友",
+            referralQrSubtitle = "好友用手机相机扫描二维码，即可直接打开你的邀请链接。",
         )
     }
 }

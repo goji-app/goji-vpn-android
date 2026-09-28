@@ -166,6 +166,11 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.browser:browser:1.8.0") // Custom Tabs для native OAuth
     implementation("io.coil-kt:coil-compose:2.7.0") // Картинки/коллажи/слайд-шоу в новостях (RichContent)
+    // QR-коды: генерация (реферальная ссылка, перенос входа на другое устройство) — zxing core;
+    // сканирование камерой при входе по QR — zxing-android-embedded (без Google Play Services,
+    // работает и в сборке "direct" на устройствах без GMS).
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 
     testImplementation("junit:junit:4.13.2")

@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.NorthEast
+import androidx.compose.material.icons.filled.QrCode2
+import xyz.gojihub.vpn.ui.util.QrDialog
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -219,13 +221,24 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
 
         state.referral?.let { referral ->
             SectionLabel(Loc.s.plansInviteTitle)
+            var showReferralQr by remember { mutableStateOf(false) }
             ReferralCard(referral, onCopy = { clipboard.setText(AnnotatedString(referral.link)) }, onShare = {
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, referral.link)
                 }
                 context.startActivity(Intent.createChooser(send, null))
-            })
+            }, onQr = { showReferralQr = true })
+            if (showReferralQr) {
+                QrDialog(
+                    title = Loc.f.referralQrTitle,
+                    subtitle = Loc.f.referralQrSubtitle,
+                    content = referral.link,
+                    caption = referral.link,
+                    closeLabel = Loc.f.qrClose,
+                    onDismiss = { showReferralQr = false }
+                )
+            }
         }
 
         if (state.partner != null) {
@@ -432,7 +445,7 @@ private fun NewsCard(item: NewsUi) {
 /** Приглашения: ссылка-капсула с кнопкой "Копировать", три счётчика через разделители, список
  *  приглашённых с инициалом и статусом. Нажатие на саму ссылку — системное "Поделиться". */
 @Composable
-private fun ReferralCard(referral: ReferralUi, onCopy: () -> Unit, onShare: () -> Unit) {
+private fun ReferralCard(referral: ReferralUi, onCopy: () -> Unit, onShare: () -> Unit, onQr: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().godjiCard().padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -453,6 +466,20 @@ private fun ReferralCard(referral: ReferralUi, onCopy: () -> Unit, onShare: () -
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).clickable(onClick = onShare)
             )
+            // QR-код ссылки — показать другу с экрана.
+            val (qrInteraction, qrScale) = rememberPressScale()
+            Box(
+                Modifier
+                    .size(32.dp)
+                    .scale(qrScale.value)
+                    .clip(CircleShape)
+                    .background(GodjiColors.Thumb)
+                    .border(1.dp, GodjiColors.CardBorder, CircleShape)
+                    .clickable(interactionSource = qrInteraction, indication = null, onClick = onQr),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.QrCode2, contentDescription = Loc.f.referralQrTitle, tint = GodjiColors.TealDeep, modifier = Modifier.size(17.dp))
+            }
             val (copyInteraction, copyScale) = rememberPressScale()
             Box(
                 Modifier
