@@ -22,30 +22,28 @@ import kotlin.random.Random
 
 data class GlobeNode(val id: String, val lat: Double, val lon: Double, val country: String)
 
-/** Палитра "light" из goji-globe.js, конвертированная в нормализованный RGB — исходная
- *  бежево-бумажная концепция глобуса, без фото-текстур/реалистичных цветов/освещения. */
+/** Палитра — 1:1 с THEMES из handoff-1.0.77/reference/goji-globe.js (эталон поведения и
+ *  внешнего вида глобуса по GLOBE.md). Раньше здесь была самодельная палитра по мотивам
+ *  другого, более раннего референса (Stitch) — она не совпадала с этим эталоном ни по одному
+ *  цвету, из-за чего глобус выглядел чужеродно на фоне остальных экранов. */
 data class GlobeTheme(
-    val ocean: FloatArray, val land: FloatArray, val grid: FloatArray,
-    val home: FloatArray, val hi: FloatArray, val arc: FloatArray, val dot: FloatArray,
-    /** Цвет широтно-долготной сетки и внешнего атмосферного ободка — по референсу Stitch
-     *  (Three.js wireframe 0x00d2ff) это отдельный холодный "cyan", а не land/grid как раньше,
-     *  тот же тон, что и GodjiColors.Purple (секондари-акцент приложения). */
-    val wire: FloatArray
+    val ocean: FloatArray, val oceanOp: Float,
+    val land: FloatArray, val landOp: Float,
+    val grid: FloatArray, val gridOp: Float,
+    val home: FloatArray, val hi: FloatArray, val arc: FloatArray, val atmo: FloatArray, val dot: FloatArray
 ) {
     companion object {
-        val Light = GlobeTheme(
-            ocean = hex(0xece5da), land = hex(0x152220), grid = hex(0x152220),
-            home = hex(0xd84a2a), hi = hex(0x00875a), arc = hex(0xd84a2a), dot = hex(0x7b8a85),
-            wire = hex(0x00838f)
-        )
-        // Та же композиция ролей (песочный океан → чернильно-угольный, тёмные берега → почти
-        // белые, акценты — неоновый изумруд/корал вместо приглушённой бирюзы), а не случайные
-        // цвета — карточка с глобусом раньше оставалась светло-бежевой даже при включённой
-        // тёмной теме приложения; теперь отражает "AMOLED void" редизайна.
         val Dark = GlobeTheme(
-            ocean = hex(0x101419), land = hex(0xe0e2ea), grid = hex(0xe0e2ea),
-            home = hex(0xff5e3a), hi = hex(0x00f5a0), arc = hex(0xff5e3a), dot = hex(0x849588),
-            wire = hex(0x00d2ff)
+            ocean = hex(0x0a201d), oceanOp = 0.9f,
+            land = hex(0x2f6f66), landOp = 0.75f,
+            grid = hex(0x00d4c4), gridOp = 0.07f,
+            home = hex(0x8b7cf6), hi = hex(0x00e7d4), arc = hex(0x00e7d4), atmo = hex(0x00d4c4), dot = hex(0x4a625d)
+        )
+        val Light = GlobeTheme(
+            ocean = hex(0xe7e0cf), oceanOp = 1f,
+            land = hex(0x0f4d45), landOp = 0.55f,
+            grid = hex(0x0f4d45), gridOp = 0.06f,
+            home = hex(0xd9714b), hi = hex(0x00897e), arc = hex(0xd9714b), atmo = hex(0x00a79b), dot = hex(0xa9a08a)
         )
         private fun hex(v: Int) = floatArrayOf(
             ((v shr 16) and 0xFF) / 255f, ((v shr 8) and 0xFF) / 255f, (v and 0xFF) / 255f
@@ -333,9 +331,9 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         // depth-buffer (glDepthMask(false)) — тогда сфера, отрисованная следом, естественным
         // образом перекрывает середину дисков, оставляя видимым только мягкое кольцо по краю.
         GLES20.glDepthMask(false)
-        drawGlowDisk(GlobeMath.RADIUS * 1.34f, theme.hi, 0.05f)
-        drawGlowDisk(GlobeMath.RADIUS * 1.2f, theme.hi, 0.08f)
-        drawGlowDisk(GlobeMath.RADIUS * 1.07f, theme.hi, 0.12f)
+        drawGlowDisk(GlobeMath.RADIUS * 1.34f, theme.atmo, 0.05f)
+        drawGlowDisk(GlobeMath.RADIUS * 1.2f, theme.atmo, 0.08f)
+        drawGlowDisk(GlobeMath.RADIUS * 1.07f, theme.atmo, 0.12f)
         GLES20.glDepthMask(true)
 
         // океан — по одной полосе широты за отрисовку (иначе triangle strip склеит несмежные полосы).
@@ -345,18 +343,18 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         // что была "северным полюсом" при построении сферы, вовсе не обязательно оказываться
         // наверху экрана после доворота/наклона камеры к узлу; со статичной по номеру привязкой
         // градиент "плыл" по сфере и на скриншотах выглядел как смещённое пятно, а не освещение.
-        drawSphereBands(sphereBuf, sphereLatSeg, sphereBandVerts, mvp, theme.ocean, 1f) { band ->
+        drawSphereBands(sphereBuf, sphereLatSeg, sphereBandVerts, mvp, theme.ocean, theme.oceanOp) { band ->
             bandBrightness(sphereBuf, band, sphereBandVerts)
         }
         // сетка параллелей/меридианов — тонкая фоновая деталь поверх океана, под берегами;
         // цвет — "wire" (холодный cyan), а не land/grid, по референсу Stitch
-        draw(graticuleBuf, graticuleVerts, GLES20.GL_LINES, theme.wire, 0.16f)
+        draw(graticuleBuf, graticuleVerts, GLES20.GL_LINES, theme.grid, theme.gridOp)
         // берега/границы: glLineWidth>1 не работает на большинстве мобильных GPU (реальный
         // диапазон часто [1,1]), поэтому толщину имитируем 5-проходной отрисовкой со сдвигом
         // на ~1px в NDC (см. drawThickLine) — иначе линии остаются машным волоском на плотных
         // экранах даже при альфе, близкой к 1.0.
-        coastBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 1f) }
-        borderBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, 0.8f) }
+        coastBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, theme.landOp) }
+        borderBuf?.let { drawThickLine(it, it.capacity() / 3, GLES20.GL_LINES, theme.land, theme.landOp * 0.5f) }
 
         // подсветка страны назначения — сперва мягкая заливка территории (наша собственная
         // добавка поверх эталона), поверх неё контур в ДВА прохода как в GLOBE.md §4: широкая
