@@ -11,7 +11,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -36,12 +38,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
@@ -141,50 +144,45 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
 
         GlobeCard(state)
 
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Эталон: колонка gap 14 — кнопка ровно 80×80 (кольца/спиннер выходят за её край, не
+        // занимая места), под ней блок gap 5: заголовок 26sp с line-height 1.08 и строка статуса.
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ConnectButton(state, onClick = { toggle() })
-            Spacer(Modifier.height(14.dp))
-            Text(
-                headline(state),
-                color = GodjiColors.TextPrimary,
-                fontFamily = SpaceGroteskFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
-                letterSpacing = (-0.65).sp,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                // Пульс на точке статуса — раньше индикатор connected/connecting был
-                // статичным кружком, "живости" в нём не читалось.
-                val dotPulse = rememberInfiniteTransition(label = "dotPulse")
-                val dotAlpha by dotPulse.animateFloat(
-                    initialValue = 1f, targetValue = if (state.connected || state.connecting) 0.35f else 1f,
-                    animationSpec = infiniteRepeatable(tween(900), repeatMode = RepeatMode.Reverse),
-                    label = "dotAlpha"
-                )
-                Box(Modifier.size(7.dp).clip(CircleShape).background(dotColor(state).copy(alpha = dotAlpha)))
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
-                    subline(state),
-                    color = GodjiColors.TextSecondary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
-                    maxLines = 1,
+                    headline(state),
+                    color = GodjiColors.TextPrimary,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 26.sp,
+                    lineHeight = 28.sp,
+                    letterSpacing = (-0.65).sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (state.connected) {
-                    Text("· ${state.connectedTimeLabel}", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(dotColor(state)))
+                    Text(
+                        subline(state),
+                        color = GodjiColors.TextSecondary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (state.connected) {
+                        Text("· ${state.connectedTimeLabel}", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
                 }
             }
         }
 
-        StatsCard(state)
-
         state.error?.let {
-            Text(it, color = GodjiColors.Danger, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(it, color = GodjiColors.Danger, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
+
+        StatsCard(state)
 
         AnimatedContent(
             targetState = state.banner to state.bannerKind,
@@ -220,24 +218,26 @@ private fun subline(s: ConnectUiState): String {
     }
 }
 
+// Значения — из эталона (dotColor): accent / #E0A526 / белый .35 или чернильный .3.
 private fun dotColor(s: ConnectUiState) = when {
     s.connected -> GodjiColors.Teal
-    s.connecting -> GodjiColors.Warning
-    else -> GodjiColors.ButtonBorder
+    s.connecting -> Color(0xFFE0A526)
+    GodjiColors.isDark -> Color(0x59FFFFFF)
+    else -> Color(0x4D0B1F1C)
 }
 
 @Composable
 private fun GlobeCard(state: ConnectUiState) {
-    // Эталон: height:430px; margin:-24px -60px -20px — блок 430dp, но в раскладке занимает
-    // 430−24−20 = 386dp (заходит на 24dp под шапку и на 20dp под кнопку), по ширине — +60dp с
-    // каждой стороны. Прозрачный холст: вокруг сферы виден общий фон.
+    // Эталон: height:430px; margin:-24px -60px -20px. По просьбе пользователя отступы вокруг
+    // сферы уменьшены: холст 430dp заходит на 44dp под шапку и на 42dp под кнопку — в раскладке
+    // занимает 344dp; по ширине — +60dp с каждой стороны. Прозрачный холст: вокруг сферы общий фон.
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
             .layout { measurable, constraints ->
                 val full = 430.dp.roundToPx()
-                val top = 24.dp.roundToPx()
-                val bottom = 20.dp.roundToPx()
+                val top = 44.dp.roundToPx()
+                val bottom = 42.dp.roundToPx()
                 val placeable = measurable.measure(constraints.copy(minHeight = full, maxHeight = full))
                 layout(placeable.width, full - top - bottom) { placeable.place(0, -top) }
             }
@@ -256,7 +256,7 @@ private fun GlobeCard(state: ConnectUiState) {
             Column(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 30.dp, end = 14.dp)
+                    .padding(top = 50.dp, end = 14.dp)
                     .widthIn(max = 190.dp)
                     .godjiGlassPill(RoundedCornerShape(18.dp))
                     .padding(horizontal = 9.dp, vertical = 13.dp),
@@ -275,20 +275,25 @@ private fun GlobeCard(state: ConnectUiState) {
  *  двухцветная дуга-спиннер вокруг кнопки. */
 @Composable
 private fun ConnectButton(state: ConnectUiState, onClick: () -> Unit) {
-    Box(Modifier.size(112.dp), contentAlignment = Alignment.Center) {
+    // Эталон: контейнер ровно 80×80; кольца (inset 0, scale 1→1.55) и спиннер (inset −5)
+    // рисуются за его пределами, не занимая места в раскладке.
+    Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
         if (state.connected) {
+            // orbGlow: кольцо 8px цвета okBg вокруг кнопки
+            Box(Modifier.requiredSize(96.dp).clip(CircleShape).background(GodjiColors.TealTint))
             repeat(2) { i ->
                 val ringTransition = rememberInfiniteTransition(label = "ring$i")
                 val progress by ringTransition.animateFloat(
                     initialValue = 0f, targetValue = 1f,
                     animationSpec = infiniteRepeatable(
-                        animation = tween(2400, delayMillis = i * 1200, easing = LinearEasing)
+                        animation = tween(2400, easing = CubicBezierEasing(0f, 0f, 0.58f, 1f)),
+                        initialStartOffset = StartOffset(i * 1200)
                     ),
                     label = "ringProgress$i"
                 )
                 Box(
                     Modifier
-                        .size(80.dp)
+                        .requiredSize(80.dp)
                         .scale(1f + progress * 0.55f)
                         .border(2.dp, GodjiColors.Teal.copy(alpha = 0.5f * (1f - progress)), CircleShape)
                 )
@@ -302,18 +307,13 @@ private fun ConnectButton(state: ConnectUiState, onClick: () -> Unit) {
                 animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
                 label = "ctaSpinAngle"
             )
-            Canvas(Modifier.size(90.dp).rotate(spinAngle)) {
-                val stroke = 2.5.dp.toPx()
-                val inset = 5.dp.toPx()
-                drawArc(
-                    brush = Brush.sweepGradient(listOf(GodjiColors.Teal, GodjiColors.Terracotta, GodjiColors.Teal)),
-                    startAngle = 0f,
-                    sweepAngle = 300f,
-                    useCenter = false,
-                    style = Stroke(width = stroke, cap = StrokeCap.Round),
-                    topLeft = Offset(-inset, -inset),
-                    size = Size(size.width + inset * 2, size.height + inset * 2)
-                )
+            // border 2.5px: верхняя четверть — accent, правая — warm, остальное прозрачно
+            Canvas(Modifier.requiredSize(90.dp).rotate(spinAngle)) {
+                val w = 2.5.dp.toPx()
+                val arcSize = Size(size.width - w, size.height - w)
+                val topLeft = Offset(w / 2, w / 2)
+                drawArc(GodjiColors.Teal, 225f, 90f, false, topLeft, arcSize, style = Stroke(w))
+                drawArc(GodjiColors.Terracotta, 315f, 90f, false, topLeft, arcSize, style = Stroke(w))
             }
         }
 
@@ -324,10 +324,13 @@ private fun ConnectButton(state: ConnectUiState, onClick: () -> Unit) {
                 .scale(pressScale.value)
                 .then(
                     if (state.connected)
-                        Modifier.background(
-                            Brush.verticalGradient(listOf(GodjiColors.AccentGradTop, GodjiColors.AccentGradMid, GodjiColors.AccentGradBottom)),
-                            CircleShape
-                        )
+                        Modifier
+                            .shadow(18.dp, CircleShape, ambientColor = GodjiColors.AccentGlow, spotColor = GodjiColors.AccentGlow)
+                            .background(
+                                Brush.verticalGradient(0f to GodjiColors.AccentGradTop, 0.55f to GodjiColors.AccentGradMid, 1f to GodjiColors.AccentGradBottom),
+                                CircleShape
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.55f), CircleShape)
                     else Modifier.godjiGlassStrong(CircleShape)
                 )
                 .clip(CircleShape)
@@ -351,10 +354,11 @@ private fun NetworkPill(net: NetState) {
         NetState.CELLULAR -> Loc.s.netCellular to GodjiColors.TextSecondary
         NetState.JAMMED -> Loc.s.netJammed to GodjiColors.JamText
     }
+    // netMeta из эталона: Wi-Fi/мобильная — на обычном стекле, глушение — на тёплой подложке.
     Row(
         Modifier
             .height(34.dp)
-            .godjiGlassPill()
+            .godjiGlassPill(tint = if (net == NetState.JAMMED) GodjiColors.JamBg else null)
             .padding(horizontal = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -364,53 +368,68 @@ private fun NetworkPill(net: NetState) {
     }
 }
 
+/** Эталон: padding 14px 4px, две колонки gap 4, разделитель — border-right первой колонки. */
 @Composable
 private fun StatsCard(state: ConnectUiState) {
     Row(
         Modifier
             .fillMaxWidth()
             .godjiCard()
-            .padding(horizontal = 14.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 14.dp)
+            .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically
     ) {
         StatColumn(Loc.s.statDownload, state.downSpeedMbps, GodjiColors.Teal, down = true, Modifier.weight(1f))
-        Box(Modifier.width(1.dp).height(40.dp).background(GodjiColors.Hair))
+        Box(Modifier.width(1.dp).fillMaxHeight().background(GodjiColors.Hair))
         StatColumn(Loc.s.statUpload, state.upSpeedMbps, GodjiColors.Terracotta, down = false, Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun StatColumn(label: String, speedMbps: Double, accent: Color, down: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(
                 if (down) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
                 contentDescription = null, tint = accent, modifier = Modifier.size(12.dp)
             )
             Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
         }
-        Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("%.1f".format(speedMbps), color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text(" ${Loc.s.speedUnit}", color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+            Text("%.1f".format(speedMbps), color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 22.sp, letterSpacing = (-0.44).sp, modifier = Modifier.alignByBaseline())
+            Text(" ${Loc.s.speedUnit}", color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, modifier = Modifier.alignByBaseline())
         }
     }
 }
 
+/** Эталон: padding 13/14, радиус 22, подложка bannerBg, круг 28dp цвета accent/warm с белым
+ *  значком, текст 12sp, крестик — круг 24dp на подложке hair. */
 @Composable
 private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
-    val bg = when (kind) { BannerKind.WARNING -> GodjiColors.JamBg; BannerKind.SUCCESS -> GodjiColors.TealTint; BannerKind.INFO -> GodjiColors.Chip }
-    val border = when (kind) { BannerKind.WARNING -> GodjiColors.JamBorder; BannerKind.SUCCESS -> GodjiColors.TealTintBorder; BannerKind.INFO -> GodjiColors.CardBorderStrong }
-    val color = when (kind) { BannerKind.WARNING -> GodjiColors.JamText; BannerKind.SUCCESS -> GodjiColors.TealDeep; BannerKind.INFO -> GodjiColors.TextPrimary }
-    val icon = when (kind) { BannerKind.WARNING -> Icons.Filled.Warning; BannerKind.SUCCESS -> Icons.Filled.CheckCircle; BannerKind.INFO -> Icons.Filled.Info }
+    val ok = kind == BannerKind.SUCCESS
+    val bg = when {
+        ok && GodjiColors.isDark -> Color(0x61145A50)
+        ok -> Color(0x8CC8F5EC)
+        GodjiColors.isDark -> Color(0x666E2D19)
+        else -> Color(0x8CFFDCCD)
+    }
+    val iconBg = if (ok) GodjiColors.Teal else GodjiColors.Terracotta
+    val icon = when (kind) { BannerKind.SUCCESS -> Icons.Filled.Check; BannerKind.WARNING -> Icons.Filled.PriorityHigh; BannerKind.INFO -> Icons.Filled.Info }
     Row(
-        Modifier.fillMaxWidth().godjiCard(tint = bg, borderColor = border).padding(12.dp),
+        Modifier.fillMaxWidth().godjiGlassPill(RoundedCornerShape(22.dp), tint = bg).padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(17.dp))
-        Text(text, color = color, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, modifier = Modifier.weight(1f), lineHeight = 15.sp)
-        Icon(Icons.Filled.Close, contentDescription = null, tint = color, modifier = Modifier.size(16.dp).clickable { onDismiss() })
+        Box(Modifier.size(28.dp).clip(CircleShape).background(iconBg), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+        }
+        Text(text, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.weight(1f))
+        Box(
+            Modifier.size(24.dp).clip(CircleShape).background(GodjiColors.Hair).clickable { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("×", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
     }
 }
 
@@ -496,19 +515,19 @@ private fun TrafficCard(state: ConnectUiState, onClick: () -> Unit) {
             .godjiCard()
             .clickable(onClick = onClick)
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(Loc.s.trafficLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Text(Loc.s.trafficLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.alignByBaseline())
             Text(
                 if (unlimited) Loc.s.trafficUnlimited("%.1f".format(state.usedGb)) else Loc.s.trafficLimited("%.1f".format(state.usedGb), state.quotaGb.toInt()),
-                color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp
+                color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.alignByBaseline()
             )
         }
         if (!unlimited) {
             AnimatedTrafficBar(pct = pct)
         }
-        Text(Loc.s.trafficExpiry(state.expiryLabel, state.daysLeft), color = GodjiColors.TextSecondary, fontSize = 11.sp)
+        Text(Loc.s.trafficExpiry(state.expiryLabel, state.daysLeft), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
     }
 }
 
@@ -522,9 +541,10 @@ private fun AnimatedTrafficBar(pct: Float, modifier: Modifier = Modifier) {
         label = "trafficPct"
     )
     val infiniteTransition = rememberInfiniteTransition(label = "trafficShimmer")
+    // gg-shimmer: блик шириной 40% заливки, translateX −100% → 300% за 1.8с
     val shimmerT by infiniteTransition.animateFloat(
-        initialValue = -0.6f,
-        targetValue = 1.6f,
+        initialValue = -1f,
+        targetValue = 3f,
         animationSpec = infiniteRepeatable(tween(durationMillis = 1800, easing = LinearEasing)),
         label = "shimmerT"
     )
@@ -532,27 +552,27 @@ private fun AnimatedTrafficBar(pct: Float, modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(8.dp)
-            .clip(RoundedCornerShape(5.dp))
+            .clip(RoundedCornerShape(50))
             .background(GodjiColors.TrackBg)
     ) {
         val fillWidth = maxWidth * animatedPct
-        val shimmerWidth = maxWidth * 0.3f
+        val shimmerWidth = fillWidth * 0.4f
         if (fillWidth > 0.dp) {
             Box(
                 Modifier
                     .fillMaxHeight()
                     .width(fillWidth)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(Brush.horizontalGradient(listOf(GodjiColors.AccentGradTop, GodjiColors.AccentGradMid, GodjiColors.AccentGradBottom)))
+                    .clip(RoundedCornerShape(50))
+                    .background(Brush.verticalGradient(0f to GodjiColors.AccentGradTop, 0.55f to GodjiColors.AccentGradMid, 1f to GodjiColors.AccentGradBottom))
             ) {
                 Box(
                     Modifier
                         .fillMaxHeight()
                         .width(shimmerWidth)
-                        .offset(x = fillWidth * shimmerT)
+                        .offset(x = shimmerWidth * shimmerT)
                         .background(
                             Brush.horizontalGradient(
-                                listOf(Color.Transparent, Color.White.copy(alpha = 0.45f), Color.Transparent)
+                                listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent)
                             )
                         )
                 )
