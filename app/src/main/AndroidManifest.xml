@@ -84,6 +84,22 @@
             </intent-filter>
         </service>
 
+        <!-- Плитка "Goji VPN" в шторке быстрых настроек (см. GojiTileService). exported=true
+             обязателен — её биндит SystemUI; защищена системным BIND_QUICK_SETTINGS_TILE. -->
+        <service
+            android:name=".vpn.GojiTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_vpn_notification"
+            android:label="Goji VPN"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
         <!-- Проверка пинга при подключённом VPN (см. PingProcessService): libXray не выполняет
              pingBatch в процессе, где уже работает ядро туннеля, поэтому — отдельный процесс. -->
         <service

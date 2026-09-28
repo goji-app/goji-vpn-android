@@ -18,6 +18,10 @@ data class FeatureStrings(
     val expiry1dTitle: String,
     val expiry3dText: (plan: String, date: String) -> String,
     val expiry1dText: (plan: String, date: String) -> String,
+    // ── Плитка в шторке ──
+    val tileOn: String,
+    val tileOff: String,
+    val tileConnecting: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -36,6 +40,9 @@ data class FeatureStrings(
             expiry1dTitle = "Подписка закончится завтра",
             expiry3dText = { plan, date -> "Тариф «$plan» действует до $date. Продли заранее — VPN не отключится в самый неудобный момент." },
             expiry1dText = { plan, date -> "Тариф «$plan» заканчивается $date. Продли сейчас, чтобы не остаться без VPN." },
+            tileOn = "Подключено",
+            tileOff = "Отключено",
+            tileConnecting = "Подключение…",
         )
 
         private val EN = FeatureStrings(
@@ -48,6 +55,9 @@ data class FeatureStrings(
             expiry1dTitle = "Your plan ends tomorrow",
             expiry3dText = { plan, date -> "«$plan» is active until $date. Extend it in advance so the VPN doesn't stop at the worst moment." },
             expiry1dText = { plan, date -> "«$plan» ends on $date. Extend it now to keep your VPN working." },
+            tileOn = "Connected",
+            tileOff = "Disconnected",
+            tileConnecting = "Connecting…",
         )
 
         private val ZH = FeatureStrings(
@@ -60,6 +70,9 @@ data class FeatureStrings(
             expiry1dTitle = "订阅将于明天到期",
             expiry3dText = { plan, date -> "「$plan」有效期至 $date。请提前续费，以免 VPN 在关键时刻中断。" },
             expiry1dText = { plan, date -> "「$plan」将于 $date 到期。请立即续费，以免 VPN 停止工作。" },
+            tileOn = "已连接",
+            tileOff = "未连接",
+            tileConnecting = "正在连接…",
         )
     }
 }

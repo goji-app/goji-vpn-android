@@ -36,6 +36,7 @@ import xyz.gojihub.vpn.update.UpdateCheckWorker
 import xyz.gojihub.vpn.util.AppLogger
 import xyz.gojihub.vpn.vpn.GeoAssets
 import xyz.gojihub.vpn.vpn.GodjiVpnService
+import xyz.gojihub.vpn.vpn.GojiTileService
 import xyz.gojihub.vpn.vpn.VpnStateObserver
 import xyz.gojihub.vpn.vpn.geo.GeoDataDownloader
 import xyz.gojihub.vpn.vpn.geo.GeoDataRefreshWorker
@@ -99,6 +100,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             Loc.lang = settingsRepository.appLanguageNow()
             AppLogger.level = settingsRepository.logLevelNow()
         }
+        vpnStateObserver.addListener { GojiTileService.requestUpdate(this) }
         vpnStateObserver.start()
         schedulePeriodicRefresh()
         scheduleGeoDataRefresh()
