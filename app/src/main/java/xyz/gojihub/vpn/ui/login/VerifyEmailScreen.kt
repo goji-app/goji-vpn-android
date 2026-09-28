@@ -236,10 +236,9 @@ private fun DigitCell(digit: Char?, isActive: Boolean, justFilled: Boolean, hasE
     val borderColor = when {
         hasError -> GodjiColors.Danger
         isActive -> GodjiColors.Teal
-        digit != null -> GodjiColors.TealDeep
         else -> GodjiColors.CardBorder
     }
-    val borderWidth = if (isActive || digit != null) 1.8.dp else 1.3.dp
+    val borderWidth = 1.5.dp
     val glowAlpha = burst.value * 0.9f
 
     Box(
@@ -253,7 +252,7 @@ private fun DigitCell(digit: Char?, isActive: Boolean, justFilled: Boolean, hasE
                 spotColor = GodjiColors.Teal.copy(alpha = glowAlpha)
             )
             .clip(RoundedCornerShape(13.dp))
-            .background(GodjiColors.Surface)
+            .background(GodjiColors.Chip)
             .border(borderWidth, borderColor, RoundedCornerShape(13.dp)),
         contentAlignment = Alignment.Center
     ) {

@@ -26,6 +26,7 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PerAppProxyMode
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.theme.godjiGlassFlat
 import xyz.gojihub.vpn.ui.util.BackButton
 
 /** "Прокси для выбранных приложений" — тот же приём, что Per-app Proxy у Happ: ВЫКЛ (всем
@@ -72,7 +73,7 @@ fun AppTunnelingScreen(onBack: () -> Unit, viewModel: AppTunnelingViewModel = hi
                     lineHeight = 15.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(GodjiColors.Surface, RoundedCornerShape(14.dp))
+                        .godjiGlassFlat(RoundedCornerShape(14.dp))
                         .padding(12.dp)
                 )
             }

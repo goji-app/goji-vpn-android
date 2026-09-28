@@ -40,7 +40,7 @@ fun LogViewerDialog(category: LogCategory, title: String, onDismiss: () -> Unit)
     val logText = remember(category) { AppLogger.readAll(context, category) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(24.dp), color = GodjiColors.Surface) {
+        Surface(shape = RoundedCornerShape(24.dp), color = GodjiColors.BackgroundSolid) {
             Column(Modifier.padding(18.dp)) {
                 Row(
                     Modifier.fillMaxWidth(),

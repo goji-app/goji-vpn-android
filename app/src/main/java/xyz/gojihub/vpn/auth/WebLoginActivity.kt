@@ -103,7 +103,7 @@ private fun WebLoginScreen(onSessionCookie: (String, String?) -> Unit, onClose: 
 
     BackHandler(enabled = canGoBack) { webViewRef?.goBack() }
 
-    Column(Modifier.fillMaxSize().background(GodjiColors.Background)) {
+    Column(Modifier.fillMaxSize().background(GodjiColors.BackgroundSolid)) {
         Row(
             Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

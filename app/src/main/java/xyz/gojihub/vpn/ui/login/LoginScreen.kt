@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import xyz.gojihub.vpn.auth.WebLoginActivity
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -34,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
+import xyz.gojihub.vpn.ui.theme.GlassBackdrop
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
@@ -54,24 +53,9 @@ fun LoginScreen(
         context.startActivity(Intent(context, WebLoginActivity::class.java))
     }
 
-    Box(Modifier.fillMaxSize().background(GodjiColors.Background)) {
+    GlassBackdrop {
         // Глобус во весь экран фоном — как в макете, без карточки-обрамления.
         GojiGlobe(status = "off", node = null, modifier = Modifier.fillMaxSize())
-
-        // Плавный переход к цвету фона внизу, где сидят кнопки входа — тот же приём,
-        // что и линейный градиент в макете поверх canvas.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to GodjiColors.Background.copy(alpha = 0f),
-                        0.42f to GodjiColors.Background.copy(alpha = 0f),
-                        0.62f to GodjiColors.Background.copy(alpha = 0.55f),
-                        0.78f to GodjiColors.Background
-                    )
-                )
-        )
 
         // verticalScroll — на невысоких экранах (особенно в режиме email с показанной
         // ошибкой) весь этот блок не помещается по высоте; так как колонка прижата к низу
