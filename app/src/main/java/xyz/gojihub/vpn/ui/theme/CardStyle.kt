@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -79,6 +80,13 @@ private fun Modifier.glassCore(shape: Shape, tintAlpha: Float, blur: Dp, withBlu
             val h = 16.dp.toPx()
             drawRect(Brush.verticalGradient(listOf(GodjiColors.GlassInnerTop.copy(alpha = GodjiColors.GlassInnerTop.alpha * 0.5f), Color.Transparent), 0f, h))
             drawRect(Brush.verticalGradient(listOf(Color.Transparent, GodjiColors.GlassInnerBottom), size.height - h * 1.4f, size.height))
+            // тонкие контурные линии (hl сверху, edge по бокам) — из референса это отдельные
+            // "inset 0 1px 0 hl" / "inset ±1px 0 0 edge", раньше не рисовались вовсе, из-за
+            // чего стекло выглядело площе, чем в макете.
+            val edgeW = 1.dp.toPx()
+            drawRect(GodjiColors.GlassHl, size = Size(size.width, edgeW))
+            drawRect(GodjiColors.GlassEdge, size = Size(edgeW, size.height))
+            drawRect(GodjiColors.GlassEdge, topLeft = Offset(size.width - edgeW, 0f), size = Size(edgeW, size.height))
             drawContent()
         }
         .border(

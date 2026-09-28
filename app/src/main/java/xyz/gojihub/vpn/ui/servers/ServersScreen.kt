@@ -39,7 +39,8 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
     val refreshingSubscription by viewModel.refreshingSubscription.collectAsState()
     val refreshMessage by viewModel.refreshMessage.collectAsState()
 
-    Column(Modifier.fillMaxSize().background(GodjiColors.Background).padding(18.dp, 18.dp, 18.dp, 10.dp)) {
+    // Без своей заливки — экран живёт внутри общего GlassBackdrop (MainActivity.MainTabsScreen).
+    Column(Modifier.fillMaxSize().padding(18.dp, 18.dp, 18.dp, 10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
                 Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)

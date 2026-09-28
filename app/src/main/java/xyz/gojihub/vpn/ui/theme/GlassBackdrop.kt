@@ -33,7 +33,13 @@ fun GlassBackdrop(connected: Boolean = false, content: @Composable BoxScope.() -
             Modifier
                 .fillMaxSize()
                 .hazeSource(haze)
-                .background(Brush.verticalGradient(listOf(GodjiColors.BackdropTop, GodjiColors.BackdropBottom)))
+                .background(
+                    Brush.verticalGradient(
+                        0f to GodjiColors.BackdropTop,
+                        0.55f to GodjiColors.BackdropMid,
+                        1f to GodjiColors.BackdropBottom
+                    )
+                )
         ) {
             val blobs = listOf(GodjiColors.Blob1, GodjiColors.Blob2, GodjiColors.Blob3, GodjiColors.Blob4)
             Canvas(
@@ -42,11 +48,14 @@ fun GlassBackdrop(connected: Boolean = false, content: @Composable BoxScope.() -
                     .then(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(26.dp) else Modifier)
             ) {
                 val w = size.width; val h = size.height
+                // Базовые позиции — как в оригинальном JS (left/top в % от экрана: -30/-8, 45/10,
+                // -10/52, 50/68 для пятен 360/320/340/300px), плюс лёгкий дрейф по своей фазе
+                // (i*90° сдвиг), а не общий для всех wobble одной фазой.
                 val spots = listOf(
-                    Offset(w * (-0.1f + 0.15f * a), h * (0.12f + 0.05f * a)) to 180.dp.toPx(),
-                    Offset(w * (0.85f - 0.12f * a), h * (0.25f + 0.06f * a)) to 160.dp.toPx(),
-                    Offset(w * (0.1f + 0.1f * a), h * (0.72f - 0.05f * a)) to 170.dp.toPx(),
-                    Offset(w * (0.8f - 0.1f * a), h * (0.85f - 0.06f * a)) to 150.dp.toPx()
+                    Offset(w * (-0.30f + 0.1f * a), h * (-0.08f + 0.08f * a)) to 180.dp.toPx(),
+                    Offset(w * (0.45f - 0.08f * a), h * (0.10f + 0.06f * a)) to 160.dp.toPx(),
+                    Offset(w * (-0.10f + 0.08f * a), h * (0.52f - 0.05f * a)) to 170.dp.toPx(),
+                    Offset(w * (0.50f - 0.06f * a), h * (0.68f - 0.06f * a)) to 150.dp.toPx()
                 )
                 spots.forEachIndexed { i, (c, r) ->
                     val alpha = GodjiColors.BlobAlpha + if (connected && i == 0) 0.15f else 0f

@@ -107,22 +107,29 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
     // очередь "Трафик") просто обрезались краем экрана без какой-либо прокрутки: контент
     // не помещался по высоте, а Column сам по себе не скроллится. На больших экранах ничего
     // не меняет — скроллить нечего, если всё и так помещается.
+    // Без своей заливки фона — экран живёт внутри общего GlassBackdrop (см. MainActivity.
+    // MainTabsScreen), сплошной цвет здесь перекрывал бы его градиент/цветные пятна/сетку
+    // точек, из-за чего вся "стеклянность" карточек ниже (реальный blur через Haze) сводилась
+    // бы к размытию одного плоского оттенка — то есть выглядела бы просто как матовая заливка.
     Column(
         Modifier
             .fillMaxSize()
-            .background(GodjiColors.Background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp, 14.dp, 16.dp, 8.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(
+                Modifier.godjiGlassPill(shape = RoundedCornerShape(50)).padding(start = 5.dp, end = 13.dp, top = 5.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
                 Image(
                     painter = painterResource(R.drawable.ic_notification),
                     contentDescription = null,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(30.dp)
                 )
-                Text("Goji", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                Text("Goji", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             NetworkPill(state.netState)
         }
@@ -356,13 +363,13 @@ private fun GlobeCard(state: ConnectUiState) {
 
 @Composable
 private fun NetworkPill(net: NetState) {
-    val (label, color, bg) = when (net) {
-        NetState.WIFI -> Triple(Loc.s.netWifi, GodjiColors.TealDeep, GodjiColors.TealTint)
-        NetState.CELLULAR -> Triple(Loc.s.netCellular, GodjiColors.TextSecondary, GodjiColors.Chip)
-        NetState.JAMMED -> Triple(Loc.s.netJammed, GodjiColors.JamText, GodjiColors.JamBg)
+    val (label, color) = when (net) {
+        NetState.WIFI -> Loc.s.netWifi to GodjiColors.TealDeep
+        NetState.CELLULAR -> Loc.s.netCellular to GodjiColors.TextSecondary
+        NetState.JAMMED -> Loc.s.netJammed to GodjiColors.JamText
     }
     Row(
-        Modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 13.dp, vertical = 7.dp),
+        Modifier.godjiGlassPill(shape = RoundedCornerShape(50)).padding(horizontal = 13.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {

@@ -61,10 +61,11 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
     // общего скролла — список тарифов короткий, виртуализация не нужна, а вложенный
     // вертикально скроллящийся контейнер внутри другого вертикально скроллящегося вызвал бы
     // краш Compose.
+    // Без своей заливки — экран живёт внутри общего GlassBackdrop (MainActivity.MainTabsScreen),
+    // сплошной цвет перекрыл бы его градиент/пятна/сетку точек под стеклянными карточками.
     Column(
         Modifier
             .fillMaxSize()
-            .background(GodjiColors.Background)
             .verticalScroll(rememberScrollState())
             .padding(18.dp, 18.dp, 18.dp, 10.dp)
     ) {

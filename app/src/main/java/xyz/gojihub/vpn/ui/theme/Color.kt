@@ -88,13 +88,21 @@ object GodjiColors {
     var GlassHighlightFade by mutableStateOf(Color(0x00FFFFFF))
     var GlassStroke by mutableStateOf(Color(0xFFFFFFFF))
     var GlassStrokeFade by mutableStateOf(Color(0x0FFFFFFF))
-    var GlassShadow by mutableStateOf(Color(0x2E1E3C50))
+    var GlassShadow by mutableStateOf(Color(0x2E3C1E78))
     var GlassRimTop by mutableStateOf(Color(0xFFFFFFFF))
     var GlassRimBottom by mutableStateOf(Color(0xB3FFFFFF))
     var GlassInnerTop by mutableStateOf(Color(0xF2FFFFFF))
     var GlassInnerBottom by mutableStateOf(Color(0x38283C5A))
     var GlassSpot by mutableStateOf(Color(0x8CFFFFFF))
+    // Точные токены `hl` (тонкая яркая линия сверху) и `edge` (тонкие линии слева/справа) из
+    // реального JS референса (themes.light/dark в GojiGlassFull.dc.html) — отдельные от
+    // GlassHighlight (это `gloss`, диагональный широкий блик) и GlassInnerTop/Bottom (это
+    // `inner`, широкая мягкая тень объёма). Раньше эти два тонких контурных слоя не рисовались
+    // вовсе — стекло из-за этого выглядело площе, чем в макете.
+    var GlassHl by mutableStateOf(Color(0xCCFFFFFF))
+    var GlassEdge by mutableStateOf(Color(0x4DFFFFFF))
     var BackdropTop by mutableStateOf(Color(0xFFF2F4F7))
+    var BackdropMid by mutableStateOf(Color(0xFFE6ECF1))
     var BackdropBottom by mutableStateOf(Color(0xFFDDE7EA))
     var Blob1 by mutableStateOf(Color(0xFF6FD1C4))
     var Blob2 by mutableStateOf(Color(0xFFAFA6F2))
@@ -121,10 +129,11 @@ object GodjiColors {
         GlassTint = Color(0xFFFFFFFF); GlassTintAlpha = 0.28f
         GlassHighlight = Color(0x40FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
         GlassStroke = Color(0xFFFFFFFF); GlassStrokeFade = Color(0x0FFFFFFF)
-        GlassShadow = Color(0x2E1E3C50)
+        GlassShadow = Color(0x2E3C1E78)
         GlassRimTop = Color(0xFFFFFFFF); GlassRimBottom = Color(0xB3FFFFFF)
         GlassInnerTop = Color(0xF2FFFFFF); GlassInnerBottom = Color(0x38283C5A); GlassSpot = Color(0x8CFFFFFF)
-        BackdropTop = Color(0xFFF2F4F7); BackdropBottom = Color(0xFFDDE7EA)
+        GlassHl = Color(0xCCFFFFFF); GlassEdge = Color(0x4DFFFFFF)
+        BackdropTop = Color(0xFFF2F4F7); BackdropMid = Color(0xFFE6ECF1); BackdropBottom = Color(0xFFDDE7EA)
         Blob1 = Color(0xFF6FD1C4); Blob2 = Color(0xFFAFA6F2); Blob3 = Color(0xFFF2C2A5); Blob4 = Color(0xFF8EC3EA); BlobAlpha = 0.6f
         TexDot = Color(0x21284659); TexLine = Color(0x12284659)
     }
@@ -135,7 +144,10 @@ object GodjiColors {
         Ink = Color(0xFFF5F7FA); InkShadow = Color(0xFFD9DEE4)
         // Контраст: основной текст почти белый, вторичный — 80% (было 60% → плохо читалось)
         TextPrimary = Color(0xFFF5F7FA); TextSecondary = Color(0xFFC9D1D8); TextMuted = Color(0xFF9AA4AD)
-        Teal = Color(0xFF2FE0CF); TealBright = Color(0xFF34E3D2); TealDeep = Color(0xFF4BEADA)
+        // Teal/TealDeep — точные accent/accentInk из референса (#5FFFE6/#7FFFEA), а не
+        // приблизительный #2FE0CF/#4BEADA, как было раньше: тот тон в реальном JS — это
+        // окраска фона "okBg" (rgba(47,224,207,.14)), а не сам акцент.
+        Teal = Color(0xFF5FFFE6); TealBright = Color(0xFF34E3D2); TealDeep = Color(0xFF7FFFEA)
         TealTint = Color(0xFF0F2E2C); TealTintBorder = Color(0xFF1B4B47)
         Terracotta = Color(0xFFFF8E62); TerracottaDeep = Color(0xFFFFA57F)
         TerracottaTint = Color(0xFF2E1B14); TerracottaTintBorder = Color(0xFF5A3122)
@@ -147,10 +159,11 @@ object GodjiColors {
         GlassTint = Color(0xFF12161E); GlassTintAlpha = 0.62f
         GlassHighlight = Color(0x12FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
         GlassStroke = Color(0x24FFFFFF); GlassStrokeFade = Color(0x05FFFFFF)
-        GlassShadow = Color(0x80000000)
+        GlassShadow = Color(0x590A0528)
         GlassRimTop = Color(0x8CFFFFFF); GlassRimBottom = Color(0x47FFFFFF)
         GlassInnerTop = Color(0x2EFFFFFF); GlassInnerBottom = Color(0x80000000); GlassSpot = Color(0x12FFFFFF)
-        BackdropTop = Color(0xFF080C12); BackdropBottom = Color(0xFF06100F)
+        GlassHl = Color(0x2EFFFFFF); GlassEdge = Color(0x14FFFFFF)
+        BackdropTop = Color(0xFF080C12); BackdropMid = Color(0xFF0C1320); BackdropBottom = Color(0xFF06100F)
         Blob1 = Color(0xFF0F8C80); Blob2 = Color(0xFF4332A8); Blob3 = Color(0xFF8A3D2A); Blob4 = Color(0xFF1B4F8C); BlobAlpha = 0.32f
         TexDot = Color(0x0FC8E6F0); TexLine = Color(0x09A0DCE6)
     }
