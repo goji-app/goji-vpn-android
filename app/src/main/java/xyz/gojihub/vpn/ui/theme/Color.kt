@@ -40,131 +40,100 @@ object GodjiColors {
     /** См. FontSizePreset — читается реактивно в Theme.kt (GodjiVpnTheme), как и isDark. */
     var fontSizePreset by mutableStateOf(FontSizePreset.NORMAL)
 
-    var Background by mutableStateOf(Color(0xFFEEF1F4))
+    var Background by mutableStateOf(Color(0xFFF4EFE6))
     var Surface by mutableStateOf(Color(0xFFFFFFFF))
-    var SurfaceGlass by mutableStateOf(Color(0xFFF7F9FA))
+    var SurfaceGlass by mutableStateOf(Color(0xFFFAF7F2))
 
-    var Ink by mutableStateOf(Color(0xFF0B1F1C))
-    var InkShadow by mutableStateOf(Color(0xFF051210))
-    var TextPrimary by mutableStateOf(Color(0xFF0B1F1C))
-    var TextSecondary by mutableStateOf(Color(0xFF55615F))
-    var TextMuted by mutableStateOf(Color(0xFF7D8886))
+    var Ink by mutableStateOf(Color(0xFF152220))
+    var InkShadow by mutableStateOf(Color(0xFF0B1512))
+    var TextPrimary by mutableStateOf(Color(0xFF152220))
+    var TextSecondary by mutableStateOf(Color(0xFF4E5D59))
+    var TextMuted by mutableStateOf(Color(0xFF7B8A85))
 
-    var Teal by mutableStateOf(Color(0xFF00A79B))
-    var TealBright by mutableStateOf(Color(0xFF2AC9BA))
-    var TealDeep by mutableStateOf(Color(0xFF007A70))
-    var TealTint by mutableStateOf(Color(0xFFDDF3F0))
-    var TealTintBorder by mutableStateOf(Color(0xFFB5E5DF))
+    var Teal by mutableStateOf(Color(0xFF00875A))
+    var TealBright by mutableStateOf(Color(0xFF00875A))
+    var TealDeep by mutableStateOf(Color(0xFF005235))
+    var TealTint by mutableStateOf(Color(0xFFE3F2EA))
+    var TealTintBorder by mutableStateOf(Color(0xFFB8DECB))
 
-    var Terracotta by mutableStateOf(Color(0xFFE0693F))
-    var TerracottaDeep by mutableStateOf(Color(0xFFB84F2A))
-    var TerracottaTint by mutableStateOf(Color(0xFFFCE6DC))
-    var TerracottaTintBorder by mutableStateOf(Color(0xFFF3C7B3))
+    var Terracotta by mutableStateOf(Color(0xFFD84A2A))
+    var TerracottaDeep by mutableStateOf(Color(0xFF8B1A00))
+    var TerracottaTint by mutableStateOf(Color(0xFFFBE4DC))
+    var TerracottaTintBorder by mutableStateOf(Color(0xFFF0C0AE))
 
-    var Warning by mutableStateOf(Color(0xFFC98B12))
-    var Danger by mutableStateOf(Color(0xFFD2432C))
-    var JamBg by mutableStateOf(Color(0xFFFFE3D8))
-    var JamBorder by mutableStateOf(Color(0xFFF3C7B3))
-    var JamText by mutableStateOf(Color(0xFFC2412A))
+    var Warning by mutableStateOf(Color(0xFFC9911F))
+    var Danger by mutableStateOf(Color(0xFFD84A2A))
+    var JamBg by mutableStateOf(Color(0xFFFBE4DC))
+    var JamBorder by mutableStateOf(Color(0xFFF0C0AE))
+    var JamText by mutableStateOf(Color(0xFF8B1A00))
 
-    var CardBorder by mutableStateOf(Color(0x14000000))
-    var CardBorderStrong by mutableStateOf(Color(0x1F000000))
-    var ButtonBorder by mutableStateOf(Color(0x80FFFFFF))
-    var Chip by mutableStateOf(Color(0x59FFFFFF))
-    var TrackBg by mutableStateOf(Color(0x170B1F1C))
+    var CardBorder by mutableStateOf(Color(0xFFECE5DA))
+    var CardBorderStrong by mutableStateOf(Color(0xFFE4DCC8))
+    var ButtonBorder by mutableStateOf(Color(0xFFD8CFB8))
+    var Chip by mutableStateOf(Color(0xFFECE5DA))
+    var TrackBg by mutableStateOf(Color(0xFFECE5DA))
 
-    var BorderTeal by mutableStateOf(Color(0x2600A79B))
-    var Purple by mutableStateOf(Color(0xFF8EC3EA))
+    var BorderTeal by mutableStateOf(Color(0x2600875A))
+    var Purple by mutableStateOf(Color(0xFF00838F))
 
-    // ── "Apple Glass" (Liquid Glass) v5 — редизайн 2026-09-28 ───────────────────────────
-    // Настоящий backdrop-blur теперь есть (см. CardStyle.kt/GlassBackdrop.kt — Haze,
-    // API 31+, на 24–30 фолбэк без блюра на полупрозрачную заливку) — токены ниже описывают
-    // тинт стекла, кромку-градиент (яркая сверху-слева → отсвет снизу-справа), внутренние
-    // тени (объём) и бегающий блик, плюс фон-подложку под стеклом (BackdropTop/Bottom,
-    // Blob1-4, TexDot/TexLine — см. GlassBackdrop.kt).
+    // ── "Apple Glass" (Liquid Glass) — редизайн 2026-09-28 ──────────────────────────────
+    // Настоящий backdrop-blur (сэмплинг того, что реально находится позади поверхности)
+    // на Compose требует RenderEffect с захватом графического слоя (API 31+, плюс отдельная
+    // прокладка через GraphicsLayer.record для КАЖДОЙ стеклянной поверхности) — сознательно
+    // не стали тащить это ради стабильности на minSdk 24 и предсказуемой производительности
+    // при частой перерисовке (глобус, счётчики скорости). Вместо этого — тот же приём, что
+    // уже был у тёмной темы карточек (полупрозрачная заливка + верхний specular-блик
+    // градиентом), но усиленный и одинаковый в обеих темах: выше прозрачность, мягче тень,
+    // более контрастный блик по верхней кромке — визуально читается как настоящее стекло,
+    // не требуя реального сэмплинга фона.
     var GlassTint by mutableStateOf(Color(0xFFFFFFFF))
-    var GlassTintAlpha by mutableStateOf(0.28f)
-    var GlassHighlight by mutableStateOf(Color(0x40FFFFFF))
+    var GlassTintAlpha by mutableStateOf(0.55f)
+    var GlassHighlight by mutableStateOf(Color(0x4DFFFFFF))
     var GlassHighlightFade by mutableStateOf(Color(0x00FFFFFF))
-    var GlassStroke by mutableStateOf(Color(0xFFFFFFFF))
-    var GlassStrokeFade by mutableStateOf(Color(0x0FFFFFFF))
-    var GlassShadow by mutableStateOf(Color(0x2E3C1E78))
-    var GlassRimTop by mutableStateOf(Color(0xFFFFFFFF))
-    var GlassRimBottom by mutableStateOf(Color(0xB3FFFFFF))
-    var GlassInnerTop by mutableStateOf(Color(0xF2FFFFFF))
-    var GlassInnerBottom by mutableStateOf(Color(0x38283C5A))
-    var GlassSpot by mutableStateOf(Color(0x8CFFFFFF))
-    // Точные токены `hl` (тонкая яркая линия сверху) и `edge` (тонкие линии слева/справа) из
-    // реального JS референса (themes.light/dark в GojiGlassFull.dc.html) — отдельные от
-    // GlassHighlight (это `gloss`, диагональный широкий блик) и GlassInnerTop/Bottom (это
-    // `inner`, широкая мягкая тень объёма). Раньше эти два тонких контурных слоя не рисовались
-    // вовсе — стекло из-за этого выглядело площе, чем в макете.
-    var GlassHl by mutableStateOf(Color(0xCCFFFFFF))
-    var GlassEdge by mutableStateOf(Color(0x4DFFFFFF))
-    var BackdropTop by mutableStateOf(Color(0xFFF2F4F7))
-    var BackdropMid by mutableStateOf(Color(0xFFE6ECF1))
-    var BackdropBottom by mutableStateOf(Color(0xFFDDE7EA))
-    var Blob1 by mutableStateOf(Color(0xFF6FD1C4))
-    var Blob2 by mutableStateOf(Color(0xFFAFA6F2))
-    var Blob3 by mutableStateOf(Color(0xFFF2C2A5))
-    var Blob4 by mutableStateOf(Color(0xFF8EC3EA))
-    var BlobAlpha by mutableStateOf(0.6f)
-    var TexDot by mutableStateOf(Color(0x21284659))
-    var TexLine by mutableStateOf(Color(0x12284659))
+    var GlassStroke by mutableStateOf(Color(0x40FFFFFF))
+    var GlassStrokeFade by mutableStateOf(Color(0x0AFFFFFF))
+    var GlassShadow by mutableStateOf(Color(0x14503320))
 
     fun applyLight() {
         isDark = false
-        Background = Color(0xFFEEF1F4); Surface = Color(0xFFFFFFFF); SurfaceGlass = Color(0xFFF7F9FA)
-        Ink = Color(0xFF0B1F1C); InkShadow = Color(0xFF051210)
-        TextPrimary = Color(0xFF0B1F1C); TextSecondary = Color(0xFF55615F); TextMuted = Color(0xFF7D8886)
-        Teal = Color(0xFF00A79B); TealBright = Color(0xFF2AC9BA); TealDeep = Color(0xFF007A70)
-        TealTint = Color(0xFFDDF3F0); TealTintBorder = Color(0xFFB5E5DF)
-        Terracotta = Color(0xFFE0693F); TerracottaDeep = Color(0xFFB84F2A)
-        TerracottaTint = Color(0xFFFCE6DC); TerracottaTintBorder = Color(0xFFF3C7B3)
-        Warning = Color(0xFFC98B12); Danger = Color(0xFFD2432C)
-        JamBg = Color(0xFFFFE3D8); JamBorder = Color(0xFFF3C7B3); JamText = Color(0xFFC2412A)
-        CardBorder = Color(0x14000000); CardBorderStrong = Color(0x1F000000)
-        ButtonBorder = Color(0x80FFFFFF); Chip = Color(0x59FFFFFF); TrackBg = Color(0x170B1F1C)
-        BorderTeal = Color(0x2600A79B); Purple = Color(0xFF8EC3EA)
-        GlassTint = Color(0xFFFFFFFF); GlassTintAlpha = 0.28f
-        GlassHighlight = Color(0x40FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
-        GlassStroke = Color(0xFFFFFFFF); GlassStrokeFade = Color(0x0FFFFFFF)
-        GlassShadow = Color(0x2E3C1E78)
-        GlassRimTop = Color(0xFFFFFFFF); GlassRimBottom = Color(0xB3FFFFFF)
-        GlassInnerTop = Color(0xF2FFFFFF); GlassInnerBottom = Color(0x38283C5A); GlassSpot = Color(0x8CFFFFFF)
-        GlassHl = Color(0xCCFFFFFF); GlassEdge = Color(0x4DFFFFFF)
-        BackdropTop = Color(0xFFF2F4F7); BackdropMid = Color(0xFFE6ECF1); BackdropBottom = Color(0xFFDDE7EA)
-        Blob1 = Color(0xFF6FD1C4); Blob2 = Color(0xFFAFA6F2); Blob3 = Color(0xFFF2C2A5); Blob4 = Color(0xFF8EC3EA); BlobAlpha = 0.6f
-        TexDot = Color(0x21284659); TexLine = Color(0x12284659)
+        Background = Color(0xFFF4EFE6); Surface = Color(0xFFFFFFFF); SurfaceGlass = Color(0xFFFAF7F2)
+        Ink = Color(0xFF152220); InkShadow = Color(0xFF0B1512)
+        TextPrimary = Color(0xFF152220); TextSecondary = Color(0xFF4E5D59); TextMuted = Color(0xFF7B8A85)
+        Teal = Color(0xFF00875A); TealBright = Color(0xFF00875A); TealDeep = Color(0xFF005235)
+        TealTint = Color(0xFFE3F2EA); TealTintBorder = Color(0xFFB8DECB)
+        Terracotta = Color(0xFFD84A2A); TerracottaDeep = Color(0xFF8B1A00)
+        TerracottaTint = Color(0xFFFBE4DC); TerracottaTintBorder = Color(0xFFF0C0AE)
+        Warning = Color(0xFFC9911F); Danger = Color(0xFFD84A2A)
+        JamBg = Color(0xFFFBE4DC); JamBorder = Color(0xFFF0C0AE); JamText = Color(0xFF8B1A00)
+        CardBorder = Color(0xFFECE5DA); CardBorderStrong = Color(0xFFE4DCC8)
+        ButtonBorder = Color(0xFFD8CFB8); Chip = Color(0xFFECE5DA); TrackBg = Color(0xFFECE5DA)
+        BorderTeal = Color(0x2600875A); Purple = Color(0xFF00838F)
+        GlassTint = Color(0xFFFFFFFF); GlassTintAlpha = 0.55f
+        GlassHighlight = Color(0x4DFFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
+        GlassStroke = Color(0x40FFFFFF); GlassStrokeFade = Color(0x0AFFFFFF)
+        GlassShadow = Color(0x14503320)
     }
 
     fun applyDark() {
         isDark = true
-        Background = Color(0xFF080C12); Surface = Color(0xFF121820); SurfaceGlass = Color(0xFF161B24)
-        Ink = Color(0xFFF5F7FA); InkShadow = Color(0xFFD9DEE4)
-        // Контраст: основной текст почти белый, вторичный — 80% (было 60% → плохо читалось)
-        TextPrimary = Color(0xFFF5F7FA); TextSecondary = Color(0xFFC9D1D8); TextMuted = Color(0xFF9AA4AD)
-        // Teal/TealDeep — точные accent/accentInk из референса (#5FFFE6/#7FFFEA), а не
-        // приблизительный #2FE0CF/#4BEADA, как было раньше: тот тон в реальном JS — это
-        // окраска фона "okBg" (rgba(47,224,207,.14)), а не сам акцент.
-        Teal = Color(0xFF5FFFE6); TealBright = Color(0xFF34E3D2); TealDeep = Color(0xFF7FFFEA)
-        TealTint = Color(0xFF0F2E2C); TealTintBorder = Color(0xFF1B4B47)
-        Terracotta = Color(0xFFFF8E62); TerracottaDeep = Color(0xFFFFA57F)
-        TerracottaTint = Color(0xFF2E1B14); TerracottaTintBorder = Color(0xFF5A3122)
-        Warning = Color(0xFFE0A526); Danger = Color(0xFFFF7A66)
-        JamBg = Color(0xFF3A1A12); JamBorder = Color(0xFF5A3122); JamText = Color(0xFFFF8A6E)
-        CardBorder = Color(0x1AFFFFFF); CardBorderStrong = Color(0x24FFFFFF)
-        ButtonBorder = Color(0x24FFFFFF); Chip = Color(0x14FFFFFF); TrackBg = Color(0x1FFFFFFF)
-        BorderTeal = Color(0x262FE0CF); Purple = Color(0xFF4332A8)
-        GlassTint = Color(0xFF12161E); GlassTintAlpha = 0.62f
-        GlassHighlight = Color(0x12FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
-        GlassStroke = Color(0x24FFFFFF); GlassStrokeFade = Color(0x05FFFFFF)
-        GlassShadow = Color(0x590A0528)
-        GlassRimTop = Color(0x8CFFFFFF); GlassRimBottom = Color(0x47FFFFFF)
-        GlassInnerTop = Color(0x2EFFFFFF); GlassInnerBottom = Color(0x80000000); GlassSpot = Color(0x12FFFFFF)
-        GlassHl = Color(0x2EFFFFFF); GlassEdge = Color(0x14FFFFFF)
-        BackdropTop = Color(0xFF080C12); BackdropMid = Color(0xFF0C1320); BackdropBottom = Color(0xFF06100F)
-        Blob1 = Color(0xFF0F8C80); Blob2 = Color(0xFF4332A8); Blob3 = Color(0xFF8A3D2A); Blob4 = Color(0xFF1B4F8C); BlobAlpha = 0.32f
-        TexDot = Color(0x0FC8E6F0); TexLine = Color(0x09A0DCE6)
+        Background = Color(0xFF0A0E13); Surface = Color(0xFF101419); SurfaceGlass = Color(0xFF181C21)
+        // Ink/Surface работают как инвертируемая пара (тёмная кнопка со светлым текстом на
+        // светлой теме → светлая кнопка с тёмным текстом на тёмной, ничего в экранах менять
+        // не пришлось: и там, и там текст "Surface", фон "Ink").
+        Ink = Color(0xFFE0E2EA); InkShadow = Color(0xFFC7CBD4)
+        TextPrimary = Color(0xFFE0E2EA); TextSecondary = Color(0xFF849588); TextMuted = Color(0xFF849588)
+        Teal = Color(0xFF00F5A0); TealBright = Color(0xFF00F5A0); TealDeep = Color(0xFF00B87A)
+        TealTint = Color(0xFF14332A); TealTintBorder = Color(0xFF1F4A3B)
+        Terracotta = Color(0xFFFF5E3A); TerracottaDeep = Color(0xFFFF8562)
+        TerracottaTint = Color(0xFF2E1D16); TerracottaTintBorder = Color(0xFF5C3323)
+        Warning = Color(0xFFE0A63C); Danger = Color(0xFFFF5E3A)
+        JamBg = Color(0xFF2E1D16); JamBorder = Color(0xFF5C3323); JamText = Color(0xFFFF8562)
+        CardBorder = Color(0xFF262C31); CardBorderStrong = Color(0xFF303840)
+        ButtonBorder = Color(0xFF2E363B); Chip = Color(0xFF181C21); TrackBg = Color(0xFF262A30)
+        BorderTeal = Color(0x2600F5A0); Purple = Color(0xFF00D2FF)
+        GlassTint = Color(0xFF1E242B); GlassTintAlpha = 0.62f
+        GlassHighlight = Color(0x24FFFFFF); GlassHighlightFade = Color(0x00FFFFFF)
+        GlassStroke = Color(0x22FFFFFF); GlassStrokeFade = Color(0x05FFFFFF)
+        GlassShadow = Color(0x2E000000)
     }
 }

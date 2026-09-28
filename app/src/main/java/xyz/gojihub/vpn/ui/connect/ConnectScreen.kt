@@ -8,14 +8,13 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -30,17 +29,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -48,6 +45,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -62,13 +60,11 @@ import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.network.NetState
 import xyz.gojihub.vpn.ui.globe.GojiGlobe
-import xyz.gojihub.vpn.ui.theme.AutoBadge
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.JetBrainsMonoFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
-import xyz.gojihub.vpn.ui.theme.godjiGlassPill
 
 @Composable
 fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}) {
@@ -107,106 +103,45 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
     // очередь "Трафик") просто обрезались краем экрана без какой-либо прокрутки: контент
     // не помещался по высоте, а Column сам по себе не скроллится. На больших экранах ничего
     // не меняет — скроллить нечего, если всё и так помещается.
-    // Без своей заливки фона — экран живёт внутри общего GlassBackdrop (см. MainActivity.
-    // MainTabsScreen), сплошной цвет здесь перекрывал бы его градиент/цветные пятна/сетку
-    // точек, из-за чего вся "стеклянность" карточек ниже (реальный blur через Haze) сводилась
-    // бы к размытию одного плоского оттенка — то есть выглядела бы просто как матовая заливка.
     Column(
         Modifier
             .fillMaxSize()
+            .background(GodjiColors.Background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp, 14.dp, 16.dp, 8.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.godjiGlassPill(shape = RoundedCornerShape(50)).padding(start = 5.dp, end = 13.dp, top = 5.dp, bottom = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 Image(
                     painter = painterResource(R.drawable.ic_notification),
                     contentDescription = null,
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(36.dp)
                 )
-                Text("Goji", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("Goji", color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 19.sp)
             }
             NetworkPill(state.netState)
         }
 
         GlobeCard(state)
 
-        // Хero-блок v5: круглая стеклянная кнопка 80dp по центру, заголовок и статус-строка —
-        // под ней (раньше кнопка стояла компактной пилюлей справа от заголовка в одной строке).
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(13.dp)
-        ) {
-            val (ctaInteraction, ctaScale) = rememberPressScale()
-            Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-                if (state.connected) {
-                    // Два расходящихся кольца-пульса со сдвигом по фазе в половину периода —
-                    // как gg-ring в макете (два <span> с animation-delay 1.2s на цикл 2.4s).
-                    val ringTransition = rememberInfiniteTransition(label = "ctaRing")
-                    repeat(2) { i ->
-                        val ringT by ringTransition.animateFloat(
-                            initialValue = 0f, targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(2400, easing = LinearOutSlowInEasing),
-                                initialStartOffset = StartOffset(i * 1200)
-                            ),
-                            label = "ringT$i"
-                        )
-                        Box(
-                            Modifier
-                                .matchParentSize()
-                                .scale(1f + ringT * 0.55f)
-                                .composeBorder(2.dp, GodjiColors.Teal.copy(alpha = 0.5f * (1f - ringT)), CircleShape)
-                        )
-                    }
-                }
-                if (state.connecting) {
-                    // Вращающийся двухцветный полу-обод — как gg-spin с border-top/border-right
-                    // разных цветов в макете.
-                    val spin = rememberInfiniteTransition(label = "ctaSpin")
-                    val angle by spin.animateFloat(
-                        0f, 360f,
-                        infiniteRepeatable(tween(1000, easing = LinearEasing)),
-                        label = "ctaSpinAngle"
-                    )
-                    Canvas(Modifier.matchParentSize().padding(3.dp).rotate(angle)) {
-                        val stroke = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                        drawArc(GodjiColors.Teal, startAngle = -90f, sweepAngle = 150f, useCenter = false, style = stroke)
-                        drawArc(GodjiColors.Terracotta, startAngle = 60f, sweepAngle = 150f, useCenter = false, style = stroke)
-                    }
-                }
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .scale(ctaScale.value)
-                        .godjiGlassPill(shape = CircleShape)
-                        .clickable(interactionSource = ctaInteraction, indication = null) { toggle() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PowerSettingsNew,
-                        contentDescription = ctaLabel(state),
-                        tint = ctaIconColor(state),
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        // weight(1f) на заголовке — раньше при масштабировании интерфейса под широкий экран
+        // (см. GodjiVpnTheme) длинный заголовок вроде "Ты в Германии" вытеснял кнопку
+        // "Отключить"/"Включить": оба элемента без weight делят место по очереди слева направо,
+        // и кнопке доставалось меньше места, чем нужно на одну строку — её текст переносился на
+        // две строки и вылезал за пределы кнопки. Теперь кнопка первой получает своё натуральное
+        // место, а заголовок гибко занимает остаток (перенос/многоточие — на его стороне, не на
+        // стороне короткой и всегда однострочной кнопки).
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     headline(state),
                     color = GodjiColors.TextPrimary,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 24.sp,
-                    lineHeight = 25.sp,
+                    fontSize = 26.sp,
+                    lineHeight = 27.sp,
                     maxLines = 2,
-                    textAlign = TextAlign.Center,
                     overflow = TextOverflow.Ellipsis
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -219,13 +154,17 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                         label = "dotAlpha"
                     )
                     Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(dotColor(state).copy(alpha = dotAlpha)))
+                    // weight здесь — то же самое сжатие места кнопкой, только уровнем глубже:
+                    // если строке не хватает ширины, ужимается (многоточием) описание сервера,
+                    // а не таймер после него — таймер должен оставаться читаемым целиком.
                     Text(
                         subline(state),
                         color = GodjiColors.TextSecondary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 11.5.sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     if (state.connected) {
                         Text("·", color = GodjiColors.TextSecondary, fontSize = 11.5.sp)
@@ -237,6 +176,64 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
                         )
                     }
                 }
+            }
+            val (ctaInteraction, ctaScale) = rememberPressScale()
+            val ctaBgAnimated by animateColorAsState(ctaBg(state), label = "ctaBg")
+
+            // Светящийся переливающийся ореол при включении/во включённом состоянии — по
+            // мотивам присланного видео (glow-переключатель с "живым" градиентом вместо
+            // мгновенной смены цвета). Во время connecting цвет ореола плавно перетекает
+            // тил↔терракота (тот же приём, что и градиент на кольце дней подписки), в
+            // подключённом состоянии — спокойное дыхание одним тилом; в отключённом ореола нет.
+            val glowTransition = rememberInfiniteTransition(label = "ctaGlow")
+            val glowShift by glowTransition.animateFloat(
+                initialValue = 0f, targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+                label = "glowShift"
+            )
+            val glowPulse by glowTransition.animateFloat(
+                initialValue = 0.5f, targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(1200), repeatMode = RepeatMode.Reverse),
+                label = "glowPulse"
+            )
+            val glowColor = when {
+                state.connecting -> lerp(GodjiColors.Teal, GodjiColors.Terracotta, glowShift)
+                state.connected -> GodjiColors.Teal
+                else -> null
+            }
+
+            Button(
+                onClick = { toggle() },
+                interactionSource = ctaInteraction,
+                colors = ButtonDefaults.buttonColors(containerColor = ctaBgAnimated, contentColor = ctaColor(state)),
+                shape = RoundedCornerShape(50),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp, pressedElevation = 1.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+                modifier = Modifier
+                    .scale(ctaScale.value)
+                    .drawBehind {
+                        if (glowColor != null) {
+                            // "Photon bloom" из редизайна — на тёмном AMOLED-фоне неоновое
+                            // свечение читается ярче, чем на светлом песочном холсте, поэтому
+                            // радиус и непрозрачность ореола отличаются по теме. Первая версия
+                            // (radius 2.6x/alpha 0.85 в тёмной теме) оказалась слишком яркой и
+                            // отвлекающей на живом экране — уменьшено примерно вдвое.
+                            val haloRadius = size.maxDimension * (if (GodjiColors.isDark) 2.0f else 1.6f)
+                            val peakAlpha = if (GodjiColors.isDark) 0.4f else 0.32f
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(glowColor.copy(alpha = glowPulse * peakAlpha), glowColor.copy(alpha = 0f)),
+                                    radius = haloRadius
+                                ),
+                                radius = haloRadius,
+                                center = center
+                            )
+                        }
+                    }
+                    .height(44.dp)
+                    .shadow(8.dp, RoundedCornerShape(50), ambientColor = ctaBgAnimated, spotColor = ctaBgAnimated)
+            ) {
+                Text(ctaLabel(state), fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
             }
         }
 
@@ -311,40 +308,30 @@ private fun dotColor(s: ConnectUiState) = when {
 }
 
 private fun ctaLabel(s: ConnectUiState) = if (s.connected || s.connecting) Loc.s.ctaDisconnect else Loc.s.ctaConnect
-private fun ctaIconColor(s: ConnectUiState) = when {
-    s.connected -> GodjiColors.Teal
-    s.connecting -> GodjiColors.Warning
-    else -> GodjiColors.TextPrimary
-}
+private fun ctaBg(s: ConnectUiState) = if (s.connected || s.connecting) GodjiColors.Danger else GodjiColors.Teal
+private fun ctaColor(s: ConnectUiState) = GodjiColors.Surface
 
 @Composable
 private fun GlobeCard(state: ConnectUiState) {
-    // v5 "hero": глобус без карточки-обрамления (ни рамки, ни тени) — крупнее (430dp) и шире
-    // экрана (виден выход за боковые края, requiredWidth(maxWidth + 120.dp)), сам широкий
-    // прямоугольник GLSurfaceView заливается цветом "океана" (GlobeTheme.ocean, см.
-    // GojiGlobeRenderer), который теперь совпадает по тону с фоном приложения — стык
-    // невидим без отдельной подложки-карточки, как в исходном макете v5.
-    BoxWithConstraints(Modifier.fillMaxWidth().height(430.dp)) {
-        // Плашка "страна · город" на самом глобусе больше не показываем (label="") — то же
-        // название уже есть в карточке текущего узла ниже; здесь остаётся только приветствие.
-        GojiGlobe(
-            status = state.globeStatus,
-            node = state.globeNode,
-            label = "",
-            modifier = Modifier
-                .align(Alignment.Center)
-                .requiredWidth(maxWidth + 120.dp)
-                .fillMaxHeight()
-        )
+    // Цветное внешнее свечение вокруг самой карточки (не только внутри неё) — по мотивам
+    // shadow-[0_0_50px_rgba(0,245,160,0.12)] на контейнере глобуса в референсе; ярче, когда
+    // туннель поднят, едва заметно в состоянии "off".
+    val glowAlpha = if (state.connected) 0.35f else if (state.connecting) 0.22f else 0.12f
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(230.dp)
+            .shadow(20.dp, RoundedCornerShape(24.dp), ambientColor = GodjiColors.Teal.copy(alpha = glowAlpha), spotColor = GodjiColors.Teal.copy(alpha = glowAlpha))
+            .godjiCard(borderColor = GodjiColors.CardBorderStrong)
+    ) {
+        // Точки всех доступных локаций больше не показываем — только точки маршрута
+        // (дом/узел), и то лишь пока идёт подключение или оно уже установлено (см.
+        // GojiGlobeRenderer: обе точки скрыты целиком при status == "off").
+        GojiGlobe(status = state.globeStatus, node = state.globeNode, label = state.currentGeo?.displayCityCountry(Loc.lang).orEmpty(), modifier = Modifier.fillMaxSize())
 
         if (state.connected) {
             Column(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 22.dp, end = 12.dp)
-                    .widthIn(max = 190.dp)
-                    .godjiGlassPill(shape = RoundedCornerShape(18.dp))
-                    .padding(horizontal = 13.dp, vertical = 9.dp),
+                Modifier.align(Alignment.TopEnd).padding(12.dp),
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
@@ -352,10 +339,9 @@ private fun GlobeCard(state: ConnectUiState) {
                     color = GodjiColors.TextPrimary,
                     fontFamily = if (state.greetingUsesSerif) SpaceGroteskFamily else FontFamily.Default,
                     fontWeight = if (state.greetingUsesSerif) FontWeight.SemiBold else FontWeight.Normal,
-                    fontSize = 20.sp,
-                    textAlign = TextAlign.End
+                    fontSize = 28.sp
                 )
-                Text(state.greetingSub, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 9.sp)
+                Text(state.greetingSub, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp)
             }
         }
     }
@@ -363,13 +349,13 @@ private fun GlobeCard(state: ConnectUiState) {
 
 @Composable
 private fun NetworkPill(net: NetState) {
-    val (label, color) = when (net) {
-        NetState.WIFI -> Loc.s.netWifi to GodjiColors.TealDeep
-        NetState.CELLULAR -> Loc.s.netCellular to GodjiColors.TextSecondary
-        NetState.JAMMED -> Loc.s.netJammed to GodjiColors.JamText
+    val (label, color, bg) = when (net) {
+        NetState.WIFI -> Triple(Loc.s.netWifi, GodjiColors.TealDeep, GodjiColors.TealTint)
+        NetState.CELLULAR -> Triple(Loc.s.netCellular, GodjiColors.TextSecondary, GodjiColors.Chip)
+        NetState.JAMMED -> Triple(Loc.s.netJammed, GodjiColors.JamText, GodjiColors.JamBg)
     }
     Row(
-        Modifier.godjiGlassPill(shape = RoundedCornerShape(50)).padding(horizontal = 13.dp, vertical = 7.dp),
+        Modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 13.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
@@ -445,14 +431,7 @@ private fun AutoSwitchCard(state: ConnectUiState) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
-                AutoBadge()
-            }
+            Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
             Text(
                 Loc.s.autoSwitchDesc,
                 color = GodjiColors.TextSecondary, fontSize = 10.sp, lineHeight = 13.sp

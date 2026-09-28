@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -61,7 +60,6 @@ import xyz.gojihub.vpn.ui.support.FaqScreen
 import xyz.gojihub.vpn.ui.support.NewTicketScreen
 import xyz.gojihub.vpn.ui.support.SupportListScreen
 import xyz.gojihub.vpn.ui.support.TicketChatScreen
-import xyz.gojihub.vpn.ui.theme.GlassBackdrop
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
 import xyz.gojihub.vpn.ui.theme.ThemeMode
@@ -264,7 +262,7 @@ private fun MainTabsScreen(navController: NavHostController) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
-    GlassBackdrop {
+    Box(Modifier.fillMaxSize().background(GodjiColors.Background)) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
@@ -321,67 +319,68 @@ private fun GlassTabBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    BoxWithConstraints(
+    Row(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .padding(bottom = 20.dp)
             .height(68.dp)
-            .godjiGlassBar(shape = RoundedCornerShape(34.dp))
+            .godjiGlassBar(shape = RoundedCornerShape(34.dp)),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // "Линза" выбранной вкладки — один скользящий индикатор вместо независимого fade-in/out
-        // у каждого таба (как раньше): все 4 вкладки равной ширины, поэтому её offset считается
-        // без onGloballyPositioned — просто targetIndex * ширина одной вкладки (maxWidth уже
-        // известен из BoxWithConstraints), никакого риска рассинхронизации.
-        val tabWidth = maxWidth / tabs.size
-        val lensOffset by animateDpAsState(
-            targetValue = tabWidth * targetIndex,
-            animationSpec = spring(dampingRatio = 0.7f, stiffness = 380f),
-            label = "tabLensOffset"
-        )
-        Box(
-            Modifier
-                .offset(x = lensOffset)
-                .width(tabWidth)
-                .fillMaxHeight()
-                .padding(vertical = 6.dp, horizontal = 10.dp)
-                .background(GodjiColors.TealDeep.copy(alpha = 0.16f), RoundedCornerShape(18.dp))
-        )
-        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            tabs.forEachIndexed { index, tab ->
-                val selected = index == targetIndex
-                Column(
+        tabs.forEachIndexed { index, tab ->
+            val selected = index == targetIndex
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(28.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onSelect(index) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // "Капля" под выбранной вкладкой — не общий скользящий индикатор (потребовал бы
+                // измерения ширины каждого таба через onGloballyPositioned), а собственный фон
+                // у каждого элемента, который просто проявляется/гаснет — визуально почти то же
+                // самое на 4 равных по ширине вкладках, но без риска рассинхронизации анимации.
+                val pillAlpha by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0f,
+                    animationSpec = spring(dampingRatio = 0.7f, stiffness = 380f),
+                    label = "tabPillAlpha"
+                )
+                val scale by animateFloatAsState(
+                    targetValue = if (selected) 1.15f else 1f,
+                    animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+                    label = "tabIconScale"
+                )
+                Box(
                     Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(28.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onSelect(index) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .padding(vertical = 6.dp)
+                        .background(
+                            GodjiColors.TealDeep.copy(alpha = 0.16f * pillAlpha),
+                            RoundedCornerShape(18.dp)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    val scale by animateFloatAsState(
-                        targetValue = if (selected) 1.15f else 1f,
-                        animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
-                        label = "tabIconScale"
-                    )
                     Icon(
                         imageVector = if (selected) tab.iconSelected else tab.iconUnselected,
                         contentDescription = tab.label(),
                         tint = if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary,
                         modifier = Modifier.size(22.dp).scale(scale)
                     )
-                    Text(
-                        tab.label(),
-                        fontSize = 10.5.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
                 }
+                Text(
+                    tab.label(),
+                    fontSize = 10.5.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
         }
     }

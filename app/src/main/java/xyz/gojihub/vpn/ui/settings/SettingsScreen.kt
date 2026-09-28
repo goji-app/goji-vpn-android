@@ -52,10 +52,10 @@ fun SettingsScreen(
         LogViewerDialog(category = category, title = title, onDismiss = { logDialog = null })
     }
 
-    // Без своей заливки — экран живёт внутри общего GlassBackdrop (MainActivity.MainTabsScreen).
     Column(
         Modifier
             .fillMaxSize()
+            .background(GodjiColors.Background)
             .verticalScroll(rememberScrollState())
             .padding(18.dp, 18.dp, 18.dp, 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
