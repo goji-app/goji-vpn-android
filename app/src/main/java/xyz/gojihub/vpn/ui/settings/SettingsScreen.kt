@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -239,7 +241,7 @@ private fun SettingsLinkRow(title: String, subtitle: String?, onClick: () -> Uni
             Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             subtitle?.let { Text(it, color = GodjiColors.TextSecondary, fontSize = 10.5.sp, lineHeight = 14.sp) }
         }
-        Text("→", color = GodjiColors.TextSecondary, fontSize = 16.sp)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -341,7 +343,7 @@ private fun LogRow(title: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
-        Text("→", color = GodjiColors.TextSecondary, fontSize = 14.sp)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(16.dp))
     }
 }
 

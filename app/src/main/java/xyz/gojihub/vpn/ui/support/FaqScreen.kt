@@ -9,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,7 +18,7 @@ import xyz.gojihub.vpn.network.models.FaqItemDto
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
-import xyz.gojihub.vpn.ui.util.rememberPressScale
+import xyz.gojihub.vpn.ui.util.BackButton
 
 @Composable
 fun FaqScreen(onBack: () -> Unit, viewModel: FaqViewModel = hiltViewModel()) {
@@ -34,16 +33,7 @@ fun FaqScreen(onBack: () -> Unit, viewModel: FaqViewModel = hiltViewModel()) {
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val (backInteraction, backScale) = rememberPressScale()
-            Text(
-                "←",
-                color = GodjiColors.TextPrimary,
-                fontSize = 22.sp,
-                modifier = Modifier
-                    .scale(backScale.value)
-                    .clickable(interactionSource = backInteraction, indication = null) { onBack() }
-                    .padding(end = 10.dp)
-            )
+            BackButton(onClick = onBack)
             Text(Loc.s.support.supportFaqTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
         }
 

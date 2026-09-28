@@ -14,7 +14,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -317,7 +322,7 @@ private fun MapButtonView(block: RichBlock.MapBlock) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("📍", fontSize = 15.sp)
+        Icon(Icons.Filled.LocationOn, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(17.dp))
         Text("${block.lat}, ${block.lon}", color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
     }
 }
@@ -330,7 +335,11 @@ private fun DetailsView(block: RichBlock.Details) {
             Modifier.fillMaxWidth().clickable { open = !open },
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(if (open) "▾" else "▸", color = GodjiColors.TealDeep, modifier = Modifier.padding(end = 6.dp))
+            Icon(
+                if (open) Icons.Filled.ExpandMore else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null, tint = GodjiColors.TealDeep,
+                modifier = Modifier.size(16.dp).padding(end = 4.dp)
+            )
             ParsedInlineText(
                 block.summary,
                 TextStyle(color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp),

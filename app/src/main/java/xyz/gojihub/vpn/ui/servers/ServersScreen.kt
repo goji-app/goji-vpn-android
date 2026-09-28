@@ -16,7 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,7 +70,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(onClick = { viewModel.pingAll() }) {
                         if (state.checkingAll) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
-                        else Text("⚡", fontSize = 19.sp)
+                        else Icon(Icons.Filled.Bolt, contentDescription = Loc.s.serversPing, tint = GodjiColors.TealDeep)
                     }
                     Text(Loc.s.serversPing, color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp)
                 }
@@ -152,9 +156,9 @@ private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        Text(if (message.isError) "⚠️" else "✅", fontSize = 15.sp)
+        Icon(if (message.isError) Icons.Filled.Warning else Icons.Filled.CheckCircle, contentDescription = null, tint = color, modifier = Modifier.size(17.dp))
         Text(if (message.isError) Loc.s.refreshFail else Loc.s.refreshOk, color = color, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, modifier = Modifier.weight(1f), lineHeight = 15.sp)
-        Text("×", color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.clickable { onDismiss() })
+        Icon(Icons.Filled.Close, contentDescription = null, tint = color, modifier = Modifier.size(16.dp).clickable { onDismiss() })
     }
 }
 

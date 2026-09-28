@@ -43,6 +43,7 @@ import xyz.gojihub.vpn.MainActivity
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
+import xyz.gojihub.vpn.ui.util.BackButton
 import javax.inject.Inject
 
 /**
@@ -108,13 +109,7 @@ private fun WebLoginScreen(onSessionCookie: (String, String?) -> Unit, onClose: 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                "‹",
-                color = GodjiColors.TextPrimary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
-                modifier = Modifier.clickable(onClick = onClose)
-            )
+            BackButton(onClick = onClose)
             Text(Loc.s.webLoginTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 

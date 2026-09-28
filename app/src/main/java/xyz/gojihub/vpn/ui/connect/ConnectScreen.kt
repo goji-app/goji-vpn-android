@@ -30,6 +30,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -412,15 +417,15 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
     val bg = when (kind) { BannerKind.WARNING -> GodjiColors.JamBg; BannerKind.SUCCESS -> GodjiColors.TealTint; BannerKind.INFO -> GodjiColors.Chip }
     val border = when (kind) { BannerKind.WARNING -> GodjiColors.JamBorder; BannerKind.SUCCESS -> GodjiColors.TealTintBorder; BannerKind.INFO -> GodjiColors.CardBorderStrong }
     val color = when (kind) { BannerKind.WARNING -> GodjiColors.JamText; BannerKind.SUCCESS -> GodjiColors.TealDeep; BannerKind.INFO -> GodjiColors.TextPrimary }
-    val icon = when (kind) { BannerKind.WARNING -> "⚠️"; BannerKind.SUCCESS -> "✅"; BannerKind.INFO -> "ℹ️" }
+    val icon = when (kind) { BannerKind.WARNING -> Icons.Filled.Warning; BannerKind.SUCCESS -> Icons.Filled.CheckCircle; BannerKind.INFO -> Icons.Filled.Info }
     Row(
         Modifier.fillMaxWidth().godjiCard(tint = bg, borderColor = border).padding(12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        Text(icon, fontSize = 15.sp)
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(17.dp))
         Text(text, color = color, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, modifier = Modifier.weight(1f), lineHeight = 15.sp)
-        Text("×", color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.clickable { onDismiss() })
+        Icon(Icons.Filled.Close, contentDescription = null, tint = color, modifier = Modifier.size(16.dp).clickable { onDismiss() })
     }
 }
 

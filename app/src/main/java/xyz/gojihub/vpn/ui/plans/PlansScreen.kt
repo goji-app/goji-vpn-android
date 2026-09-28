@@ -22,7 +22,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,7 +90,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text("${Loc.s.plansIdPrefix}$id", color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
-                        Text("⧉", color = GodjiColors.TextSecondary, fontSize = 11.sp)
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(12.dp))
                     }
                 }
             }
@@ -116,7 +124,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     Text(Loc.s.plansUntil(state.expiryLabel), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 10.5.sp)
                     if (state.personalDiscountPercent > 0) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("🏷️", fontSize = 10.5.sp)
+                            Icon(Icons.Filled.LocalOffer, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(12.dp))
                             Text(
                                 Loc.s.plansPersonalDiscount(state.personalDiscountPercent),
                                 color = GodjiColors.TealDeep,
@@ -288,22 +296,20 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "‹",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (page > 0) GodjiColors.TealDeep else GodjiColors.CardBorder,
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = null,
+                            tint = if (page > 0) GodjiColors.TealDeep else GodjiColors.CardBorder,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable(enabled = page > 0) { viewModel.setNewsPage(page - 1) }
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
                         )
                         Text("${page + 1} / ${pages.size}", color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
-                        Text(
-                            "›",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (page < pages.size - 1) GodjiColors.TealDeep else GodjiColors.CardBorder,
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = if (page < pages.size - 1) GodjiColors.TealDeep else GodjiColors.CardBorder,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable(enabled = page < pages.size - 1) { viewModel.setNewsPage(page + 1) }
@@ -334,7 +340,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("✉️", fontSize = 17.sp)
+            Icon(Icons.Filled.Email, contentDescription = null, tint = GodjiColors.TerracottaDeep, modifier = Modifier.size(19.dp))
             Text(Loc.s.plansSupportText, color = GodjiColors.TerracottaDeep, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp)
         }
 
@@ -444,23 +450,25 @@ private fun DevicesSection(
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                "✎",
-                                color = GodjiColors.TealDeep,
-                                fontSize = 15.sp,
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = null,
+                                tint = GodjiColors.TealDeep,
                                 modifier = Modifier
+                                    .size(17.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable { renameTarget = device }
-                                    .padding(8.dp)
+                                    .padding(2.dp)
                             )
-                            Text(
-                                "✕",
-                                color = GodjiColors.Danger,
-                                fontSize = 15.sp,
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = null,
+                                tint = GodjiColors.Danger,
                                 modifier = Modifier
+                                    .size(17.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable { deleteTarget = device }
-                                    .padding(8.dp)
+                                    .padding(2.dp)
                             )
                         }
                     }
@@ -590,13 +598,14 @@ private fun ReferralCard(referral: ReferralUi, clipboard: androidx.compose.ui.pl
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(referral.link, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Text("⧉", color = GodjiColors.TealDeep, fontSize = 13.sp)
-            Text(
-                "↗",
-                color = GodjiColors.TealDeep,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable {
+            Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(15.dp))
+            // Открывает системный share-sheet — иконка "поделиться" точнее отражает действие,
+            // чем условная стрелка "открыть во внешнем".
+            Icon(
+                Icons.Filled.Share,
+                contentDescription = null,
+                tint = GodjiColors.TealDeep,
+                modifier = Modifier.size(16.dp).clickable {
                     // Системный share-sheet — раньше ссылку можно было только скопировать в
                     // буфер, что лишний шаг перед отправкой в Telegram/WhatsApp/куда угодно.
                     val send = Intent(Intent.ACTION_SEND).apply {

@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.scale
 import xyz.gojihub.vpn.ui.util.rememberPressScale
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -120,7 +122,7 @@ fun LoginScreen(
                         color = GodjiColors.TextSecondary, fontSize = 10.sp, lineHeight = 13.sp
                     )
                 }
-                Text("›", color = GodjiColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(20.dp))
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

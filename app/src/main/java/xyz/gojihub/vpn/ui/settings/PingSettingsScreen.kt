@@ -18,6 +18,7 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.util.BackButton
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 /** Вынесено из основного экрана Настроек в отдельное подменю — способ пинга и URL теста
@@ -35,16 +36,7 @@ fun PingSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltVi
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val (backInteraction, backScale) = rememberPressScale()
-            Text(
-                "←",
-                color = GodjiColors.TextPrimary,
-                fontSize = 22.sp,
-                modifier = Modifier
-                    .scale(backScale.value)
-                    .clickable(interactionSource = backInteraction, indication = null) { onBack() }
-                    .padding(end = 10.dp)
-            )
+            BackButton(onClick = onBack)
             Text(Loc.s.pingSettingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
         }
 

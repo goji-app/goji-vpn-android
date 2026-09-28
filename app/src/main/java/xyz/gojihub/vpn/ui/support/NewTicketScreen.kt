@@ -21,6 +21,7 @@ import xyz.gojihub.vpn.network.models.SupportQueueDto
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
+import xyz.gojihub.vpn.ui.util.BackButton
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
@@ -41,16 +42,7 @@ fun NewTicketScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val (backInteraction, backScale) = rememberPressScale()
-            Text(
-                "←",
-                color = GodjiColors.TextPrimary,
-                fontSize = 22.sp,
-                modifier = Modifier
-                    .scale(backScale.value)
-                    .clickable(interactionSource = backInteraction, indication = null) { onBack() }
-                    .padding(end = 10.dp)
-            )
+            BackButton(onClick = onBack)
             Text(Loc.s.support.supportNewTicketTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
         }
 

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
+import xyz.gojihub.vpn.ui.util.BackButton
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
@@ -43,16 +46,7 @@ fun SupportListScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val (backInteraction, backScale) = rememberPressScale()
-            Text(
-                "←",
-                color = GodjiColors.TextPrimary,
-                fontSize = 22.sp,
-                modifier = Modifier
-                    .scale(backScale.value)
-                    .clickable(interactionSource = backInteraction, indication = null) { onBack() }
-                    .padding(end = 10.dp)
-            )
+            BackButton(onClick = onBack)
             Text(Loc.s.support.supportTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
         }
 
@@ -174,6 +168,11 @@ private fun TicketRow(ticket: SupportTicketUi, onClick: () -> Unit) {
                 Text(ticket.unreadCount.toString(), color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 10.sp)
             }
         }
-        Text("→", color = GodjiColors.TextSecondary, fontSize = 14.sp)
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = GodjiColors.TextSecondary,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }

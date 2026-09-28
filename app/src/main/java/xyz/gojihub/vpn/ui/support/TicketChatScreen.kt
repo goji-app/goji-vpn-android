@@ -13,6 +13,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
+import xyz.gojihub.vpn.ui.util.BackButton
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 import xyz.gojihub.vpn.util.LogCategory
 
@@ -67,16 +72,7 @@ fun TicketChatScreen(
             Modifier.fillMaxWidth().padding(18.dp, 18.dp, 18.dp, 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val (backInteraction, backScale) = rememberPressScale()
-            Text(
-                "←",
-                color = GodjiColors.TextPrimary,
-                fontSize = 22.sp,
-                modifier = Modifier
-                    .scale(backScale.value)
-                    .clickable(interactionSource = backInteraction, indication = null) { onBack() }
-                    .padding(end = 10.dp)
-            )
+            BackButton(onClick = onBack)
             Text(
                 state.ticketTitle.ifBlank { Loc.s.support.supportTitle },
                 color = GodjiColors.TextPrimary,
@@ -146,7 +142,7 @@ fun TicketChatScreen(
                                 .clickable(interactionSource = attachInteraction, indication = androidx.compose.foundation.LocalIndication.current) { showAttachMenu = true },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("📎", fontSize = 18.sp)
+                            Icon(Icons.Filled.AttachFile, contentDescription = null, tint = GodjiColors.TextPrimary, modifier = Modifier.size(20.dp))
                         }
                         DropdownMenu(expanded = showAttachMenu, onDismissRequest = { showAttachMenu = false }) {
                             DropdownMenuItem(
@@ -201,7 +197,7 @@ fun TicketChatScreen(
                         if (state.sending) {
                             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = GodjiColors.Surface)
                         } else {
-                            Text("➤", color = GodjiColors.Surface, fontSize = 16.sp)
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -221,7 +217,10 @@ private fun AttachmentChip(name: String, onRemove: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(name, color = GodjiColors.TextPrimary, fontSize = 10.5.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
-        Text("✕", color = GodjiColors.TextSecondary, fontSize = 11.sp, modifier = Modifier.clickable(onClick = onRemove))
+        Icon(
+            Icons.Filled.Close, contentDescription = null, tint = GodjiColors.TextSecondary,
+            modifier = Modifier.size(13.dp).clickable(onClick = onRemove)
+        )
     }
 }
 

@@ -23,8 +23,8 @@ android {
         applicationId = "xyz.gojihub.vpn"
         minSdk = 24 // VpnService + Reality нормально живут с 24+, но проверьте охват вашей аудитории
         targetSdk = 37
-        versionCode = 72
-        versionName = "1.0.90"
+        versionCode = 73
+        versionName = "1.0.91"
 
         // libXray.aar тянет нативные .so сразу под 4 ABI — реальные телефоны это почти
         // всегда arm64-v8a (и изредка armeabi-v7a на старых). x86/x86_64 нужны только
@@ -125,6 +125,11 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+    // Единый язык иконок (2026-09-28) — заменяет текстовые юникод-глифы (⚡⧉→←✕🏷️📎↗ и т.п.)
+    // на векторные Material-иконки по всему приложению. Core-набора не хватает (Bolt/
+    // ContentCopy/AttachFile/LocalOffer/OpenInNew там нет) — extended тянет тысячи иконок, но
+    // R8 (isMinifyEnabled+isShrinkResources уже включены) вырезает неиспользуемые.
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")

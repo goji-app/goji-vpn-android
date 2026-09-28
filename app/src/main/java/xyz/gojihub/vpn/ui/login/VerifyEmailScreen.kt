@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -283,9 +285,8 @@ private fun rememberInfiniteTransitionAlpha(): Float {
 private data class SuccessParticle(val angleDeg: Float, val distanceDp: Float, val sizeDp: Float, val delayFraction: Float, val color: Color)
 
 /** Финальный кадр после успешной проверки (по мотивам "Verified Successfully" из референса) —
- *  светящийся круг с галочкой и разлетающиеся вокруг него частицы-искры, вместо статичной
- *  иконки. Глиф "✓" вместо Material Icons — та же конвенция, что и по всему остальному
- *  приложению (см. design.md). */
+ *  светящийся круг с векторной галочкой (Icons.Filled.Check) и разлетающиеся вокруг него
+ *  частицы-искры, вместо статичной иконки. */
 @Composable
 private fun VerifySuccessContent() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -346,7 +347,7 @@ private fun VerifySuccessBadge() {
                 .background(GodjiColors.Teal),
             contentAlignment = Alignment.Center
         ) {
-            Text("✓", color = GodjiColors.Surface, fontWeight = FontWeight.Black, fontSize = 38.sp)
+            Icon(Icons.Filled.Check, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(44.dp))
         }
     }
 }

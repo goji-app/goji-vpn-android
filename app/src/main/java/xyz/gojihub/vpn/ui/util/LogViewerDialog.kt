@@ -7,6 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,7 +40,7 @@ fun LogViewerDialog(category: LogCategory, title: String, onDismiss: () -> Unit)
     val logText = remember(category) { AppLogger.readAll(context, category) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(20.dp), color = GodjiColors.Surface) {
+        Surface(shape = RoundedCornerShape(24.dp), color = GodjiColors.Surface) {
             Column(Modifier.padding(18.dp)) {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -45,11 +48,11 @@ fun LogViewerDialog(category: LogCategory, title: String, onDismiss: () -> Unit)
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text(
-                        "✕",
-                        color = GodjiColors.TextSecondary,
-                        fontSize = 16.sp,
-                        modifier = Modifier.clickable(onClick = onDismiss).padding(4.dp)
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = GodjiColors.TextSecondary,
+                        modifier = Modifier.size(18.dp).clickable(onClick = onDismiss).padding(2.dp)
                     )
                 }
                 Spacer(Modifier.height(10.dp))
