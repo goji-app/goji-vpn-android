@@ -35,7 +35,8 @@ import xyz.gojihub.vpn.ui.globe.GojiGlobe
 import xyz.gojihub.vpn.ui.theme.GlassBackdrop
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
-import xyz.gojihub.vpn.ui.theme.godjiCard
+import xyz.gojihub.vpn.ui.theme.godjiGlassFlat
+import xyz.gojihub.vpn.ui.theme.godjiGlassStrong
 
 @Composable
 fun LoginScreen(
@@ -61,13 +62,15 @@ fun LoginScreen(
         // ошибкой) весь этот блок не помещается по высоте; так как колонка прижата к низу
         // экрана, без скролла верхняя часть (заголовок, баннер "Впервые здесь?") просто
         // уезжала за пределы экрана вверх без возможности прокрутки к ней.
+        // Стеклянный лист снизу (godjiGlassStrong) — как в эталоне, вместо текста, лежащего
+        // прямо на фоне без собственной подложки.
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 16.dp)
+                .godjiGlassStrong(RoundedCornerShape(32.dp))
+                .padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -90,7 +93,7 @@ fun LoginScreen(
                 Modifier
                     .fillMaxWidth()
                     .scale(botBannerScale.value)
-                    .godjiCard(tint = GodjiColors.Chip, borderColor = GodjiColors.CardBorderStrong)
+                    .godjiGlassFlat(RoundedCornerShape(20.dp))
                     .clickable(interactionSource = botBannerInteraction, indication = LocalIndication.current) {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Shadow_Duck_bot")))
                     }
