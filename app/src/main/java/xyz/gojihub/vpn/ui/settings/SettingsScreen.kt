@@ -3,9 +3,12 @@ package xyz.gojihub.vpn.ui.settings
 import android.content.Intent
 import android.provider.Settings
 import xyz.gojihub.vpn.BuildConfig
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -29,10 +34,13 @@ import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.ui.theme.FontSizePreset
+import xyz.gojihub.vpn.ui.theme.NewBadge
 import xyz.gojihub.vpn.ui.theme.ThemeMode
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
+import xyz.gojihub.vpn.ui.theme.godjiGlassFlat
+import xyz.gojihub.vpn.ui.theme.godjiGlassPill
 import xyz.gojihub.vpn.ui.util.LogViewerDialog
 import xyz.gojihub.vpn.ui.util.RichContent
 import xyz.gojihub.vpn.ui.util.rememberPressScale
@@ -62,7 +70,7 @@ fun SettingsScreen(
             .padding(18.dp, 18.dp, 18.dp, 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
+        Text(Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp)
 
         SettingsSection(Loc.s.settingsConnection) {
             SettingsToggleRow(
@@ -71,7 +79,7 @@ fun SettingsScreen(
                 checked = state.autoConnectOnWifi,
                 onCheckedChange = viewModel::setAutoConnectOnWifi
             )
-            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             SettingsToggleRow(
                 title = Loc.s.settingsKillSwitch,
                 subtitle = Loc.s.settingsKillSwitchDesc,
@@ -90,32 +98,34 @@ fun SettingsScreen(
         }
 
         SettingsSection(Loc.s.settingsAppearance) {
-            Text(Loc.s.settingsDarkTheme, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-            Spacer(Modifier.height(6.dp))
-            // FlowRow, а не Row — на узких экранах или при крупном размере шрифта (см.
-            // "Размер шрифта" ниже) чипы в обычном Row не помещались в ширину, и Compose
-            // сжимал последний чип почти до нуля, из-за чего его текст переносился по одной
-            // букве на строку в вертикальный столбик. FlowRow вместо этого просто переносит
-            // не поместившийся чип на новую строку целиком, как обычный текст.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                ThemeMode.entries.forEach { mode ->
-                    ThemeModeChip(mode, selected = state.themeMode == mode, onSelect = { viewModel.setThemeMode(mode) })
+            // В эталоне тема — простой переключатель вкл/выкл, здесь — 3-позиционный выбор
+            // (Светлая/Тёмная/Системная). ThemeMode.SYSTEM (следование системной теме) —
+            // реальная возможность приложения, для которой в эталоне нет ни макета, ни данных
+            // на 3 состояния сразу — оставляю как было, не подменяю переключателем (см.
+            // PROMPT.md п.5: не своя самодеятельность, а сохранение имеющегося поведения).
+            Column(Modifier.padding(vertical = 13.dp)) {
+                Text(Loc.s.settingsDarkTheme, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        ThemeModeChip(mode, selected = state.themeMode == mode, onSelect = { viewModel.setThemeMode(mode) })
+                    }
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            Text(Loc.s.settingsLanguage, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-            Spacer(Modifier.height(6.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                AppLanguage.entries.forEach { lang ->
-                    LanguageChip(lang, selected = state.language == lang, onSelect = { viewModel.setLanguage(lang) })
-                }
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
+            Column(Modifier.padding(vertical = 13.dp)) {
+                Text(Loc.s.settingsLanguage, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                Spacer(Modifier.height(8.dp))
+                LanguageSegmentedControl(state.language, onSelect = viewModel::setLanguage)
             }
-            Spacer(Modifier.height(14.dp))
-            Text(Loc.s.settingsFontSize, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-            Spacer(Modifier.height(6.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                FontSizePreset.entries.forEach { preset ->
-                    FontSizeChip(preset, selected = state.fontSize == preset, onSelect = { viewModel.setFontSize(preset) })
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
+            Column(Modifier.padding(vertical = 13.dp)) {
+                Text(Loc.s.settingsFontSize, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    FontSizePreset.entries.forEach { preset ->
+                        FontSizeChip(preset, selected = state.fontSize == preset, onSelect = { viewModel.setFontSize(preset) })
+                    }
                 }
             }
         }
@@ -150,8 +160,11 @@ fun SettingsScreen(
 
         SettingsSection(Loc.s.settingsAbout) {
             AboutRow(Loc.s.settingsAppVersion, state.appVersion)
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             AboutRow(Loc.s.settingsXrayVersion, state.xrayVersion)
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             AboutRow(Loc.s.settingsHwid, state.hwid)
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             AboutRow(Loc.s.settingsDeviceInfo, state.deviceInfo)
         }
 
@@ -165,22 +178,31 @@ fun SettingsScreen(
 
         SettingsSection(Loc.s.settingsLogs) {
             SettingsLinkRow(title = Loc.s.settingsLogLevel, subtitle = Loc.s.settingsLogLevelDesc, onClick = onOpenLogLevel)
-            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             LogRow(Loc.s.logMain) { logDialog = LogCategory.MAIN to Loc.s.logMain }
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             LogRow(Loc.s.logCore) { logDialog = LogCategory.CORE to Loc.s.logCore }
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             LogRow(Loc.s.logSubscription) { logDialog = LogCategory.SUBSCRIPTION to Loc.s.logSubscription }
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             LogRow(Loc.s.logService) { logDialog = LogCategory.SERVICE to Loc.s.logService }
+            HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
             LogRow(Loc.s.logPush) { logDialog = LogCategory.PUSH to Loc.s.logPush }
         }
 
         SettingsSection(Loc.s.settingsAccount) {
             val (outInteraction, outScale) = rememberPressScale()
-            TextButton(
-                onClick = { viewModel.logout(); onLoggedOut() },
-                interactionSource = outInteraction,
-                modifier = Modifier.fillMaxWidth().scale(outScale.value)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .scale(outScale.value)
+                    .clickable(interactionSource = outInteraction, indication = androidx.compose.foundation.LocalIndication.current) {
+                        viewModel.logout(); onLoggedOut()
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                Text(Loc.s.settingsLogout, color = GodjiColors.Danger, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                Text(Loc.s.settingsLogout, color = GodjiColors.Danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
 
@@ -188,17 +210,24 @@ fun SettingsScreen(
     }
 }
 
+/** Подпись секции — капс мелким текстом с трекингом НАД карточкой, как "НОВОСТИ" в
+ *  "Подписке" — а не крупный заголовок внутри неё. */
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .godjiCard()
-            .padding(16.dp)
-    ) {
-        Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Spacer(Modifier.height(10.dp))
-        content()
+    Column {
+        Text(
+            title.uppercase(), color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold,
+            fontSize = 11.sp, letterSpacing = 0.66.sp,
+            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .godjiCard(RoundedCornerShape(24.dp))
+                .padding(16.dp)
+        ) {
+            content()
+        }
     }
 }
 
@@ -207,7 +236,8 @@ private fun SettingsToggleRow(title: String, subtitle: String?, checked: Boolean
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) },
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -219,10 +249,12 @@ private fun SettingsToggleRow(title: String, subtitle: String?, checked: Boolean
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = GodjiColors.Surface,
+                checkedThumbColor = Color.White.copy(alpha = 0.95f),
                 checkedTrackColor = GodjiColors.Teal,
-                uncheckedThumbColor = GodjiColors.Surface,
-                uncheckedTrackColor = GodjiColors.TrackBg
+                checkedBorderColor = Color.Transparent,
+                uncheckedThumbColor = Color.White.copy(alpha = 0.95f),
+                uncheckedTrackColor = GodjiColors.TrackBg,
+                uncheckedBorderColor = Color.Transparent
             )
         )
     }
@@ -233,7 +265,8 @@ private fun SettingsLinkRow(title: String, subtitle: String?, onClick: () -> Uni
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .padding(vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -242,6 +275,47 @@ private fun SettingsLinkRow(title: String, subtitle: String?, onClick: () -> Uni
             subtitle?.let { Text(it, color = GodjiColors.TextSecondary, fontSize = 10.5.sp, lineHeight = 14.sp) }
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(18.dp))
+    }
+}
+
+/** Сегмент-контрол языка — капсула godjiGlassPill со скользящим Thumb под выбранным пунктом,
+ *  тот же приём, что и период подписки в PlansScreen / вкладки в GlassTabBar. Только для языка
+ *  (3 коротких подписи, как в эталоне) — тему и размер шрифта оставил как FlowRow-чипы: их
+ *  подписи длиннее ("Системная", "Нормальный") и рискуют не поместиться в равные сегменты. */
+@Composable
+private fun LanguageSegmentedControl(selected: AppLanguage, onSelect: (AppLanguage) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().godjiGlassPill().padding(4.dp)) {
+        val languages = AppLanguage.entries
+        val slotWidth = maxWidth / languages.size
+        val index = languages.indexOf(selected).coerceAtLeast(0)
+        val thumbX by animateDpAsState(slotWidth * index, spring(dampingRatio = 0.62f, stiffness = 380f), label = "langThumb")
+        Box(
+            Modifier
+                .offset(x = thumbX)
+                .width(slotWidth)
+                .height(38.dp)
+                .clip(RoundedCornerShape(50))
+                .background(GodjiColors.Thumb)
+        )
+        Row(Modifier.fillMaxWidth()) {
+            languages.forEach { lang ->
+                val isSelected = lang == selected
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(lang) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        lang.displayName,
+                        color = if (isSelected) GodjiColors.TextPrimary else GodjiColors.TextSecondary,
+                        fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -266,12 +340,15 @@ private fun UpdateSectionContent(state: SettingsUiState, viewModel: SettingsView
             Text("${state.updateDownloadProgress}%", color = GodjiColors.TextSecondary, fontSize = 10.5.sp)
         }
         state.updateAvailable != null -> {
-            Text(
-                Loc.s.updateAvailableText(state.updateAvailable.version),
-                color = GodjiColors.TealDeep,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    Loc.s.updateAvailableText(state.updateAvailable.version),
+                    color = GodjiColors.TealDeep,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                NewBadge()
+            }
             if (state.updateAvailable.changelog.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 RichContent(raw = state.updateAvailable.changelog, collapsedBlocks = 5, readMoreLabel = Loc.s.plansNewsReadMore)
@@ -300,11 +377,27 @@ private fun UpdateSectionContent(state: SettingsUiState, viewModel: SettingsView
         state.updateChecked -> {
             Text(Loc.s.updateUpToDate, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.5.sp)
             Spacer(Modifier.height(10.dp))
-            SettingsLinkRow(title = Loc.s.settingsCheckUpdates, subtitle = null, onClick = viewModel::checkForUpdate)
+            CheckUpdatesPill(onClick = viewModel::checkForUpdate)
         }
         else -> {
-            SettingsLinkRow(title = Loc.s.settingsCheckUpdates, subtitle = null, onClick = viewModel::checkForUpdate)
+            CheckUpdatesPill(onClick = viewModel::checkForUpdate)
         }
+    }
+}
+
+/** "Проверить обновления" — капсула godjiGlassFlat, а не строка со стрелкой (было
+ *  SettingsLinkRow) — в эталоне это самостоятельная маленькая кнопка. */
+@Composable
+private fun CheckUpdatesPill(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .height(34.dp)
+            .godjiGlassFlat(RoundedCornerShape(50))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(Loc.s.settingsCheckUpdates, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
 }
 
@@ -344,21 +437,6 @@ private fun LogRow(title: String, onClick: () -> Unit) {
     ) {
         Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(16.dp))
-    }
-}
-
-@Composable
-private fun LanguageChip(lang: AppLanguage, selected: Boolean, onSelect: () -> Unit) {
-    val bg = if (selected) GodjiColors.Ink else GodjiColors.Chip
-    val fg = if (selected) GodjiColors.Surface else GodjiColors.TextPrimary
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(bg)
-            .clickable(onClick = onSelect)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(lang.displayName, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
 
