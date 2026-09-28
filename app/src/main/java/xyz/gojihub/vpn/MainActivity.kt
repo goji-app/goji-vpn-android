@@ -156,6 +156,13 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onOpenServers = {
+                        navController.navigate(GodjiDestinations.SERVERS) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
@@ -163,7 +170,18 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                 GodjiDestinations.SERVERS,
                 enterTransition = { EnterTransition.None },
                 exitTransition = { ExitTransition.None }
-            ) { ServersScreen() }
+            ) {
+                // Выбор узла сразу возвращает на "Главную" — как pick() в эталоне (screen: 'connect').
+                ServersScreen(
+                    onServerPicked = {
+                        navController.navigate(GodjiDestinations.CONNECT) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
             composable(
                 GodjiDestinations.PLANS,
                 enterTransition = { EnterTransition.None },

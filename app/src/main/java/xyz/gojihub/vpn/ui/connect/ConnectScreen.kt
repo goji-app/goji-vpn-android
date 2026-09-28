@@ -25,6 +25,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -76,7 +78,7 @@ import xyz.gojihub.vpn.ui.theme.godjiGlassStrong
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
-fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}) {
+fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}, onOpenServers: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
@@ -192,7 +194,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
             if (banner != null) BannerCard(banner, kind, onDismiss = viewModel::dismissBanner)
         }
 
-        NodeAndAutoSwitchCard(state)
+        NodeAndAutoSwitchCard(state, onOpenServers = onOpenServers)
 
         TrafficCard(state, onClick = onOpenPlans)
     }
@@ -412,34 +414,70 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
     }
 }
 
-/** Узел + "Держит тебя в сети" — одна карточка (в эталоне это не два отдельных блока). */
+/** Узел + "Держит тебя в сети" — одна карточка. Строка узла — кнопка на всю ширину карточки,
+ *  открывает "Серверы" для быстрого выбора другого узла (goServers в эталоне). */
 @Composable
-private fun NodeAndAutoSwitchCard(state: ConnectUiState) {
-    Column(Modifier.fillMaxWidth().godjiCard().padding(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(GodjiColors.Chip), contentAlignment = Alignment.Center) {
-                Text(state.currentFlag, fontSize = 18.sp)
+private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Unit) {
+    val cardShape = RoundedCornerShape(26.dp)
+    Column(Modifier.fillMaxWidth().godjiCard(cardShape).clip(cardShape)) {
+        val nodeInteraction = remember { MutableInteractionSource() }
+        val pressed by nodeInteraction.collectIsPressedAsState()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(if (pressed) Color(0x147F7F7F) else Color.Transparent)
+                .clickable(interactionSource = nodeInteraction, indication = null, onClick = onOpenServers)
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(GodjiColors.Chip)
+                    .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(state.currentFlag, fontSize = 19.sp)
             }
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(state.currentNodeName.ifBlank { Loc.s.defaultNodeName }, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 val meta = state.currentGeo?.displayCityCountry(Loc.lang).orEmpty()
                 if (meta.isNotBlank()) {
                     Text(meta, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp)
                 }
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(16.dp))
         }
-        HorizontalDivider(Modifier.padding(vertical = 12.dp), thickness = 1.dp, color = GodjiColors.Hair)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Filled.Shield, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(15.dp))
-            Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
-            xyz.gojihub.vpn.ui.theme.AutoBadge()
+        HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
+        Column(
+            Modifier.fillMaxWidth().padding(start = 14.dp, top = 13.dp, end = 14.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.Shield, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(15.dp))
+                Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                xyz.gojihub.vpn.ui.theme.AutoBadge()
+            }
+            Text(Loc.s.autoSwitchDesc, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp)
+            HorizontalDivider(Modifier.padding(top = 6.dp), thickness = 1.dp, color = GodjiColors.Hair)
+            Row(
+                Modifier.padding(top = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(netColor(state.netState)))
+                Text(watchLine(state), color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+            }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(Loc.s.autoSwitchDesc, color = GodjiColors.TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
-        HorizontalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = GodjiColors.Hair)
-        Text(watchLine(state), color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
     }
+}
+
+private fun netColor(net: NetState) = when (net) {
+    NetState.WIFI -> GodjiColors.TealDeep
+    NetState.CELLULAR -> GodjiColors.TextSecondary
+    NetState.JAMMED -> GodjiColors.JamText
 }
 
 private fun watchLine(s: ConnectUiState) = when {

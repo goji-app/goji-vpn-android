@@ -38,7 +38,7 @@ import xyz.gojihub.vpn.ui.theme.godjiGlassFlat
 import xyz.gojihub.vpn.ui.theme.godjiGlassPill
 
 @Composable
-fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
+fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val refreshingSubscription by viewModel.refreshingSubscription.collectAsState()
     val refreshMessage by viewModel.refreshMessage.collectAsState()
@@ -113,7 +113,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
                     Modifier
                         .fillMaxWidth()
                         .background(rowBg)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.select(node.id) }
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.select(node.id); onServerPicked() }
                         .padding(horizontal = 14.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(11.dp)
