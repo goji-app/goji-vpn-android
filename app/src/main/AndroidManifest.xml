@@ -9,6 +9,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Короткий отклик при подключении/отключении VPN (см. VpnStateObserver). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Правила Wi-Fi (NetworkRulesManager): имя сети (SSID) Android отдаёт только при
+         разрешении на геолокацию. Запрашивается лишь когда пользователь сам добавляет
+         доверенную сеть; координаты приложение не читает и никуда не отправляет. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Установка скачанного самим приложением APK-обновления (см. AppUpdateDownloader) —
          не из Google Play. Само по себе разрешение ничего не открывает: Android при первой
          попытке install-интента сам покажет системный экран "Разрешить установку из этого

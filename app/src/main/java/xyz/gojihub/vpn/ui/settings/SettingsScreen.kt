@@ -64,6 +64,7 @@ fun SettingsScreen(
     onOpenLogLevel: () -> Unit,
     onOpenAppTunneling: () -> Unit,
     onOpenSupport: () -> Unit,
+    onOpenNetworkRules: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -143,7 +144,7 @@ fun SettingsScreen(
         // карточками/строками, что и эталонные разделы.
         SectionLabel(Loc.s.settingsConnection)
         RefCard {
-            ToggleRow(Loc.s.settingsAutoConnectWifi, Loc.s.settingsAutoConnectWifiDesc, state.autoConnectOnWifi, viewModel::setAutoConnectOnWifi)
+            LinkRow(Loc.f.netRulesTitle, Loc.f.netRulesLinkDesc, onOpenNetworkRules)
             Hair()
             ToggleRow(Loc.s.settingsKillSwitch, Loc.s.settingsKillSwitchDesc, state.killSwitch, viewModel::setKillSwitch)
             Hair()
@@ -311,7 +312,7 @@ private fun LeakRow(label: String, value: String) {
 
 /** Подпись раздела эталона: 11px/600, трекинг .06em, padding 8 8 0 (плюс общий gap 8 колонки). */
 @Composable
-private fun SectionLabel(title: String) {
+internal fun SectionLabel(title: String) {
     Text(
         title.uppercase(), color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp, letterSpacing = 0.66.sp,
@@ -321,7 +322,7 @@ private fun SectionLabel(title: String) {
 
 /** Стеклянная карточка раздела: радиус 24, без внутренних отступов, overflow hidden. */
 @Composable
-private fun RefCard(content: @Composable ColumnScope.() -> Unit) {
+internal fun RefCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -332,7 +333,7 @@ private fun RefCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun Hair() = HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
+internal fun Hair() = HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
 
 /** Подпись секции + карточка с внутренним padding 16 — для подэкранов (пинг, логирование). */
 @Composable
@@ -355,7 +356,7 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
 }
 
 @Composable
-private fun RowTexts(title: String, subtitle: String?, modifier: Modifier = Modifier) {
+internal fun RowTexts(title: String, subtitle: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         subtitle?.let { Text(it, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp) }
@@ -364,7 +365,7 @@ private fun RowTexts(title: String, subtitle: String?, modifier: Modifier = Modi
 
 /** Кликабельная строка с подсветкой при нажатии, как кнопки-строки эталона. */
 @Composable
-private fun pressableRow(onClick: () -> Unit): Modifier {
+internal fun pressableRow(onClick: () -> Unit): Modifier {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     return Modifier
@@ -374,7 +375,7 @@ private fun pressableRow(onClick: () -> Unit): Modifier {
 }
 
 @Composable
-private fun ToggleRow(title: String, subtitle: String?, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun ToggleRow(title: String, subtitle: String?, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -391,7 +392,7 @@ private fun ToggleRow(title: String, subtitle: String?, checked: Boolean, onChec
 /** Переключатель эталона: трек 54×32 (accent / track), бегунок 36×26, left 3 → 15,
  *  пружина cubic-bezier(.3,1.5,.5,1). */
 @Composable
-private fun GlassSwitch(checked: Boolean, onToggle: () -> Unit) {
+internal fun GlassSwitch(checked: Boolean, onToggle: () -> Unit) {
     val track by animateColorAsState(if (checked) GodjiColors.Teal else GodjiColors.TrackBg, tween(300), label = "swTrack")
     val knobX by animateDpAsState(if (checked) 15.dp else 3.dp, spring(dampingRatio = 0.55f, stiffness = 500f), label = "swKnob")
     Box(
@@ -413,7 +414,7 @@ private fun GlassSwitch(checked: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun LinkRow(title: String, subtitle: String?, onClick: () -> Unit) {
+internal fun LinkRow(title: String, subtitle: String?, onClick: () -> Unit) {
     Row(
         pressableRow(onClick).padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,

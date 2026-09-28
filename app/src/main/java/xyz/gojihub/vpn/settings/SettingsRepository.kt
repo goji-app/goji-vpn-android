@@ -61,6 +61,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val favoriteServerIdsKey = stringSetPreferencesKey("favorite_server_ids")
     private val hapticsKey = booleanPreferencesKey("haptics_enabled")
     private val serverSortKey = stringPreferencesKey("server_sort")
+    private val trustedSsidsKey = stringSetPreferencesKey("trusted_wifi_ssids")
+    private val disconnectOnTrustedKey = booleanPreferencesKey("disconnect_on_trusted_wifi")
 
     val preferredNodeId: Flow<String?> = context.dataStore.data.map { it[preferredNodeKey] }
 
@@ -191,6 +193,21 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     suspend fun setServerSort(sort: ServerSort) {
         context.dataStore.edit { it[serverSortKey] = sort.name }
+    }
+
+    /** Доверенные Wi-Fi (SSID без кавычек) — см. NetworkRulesManager: в них VPN не включается
+     *  автоматически и (если включено [disconnectOnTrusted]) отключается при подключении к ним. */
+    val trustedSsids: Flow<Set<String>> = context.dataStore.data.map { it[trustedSsidsKey] ?: emptySet() }
+    suspend fun addTrustedSsid(ssid: String) {
+        context.dataStore.edit { it[trustedSsidsKey] = (it[trustedSsidsKey] ?: emptySet()) + ssid }
+    }
+    suspend fun removeTrustedSsid(ssid: String) {
+        context.dataStore.edit { it[trustedSsidsKey] = (it[trustedSsidsKey] ?: emptySet()) - ssid }
+    }
+
+    val disconnectOnTrusted: Flow<Boolean> = context.dataStore.data.map { it[disconnectOnTrustedKey] ?: true }
+    suspend fun setDisconnectOnTrusted(enabled: Boolean) {
+        context.dataStore.edit { it[disconnectOnTrustedKey] = enabled }
     }
 
     companion object {

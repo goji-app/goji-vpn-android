@@ -53,6 +53,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var subscriptionRepository: SubscriptionRepository
     @Inject lateinit var vpnStateObserver: VpnStateObserver
+    @Inject lateinit var networkRulesManager: xyz.gojihub.vpn.network.NetworkRulesManager
 
     @Volatile private var lastForegroundRefreshAt = 0L
 
@@ -107,6 +108,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             if (running) CoroutineScope(Dispatchers.IO).launch { LastNodeShortcut.publish(this@GodjiApplication) }
         }
         vpnStateObserver.start()
+        networkRulesManager.start()
         CoroutineScope(Dispatchers.IO).launch { LastNodeShortcut.publish(this@GodjiApplication) }
         schedulePeriodicRefresh()
         scheduleGeoDataRefresh()

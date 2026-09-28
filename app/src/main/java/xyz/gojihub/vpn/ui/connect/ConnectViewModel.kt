@@ -85,7 +85,6 @@ class ConnectViewModel @Inject constructor(
     private var speedJob: Job? = null
     private var preferredNodeId: String? = null
     private var lastNetState: NetState? = null
-    private var autoConnectOnWifi = false
 
     init {
         viewModelScope.launch {
@@ -97,10 +96,6 @@ class ConnectViewModel @Inject constructor(
 
         viewModelScope.launch {
             settingsRepository.preferredNodeId.collect { preferredNodeId = it }
-        }
-
-        viewModelScope.launch {
-            settingsRepository.autoConnectOnWifi.collect { autoConnectOnWifi = it }
         }
 
         viewModelScope.launch {
@@ -266,14 +261,8 @@ class ConnectViewModel @Inject constructor(
                 )
             }
         } else if (net == NetState.WIFI) {
-            // Настройка "Автоподключение при Wi-Fi" — не различаем открытые/защищённые сети:
-            // с Android 8+ прочитать реальный тип защиты подключённой сети без разрешения на
-            // геолокацию нельзя (SSID/security type скрыты от приложений без него), а просить
-            // ACCESS_FINE_LOCATION только ради этой настройки — слишком дорогая цена по
-            // приватности для VPN-приложения. Триггерим на любое Wi-Fi-подключение.
-            if (autoConnectOnWifi && !GodjiVpnService.isRunning.value) {
-                startTunnel(appContext)
-            }
+            // "Включать VPN в чужих Wi-Fi" и доверенные сети — теперь в NetworkRulesManager
+            // (работает и без открытого экрана, учитывает список доверенных сетей).
             val current = subscriptionRepository.selectedNode()
             val ru = russianNode()
             if (ru != null && current?.id == ru.id && preferredNodeId != null && preferredNodeId != ru.id) {
