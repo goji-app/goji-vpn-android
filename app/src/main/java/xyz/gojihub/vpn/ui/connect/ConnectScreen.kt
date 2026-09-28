@@ -382,27 +382,38 @@ private fun StatCard(value: String, label: String, accent: Color, history: List<
     }
 }
 
+// Должно совпадать с ConnectViewModel.SPEED_HISTORY_SIZE — фиксированное число слотов, а не
+// текущий history.size (см. комментарий в Sparkline ниже про причину "подтормаживания").
+private const val SPARKLINE_MAX_BARS = 30
+
 /** Мини-график последних ~30 замеров скорости (см. ConnectViewModel.SPEED_HISTORY_SIZE) —
  *  та самая "живая" телеметрия вместо голого числа. Столбики-эквалайзер вместо прежней
  *  сплошной линии+заливки: каждый замер — отдельный столбик со скруглёнными краями и
  *  градиентом по высоте, ярче и "живее" читается на маленькой площади карточки, а на
- *  последнем (текущем) столбике — акцентная точка-маркер, как индикатор "сейчас". */
+ *  последнем (текущем) столбике — акцентная точка-маркер, как индикатор "сейчас".
+ *
+ *  Ширина столбика считается от ФИКСИРОВАННОГО числа слотов (SPARKLINE_MAX_BARS), а не от
+ *  текущего history.size: в первые ~30 секунд после подключения history растёт с 1 до 30
+ *  замеров, и если ширину пересчитывать от него, все уже нарисованные столбики каждую секунду
+ *  резко меняли толщину (график "трясло" — выглядело как подтормаживание). Пока история не
+ *  заполнилась, недостающие слоты слева просто остаются пустыми, новые столбики дорисовываются
+ *  справа без изменения размера уже существующих. */
 @Composable
 private fun Sparkline(history: List<Float>, color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         if (history.isEmpty()) return@Canvas
         val maxV = (history.maxOrNull() ?: 0f).coerceAtLeast(0.01f)
-        val barCount = history.size
         val gap = 2.dp.toPx()
-        val barWidth = ((size.width - gap * (barCount - 1)) / barCount).coerceAtLeast(1.5f)
+        val barWidth = ((size.width - gap * (SPARKLINE_MAX_BARS - 1)) / SPARKLINE_MAX_BARS).coerceAtLeast(1.5f)
         val radius = CornerRadius(barWidth / 2f, barWidth / 2f)
+        val startSlot = (SPARKLINE_MAX_BARS - history.size).coerceAtLeast(0)
         var lastX = 0f
         var lastH = 0f
         history.forEachIndexed { i, v ->
             val ratio = (v / maxV).coerceIn(0f, 1f)
             val h = (ratio * size.height).coerceAtLeast(barWidth)
-            val x = i * (barWidth + gap)
-            val isLast = i == barCount - 1
+            val x = (startSlot + i) * (barWidth + gap)
+            val isLast = i == history.size - 1
             val barAlpha = if (isLast) 1f else 0.3f + 0.4f * ratio
             drawRoundRect(
                 brush = Brush.verticalGradient(listOf(color.copy(alpha = barAlpha), color.copy(alpha = barAlpha * 0.25f))),

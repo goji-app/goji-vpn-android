@@ -766,7 +766,7 @@ private fun ActiveStatusPill() {
     Box(
         Modifier
             .height(30.dp)
-            .shadow(10.dp, RoundedCornerShape(50), ambientColor = GodjiColors.Teal, spotColor = GodjiColors.Teal)
+            .shadow(3.dp, RoundedCornerShape(50), ambientColor = GodjiColors.Teal, spotColor = GodjiColors.Teal)
             .clip(RoundedCornerShape(50))
             .background(Brush.horizontalGradient(listOf(GodjiColors.TealDeep, GodjiColors.Teal)))
     ) {
