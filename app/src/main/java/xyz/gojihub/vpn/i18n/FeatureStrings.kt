@@ -22,6 +22,12 @@ data class FeatureStrings(
     val tileOn: String,
     val tileOff: String,
     val tileConnecting: String,
+    // ── Ярлык «Последний узел» ──
+    val shortcutLastNodeShort: String,
+    val shortcutLastNodeLong: String,
+    val shortcutConnectTo: (country: String) -> String,
+    val shortcutConnecting: (country: String) -> String,
+    val shortcutAlreadyOn: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -43,6 +49,11 @@ data class FeatureStrings(
             tileOn = "Подключено",
             tileOff = "Отключено",
             tileConnecting = "Подключение…",
+            shortcutLastNodeShort = "Последний узел",
+            shortcutLastNodeLong = "Подключиться к последнему узлу",
+            shortcutConnectTo = { c -> "Подключиться: $c" },
+            shortcutConnecting = { c -> "Подключаемся: $c" },
+            shortcutAlreadyOn = "VPN уже подключён",
         )
 
         private val EN = FeatureStrings(
@@ -58,6 +69,11 @@ data class FeatureStrings(
             tileOn = "Connected",
             tileOff = "Disconnected",
             tileConnecting = "Connecting…",
+            shortcutLastNodeShort = "Last server",
+            shortcutLastNodeLong = "Connect to the last server",
+            shortcutConnectTo = { c -> "Connect: $c" },
+            shortcutConnecting = { c -> "Connecting: $c" },
+            shortcutAlreadyOn = "VPN is already on",
         )
 
         private val ZH = FeatureStrings(
@@ -73,6 +89,11 @@ data class FeatureStrings(
             tileOn = "已连接",
             tileOff = "未连接",
             tileConnecting = "正在连接…",
+            shortcutLastNodeShort = "上次节点",
+            shortcutLastNodeLong = "连接到上次使用的节点",
+            shortcutConnectTo = { c -> "连接：$c" },
+            shortcutConnecting = { c -> "正在连接：$c" },
+            shortcutAlreadyOn = "VPN 已连接",
         )
     }
 }

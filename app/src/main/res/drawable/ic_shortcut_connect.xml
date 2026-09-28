@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Иконка ярлыка "Подключиться к последнему узлу": бирюзовый круг + белый щит (как у плитки). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#00A79B"
+        android:pathData="M24,0 A24,24 0 1,1 23.99,0 Z" />
+    <group
+        android:translateX="12"
+        android:translateY="12">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M12,2 L20,5.5 V11 C20,16.2 16.8,20.7 12,22 C7.2,20.7 4,16.2 4,11 V5.5 Z" />
+    </group>
+</vector>

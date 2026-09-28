@@ -84,6 +84,17 @@
             </intent-filter>
         </service>
 
+        <!-- Трамплин ярлыка "Подключиться: <последний узел>" (см. LastNodeShortcut). exported —
+             его запускает лаунчер; никаких данных извне не принимает, только поднимает VPN на
+             последнем узле пользователя. Отдельный taskAffinity — не вытаскивает основной экран. -->
+        <activity
+            android:name=".vpn.LastNodeShortcutActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Плитка "Goji VPN" в шторке быстрых настроек (см. GojiTileService). exported=true
              обязателен — её биндит SystemUI; защищена системным BIND_QUICK_SETTINGS_TILE. -->
         <service
