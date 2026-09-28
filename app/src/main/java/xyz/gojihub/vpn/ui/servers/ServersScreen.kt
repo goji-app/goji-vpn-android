@@ -6,17 +6,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
@@ -26,7 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,7 +34,8 @@ import xyz.gojihub.vpn.i18n.Loc
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
-import xyz.gojihub.vpn.ui.util.rememberPressScale
+import xyz.gojihub.vpn.ui.theme.godjiGlassFlat
+import xyz.gojihub.vpn.ui.theme.godjiGlassPill
 
 @Composable
 fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
@@ -50,82 +50,106 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
     // PingRepository.pingAllInternal() сам не даст двум проверкам наложиться друг на друга.
     LaunchedEffect(Unit) { viewModel.pingAll() }
 
-    Column(Modifier.fillMaxSize().background(GodjiColors.Background).padding(18.dp, 18.dp, 18.dp, 10.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(GodjiColors.Background)
+            .padding(18.dp, 18.dp, 18.dp, 10.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column {
-                Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
-                Text(Loc.s.serversCount(state.servers.size), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+                Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp)
+                Text(Loc.s.serversCount(state.servers.size), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp)
             }
-            // Компактные иконки без рамок-квадратов — как в тулбаре Happ, но в нашей палитре.
-            // Подпись под каждой — сами по себе значки "⟳" и "⚡" без пояснения было легко
-            // спутать (обновление подписки vs. проверка пинга всех серверов).
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { viewModel.refreshSubscription() }) {
-                        if (refreshingSubscription) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = GodjiColors.Terracotta)
-                        else Icon(Icons.Filled.Refresh, contentDescription = Loc.s.serversRefresh, tint = GodjiColors.Terracotta)
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .godjiGlassPill()
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.refreshSubscription() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (refreshingSubscription) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = GodjiColors.Terracotta)
+                        else Icon(Icons.Filled.Refresh, contentDescription = Loc.s.serversRefresh, tint = GodjiColors.Terracotta, modifier = Modifier.size(18.dp))
                     }
-                    Text(Loc.s.serversRefresh, color = GodjiColors.Terracotta, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(Loc.s.serversRefresh, color = GodjiColors.Terracotta, fontWeight = FontWeight.Bold, fontSize = 9.5.sp)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { viewModel.pingAll() }) {
-                        if (state.checkingAll) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
-                        else Icon(Icons.Filled.Bolt, contentDescription = Loc.s.serversPing, tint = GodjiColors.TealDeep)
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .godjiGlassPill()
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.pingAll() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (state.checkingAll) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
+                        else Icon(Icons.Filled.Bolt, contentDescription = Loc.s.serversPing, tint = GodjiColors.TealDeep, modifier = Modifier.size(18.dp))
                     }
-                    Text(Loc.s.serversPing, color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(Loc.s.serversPing, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 9.5.sp)
                 }
             }
         }
-
-        Spacer(Modifier.height(13.dp))
 
         AnimatedContent(
             targetState = refreshMessage,
             transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
             label = "refreshBanner"
         ) { msg ->
-            if (msg != null) {
-                Column {
-                    RefreshBanner(msg, onDismiss = viewModel::dismissRefreshMessage)
-                    Spacer(Modifier.height(13.dp))
-                }
-            }
+            if (msg != null) RefreshBanner(msg, onDismiss = viewModel::dismissRefreshMessage)
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(state.servers, key = { it.id }) { node ->
+        // Одна карточка со всеми узлами (строки разделены Hair), а не отдельная карточка на
+        // каждый узел — как в эталоне.
+        Column(Modifier.fillMaxWidth().godjiCard()) {
+            state.servers.forEachIndexed { index, node ->
+                if (index > 0) HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
                 val selected = node.id == state.selectedId
-                val (rowInteraction, rowScale) = rememberPressScale()
-                val rowBg by animateColorAsState(if (selected) GodjiColors.TealTint else GodjiColors.Surface, label = "rowBg")
-                val rowBorder by animateColorAsState(if (selected) GodjiColors.Teal else GodjiColors.CardBorder, label = "rowBorder")
+                val rowBg by animateColorAsState(if (selected) GodjiColors.SelBg else Color.Transparent, label = "rowBg")
                 Row(
-                    modifier = Modifier
+                    Modifier
                         .fillMaxWidth()
-                        .scale(rowScale.value)
-                        .godjiCard(shape = RoundedCornerShape(12.dp), tint = rowBg, borderColor = rowBorder)
-                        .clickable(interactionSource = rowInteraction, indication = LocalIndication.current) { viewModel.select(node.id) }
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .background(rowBg)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.select(node.id) }
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
                 ) {
-                    Box(Modifier.size(23.dp).background(GodjiColors.Chip, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                        Text(node.flag, fontSize = 12.sp)
+                    Box(
+                        Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(GodjiColors.Chip)
+                            .then(if (selected) Modifier.border(1.5.dp, GodjiColors.Teal, RoundedCornerShape(12.dp)) else Modifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(node.flag, fontSize = 16.sp)
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text(node.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+                    Text(node.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp, modifier = Modifier.weight(1f))
+                    if (selected) {
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(18.dp))
                     }
+                    // Избранное — в эталоне такого элемента нет (там нет данных под него), но
+                    // это рабочая функция приложения, а не визуальная деталь — оставляю её,
+                    // просто компактно, а не убираю по правилу PROMPT.md п.5.
                     Text(
                         if (node.isFavorite) "★" else "☆",
                         color = if (node.isFavorite) GodjiColors.Warning else GodjiColors.TextMuted,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = LocalIndication.current) { viewModel.toggleFavorite(node.id) }
-                            .padding(6.dp)
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { viewModel.toggleFavorite(node.id) }
+                            .padding(3.dp)
                     )
-                    TextButton(
-                        onClick = { viewModel.pingOne(node.id) },
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                    Box(
+                        Modifier
+                            .defaultMinSize(minWidth = 70.dp, minHeight = 30.dp)
+                            .godjiGlassFlat(RoundedCornerShape(50))
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             when {
@@ -134,7 +158,8 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
                                 node.pingMs == -1 -> Loc.s.serversUnavailable
                                 else -> Loc.s.serversPingMs(node.pingMs)
                             },
-                            color = pingColor(node.pingMs), fontWeight = FontWeight.Bold, fontSize = 10.sp
+                            color = if (state.checkingId == node.id) GodjiColors.TextSecondary else pingColor(node.pingMs),
+                            fontWeight = FontWeight.Bold, fontSize = 11.5.sp
                         )
                     }
                 }
@@ -162,4 +187,12 @@ private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
     }
 }
 
-private fun pingColor(pingMs: Int) = GodjiColors.TextPrimary
+/** <40мс — TealDeep, <90мс — Warning, недоступен/иначе — Danger, не проверен — TextSecondary
+ *  (см. handoff-1.0.77/README.md — раньше всегда возвращала TextPrimary независимо от пинга). */
+private fun pingColor(pingMs: Int): Color = when {
+    pingMs == -2 -> GodjiColors.TextSecondary
+    pingMs == -1 -> GodjiColors.Danger
+    pingMs < 40 -> GodjiColors.TealDeep
+    pingMs < 90 -> GodjiColors.Warning
+    else -> GodjiColors.Danger
+}
