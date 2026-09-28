@@ -76,6 +76,10 @@ class PingRepository @Inject constructor(
     }
 
     suspend fun pingAllInternal() {
+        // Guard — без него авто-пинг при каждом заходе на вкладку "Серверы" (см. ServersScreen)
+        // мог бы запускать параллельную проверку поверх уже идущей (например, если пользователь
+        // быстро туда-обратно переключает вкладки), удваивая нагрузку на libXray без пользы.
+        if (_checkingAll.value) return
         _checkingAll.value = true
         val method = settingsRepository.pingMethodNow()
         val url = settingsRepository.pingTestUrlNow()

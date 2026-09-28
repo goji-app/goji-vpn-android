@@ -17,6 +17,7 @@ import xyz.gojihub.vpn.BuildConfig
 import xyz.gojihub.vpn.auth.AuthRepository
 import xyz.gojihub.vpn.i18n.AppLanguage
 import xyz.gojihub.vpn.i18n.Loc
+import xyz.gojihub.vpn.network.NetworkDiagnostics
 import xyz.gojihub.vpn.settings.PingMethod
 import xyz.gojihub.vpn.settings.SettingsRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
@@ -50,7 +51,13 @@ data class SettingsUiState(
     val updateChecked: Boolean = false,
     val updateAvailable: UpdateInfo? = null,
     val updateDownloading: Boolean = false,
-    val updateDownloadProgress: Int = 0
+    val updateDownloadProgress: Int = 0,
+    val leakChecking: Boolean = false,
+    val leakChecked: Boolean = false,
+    val leakPublicIp: String? = null,
+    val leakCountry: String? = null,
+    val leakDnsServers: List<String> = emptyList(),
+    val leakError: Boolean = false
 )
 
 @HiltViewModel
@@ -58,6 +65,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val authRepository: AuthRepository,
     private val subscriptionRepository: SubscriptionRepository,
+    private val networkDiagnostics: NetworkDiagnostics,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -178,6 +186,23 @@ class SettingsViewModel @Inject constructor(
                 if (status.status == DownloadManager.STATUS_SUCCESSFUL || status.status == DownloadManager.STATUS_FAILED) break
             }
             _state.value = _state.value.copy(updateDownloading = false)
+        }
+    }
+
+    /** См. NetworkDiagnostics — публичный IP/DNS сейчас, для самостоятельной проверки, что
+     *  трафик действительно идёт через туннель, а не только "статус подключено" на глаз. */
+    fun checkLeak() {
+        _state.value = _state.value.copy(leakChecking = true)
+        viewModelScope.launch {
+            val result = networkDiagnostics.check()
+            _state.value = _state.value.copy(
+                leakChecking = false,
+                leakChecked = true,
+                leakPublicIp = result.publicIp,
+                leakCountry = result.country,
+                leakDnsServers = result.dnsServers,
+                leakError = result.ipError
+            )
         }
     }
 

@@ -266,6 +266,16 @@ data class Strings(
     val pingIcmp: String,
     val pingUrlLabel: String,
 
+    // ── IP/DNS-диагностика (PingSettings, NetworkDiagnostics) ──
+    val leakSectionTitle: String,
+    val leakCaption: String,
+    val leakCheckButton: String,
+    val leakChecking: String,
+    val leakPublicIpLabel: String,
+    val leakDnsLabel: String,
+    val leakDnsEmpty: String,
+    val leakErrorText: String,
+
     // ── Журналы (Settings → "Журналы", LogViewerDialog / AppLogger) ──
     val settingsLogs: String,
     val settingsLogLevel: String,
@@ -542,6 +552,15 @@ data class Strings(
             pingTcp = "TCP",
             pingIcmp = "ICMP",
             pingUrlLabel = "URL для теста (через прокси)",
+
+            leakSectionTitle = "Проверка IP и DNS",
+            leakCaption = "Показывает, что видит внешний мир прямо сейчас. Если VPN включён, а здесь всё ещё виден адрес вашего провайдера — переподключитесь.",
+            leakCheckButton = "Проверить",
+            leakChecking = "Проверяем…",
+            leakPublicIpLabel = "Публичный IP",
+            leakDnsLabel = "DNS-серверы",
+            leakDnsEmpty = "не удалось определить",
+            leakErrorText = "Не удалось получить данные. Проверьте соединение и попробуйте ещё раз.",
 
             settingsLogs = "Журналы",
             settingsLogLevel = "Уровень логирования",
@@ -832,6 +851,15 @@ data class Strings(
             pingIcmp = "ICMP",
             pingUrlLabel = "Test URL (via proxy)",
 
+            leakSectionTitle = "IP & DNS check",
+            leakCaption = "Shows what the outside world sees right now. If the VPN is on and this still shows your ISP's address, reconnect.",
+            leakCheckButton = "Check",
+            leakChecking = "Checking…",
+            leakPublicIpLabel = "Public IP",
+            leakDnsLabel = "DNS servers",
+            leakDnsEmpty = "couldn't detect",
+            leakErrorText = "Couldn't fetch data. Check your connection and try again.",
+
             settingsLogs = "Logs",
             settingsLogLevel = "Log level",
             settingsLogLevelDesc = "How much detail to write to the log",
@@ -1120,6 +1148,15 @@ data class Strings(
             pingTcp = "TCP",
             pingIcmp = "ICMP",
             pingUrlLabel = "测试地址（通过代理）",
+
+            leakSectionTitle = "IP 与 DNS 检测",
+            leakCaption = "显示此刻外部世界看到的信息。如果 VPN 已开启，但这里仍显示您的运营商地址，请重新连接。",
+            leakCheckButton = "检测",
+            leakChecking = "检测中…",
+            leakPublicIpLabel = "公网 IP",
+            leakDnsLabel = "DNS 服务器",
+            leakDnsEmpty = "无法获取",
+            leakErrorText = "获取失败，请检查网络后重试。",
 
             settingsLogs = "日志",
             settingsLogLevel = "日志级别",

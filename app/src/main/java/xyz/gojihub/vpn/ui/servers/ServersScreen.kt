@@ -39,6 +39,13 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel()) {
     val refreshingSubscription by viewModel.refreshingSubscription.collectAsState()
     val refreshMessage by viewModel.refreshMessage.collectAsState()
 
+    // Авто-пинг при каждом заходе на вкладку — composable пересоздаётся при переключении вкладок
+    // (NavHost saveState/restoreState держит только ViewModel, не Compose-дерево), поэтому
+    // LaunchedEffect(Unit) срабатывает ровно при каждом открытии "Серверов", а не один раз за
+    // всё время жизни приложения. Раньше нужно было нажимать "⚡" вручную — выбор шёл вслепую.
+    // PingRepository.pingAllInternal() сам не даст двум проверкам наложиться друг на друга.
+    LaunchedEffect(Unit) { viewModel.pingAll() }
+
     Column(Modifier.fillMaxSize().background(GodjiColors.Background).padding(18.dp, 18.dp, 18.dp, 10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {

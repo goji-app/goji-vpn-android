@@ -77,6 +77,19 @@ object NetworkModule {
             .proxySelector(GodjiVpnService.tunnelAwareProxySelector())
             .build()
 
+    /** Для проверки "публичный IP/DNS сейчас" (NetworkDiagnostics) — отдельный от
+     *  provideOkHttpClient()/"refresh", чтобы точно не отправить авторизационные заголовки
+     *  приложения (Bearer-токен, X-Requested-With) на сторонний ip-сервис. proxySelector тот
+     *  же — именно он определяет, идёт ли запрос через локальный SOCKS Xray (когда туннель
+     *  поднят) или напрямую (когда нет), то есть честно отражает то, что видит внешний мир. */
+    @Provides
+    @Singleton
+    @Named("diagnostics")
+    fun provideDiagnosticsOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .proxySelector(GodjiVpnService.tunnelAwareProxySelector())
+            .build()
+
     /** Сессионный JWT бэкенда живёт ровно 24 часа (проверено по exp/iat в самом токене) —
      *  без обновления пользователя стабильно выкидывало на логин раз в сутки. Веб-версия сайта
      *  при 401 сначала пытается POST /api/auth/refresh (по куке rw_refresh_token) и повторяет

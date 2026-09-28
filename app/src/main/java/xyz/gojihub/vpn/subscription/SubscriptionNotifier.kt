@@ -23,7 +23,7 @@ import java.time.temporal.ChronoUnit
  * данным, которые приложение и так уже получает при обычном обновлении подписки (см.
  * SubscriptionRefreshWorker, раз в час); отдельного push-сервера для этого не заводили.
  *
- * 1. Скорое окончание подписки — за 3 дня для обычных тарифов, за 12 часов для триала
+ * 1. Скорое окончание подписки — за 2 дня для обычных тарифов, за 12 часов для триала
  *    (kind:"trial"), один раз на каждый конкретный expire_at, чтобы не дублировать на
  *    каждый следующий часовой прогон воркера.
  * 2. Успешная оплата — обнаруживается косвенно: оплата происходит вне приложения (на сайте
@@ -73,7 +73,7 @@ object SubscriptionNotifier {
 
         if (expireInstant == null) return
         val hoursLeft = ChronoUnit.MINUTES.between(Instant.now(), expireInstant) / 60.0
-        val thresholdHours = if (isTrial) 12.0 else 72.0
+        val thresholdHours = if (isTrial) 12.0 else 48.0
         if (hoursLeft in 0.0..thresholdHours && prefs.getString(KEY_WARNED_FOR, null) != sub.expireAt) {
             notifyExpirySoon(context, sub, isTrial)
             prefs.edit().putString(KEY_WARNED_FOR, sub.expireAt).apply()
