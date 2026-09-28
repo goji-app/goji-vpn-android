@@ -19,6 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PriorityHigh
+import xyz.gojihub.vpn.network.NetworkDiagnostics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -133,6 +136,9 @@ fun SettingsScreen(
             LinkRow(Loc.s.settingsPingLink, Loc.s.settingsPingLinkDesc, onOpenPingSettings)
         }
 
+        SectionLabel(Loc.f.securitySection)
+        LeakCheckCard(state, onCheck = viewModel::checkLeak)
+
         // Разделов ниже в эталоне нет — это рабочие функции приложения, оформлены теми же
         // карточками/строками, что и эталонные разделы.
         SectionLabel(Loc.s.settingsConnection)
@@ -213,6 +219,93 @@ fun SettingsScreen(
         ) {
             Text(Loc.s.settingsLogout, color = GodjiColors.Danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
+    }
+}
+
+/** Проверка утечек: заголовок + кнопка, после проверки — вердикт (круг 28dp с иконкой, как у
+ *  баннеров Главной) и строки деталей в стиле "О программе". */
+@Composable
+private fun LeakCheckCard(state: SettingsUiState, onCheck: () -> Unit) {
+    val report = state.leakReport
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .godjiCard(RoundedCornerShape(24.dp))
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            RowTexts(Loc.f.leakTitle, Loc.f.leakDesc, Modifier.weight(1f))
+            val interaction = remember { MutableInteractionSource() }
+            val pressed by interaction.collectIsPressedAsState()
+            Box(
+                Modifier
+                    .height(34.dp)
+                    .scale(if (pressed) 0.95f else 1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(GodjiColors.Chip)
+                    .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))
+                    .clickable(interactionSource = interaction, indication = null, enabled = !state.leakChecking, onClick = onCheck)
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (state.leakChecking) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 2.dp, color = GodjiColors.Teal, trackColor = GodjiColors.TrackBg)
+                        Text(Loc.f.leakChecking, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                } else {
+                    Text(Loc.f.leakButton, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+        if (report != null && !state.leakChecking) {
+            val ok = report.verdict == NetworkDiagnostics.Verdict.SAFE
+            val (title, desc) = when (report.verdict) {
+                NetworkDiagnostics.Verdict.SAFE -> Loc.f.leakSafe to Loc.f.leakSafeDesc
+                NetworkDiagnostics.Verdict.LEAK -> Loc.f.leakFound to listOfNotNull(
+                    Loc.f.leakIpProblem.takeIf { report.ipLeak },
+                    (if (report.dnsViaIsp) Loc.f.leakDnsProblem(report.dns?.isp) else Loc.f.leakDnsLocalProblem(report.dns?.isp))
+                        .takeIf { report.dnsLeak }
+                ).joinToString(" ")
+                NetworkDiagnostics.Verdict.VPN_OFF -> Loc.f.leakVpnOff to Loc.f.leakVpnOffDesc
+                NetworkDiagnostics.Verdict.ERROR -> Loc.f.leakError to Loc.f.leakErrorDesc
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(if (ok) GodjiColors.TealTint else GodjiColors.TerracottaTint)
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
+                Box(
+                    Modifier.size(28.dp).clip(CircleShape).background(if (ok) GodjiColors.Teal else GodjiColors.Terracotta),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(if (ok) Icons.Filled.Check else Icons.Filled.PriorityHigh, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(desc, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, lineHeight = 16.sp)
+                }
+            }
+            report.vpnIp?.let { LeakRow(Loc.f.leakRowSiteIp, listOfNotNull(it.ip, it.country).joinToString(" · ")) }
+            report.realIp?.let { LeakRow(Loc.f.leakRowRealIp, listOfNotNull(it.ip, it.country).joinToString(" · ")) }
+            report.dns?.let { LeakRow(Loc.f.leakRowDns, listOfNotNull(it.isp, it.country).joinToString(" · ").ifBlank { it.ip }) }
+        }
+    }
+}
+
+@Composable
+private fun LeakRow(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.5.sp)
+        Text(
+            value, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
+            modifier = Modifier.weight(1f), textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

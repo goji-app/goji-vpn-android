@@ -61,53 +61,7 @@ fun PingSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltVi
             )
         }
 
-        SettingsSection(Loc.s.leakSectionTitle) {
-            Text(Loc.s.leakCaption, color = GodjiColors.TextSecondary, fontSize = 10.5.sp, lineHeight = 14.sp)
-            Spacer(Modifier.height(10.dp))
-            if (state.leakChecked) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(Loc.s.leakPublicIpLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                    Text(
-                        if (state.leakError) "—" else listOfNotNull(state.leakPublicIp, state.leakCountry).joinToString(" · ").ifBlank { "—" },
-                        color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(Loc.s.leakDnsLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                    Text(
-                        state.leakDnsServers.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: Loc.s.leakDnsEmpty,
-                        color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                        modifier = Modifier.weight(1f, fill = false).padding(start = 12.dp)
-                    )
-                }
-                if (state.leakError) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(Loc.s.leakErrorText, color = GodjiColors.Danger, fontSize = 10.5.sp)
-                }
-                Spacer(Modifier.height(10.dp))
-            }
-            val (checkInteraction, checkScale) = rememberPressScale()
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .scale(checkScale.value)
-                    .background(GodjiColors.Chip, androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .clickable(interactionSource = checkInteraction, indication = androidx.compose.foundation.LocalIndication.current, enabled = !state.leakChecking) { viewModel.checkLeak() }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (state.leakChecking) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = GodjiColors.TealDeep)
-                        Text(Loc.s.leakChecking, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
-                    }
-                } else {
-                    Text(Loc.s.leakCheckButton, color = GodjiColors.TealDeep, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
-                }
-            }
-        }
+        // Проверка утечек переехала в Настройки → Безопасность (с итоговым вердиктом).
 
         Spacer(Modifier.height(4.dp))
     }

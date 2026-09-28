@@ -6,4 +6,10 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- Проверка утечек (NetworkDiagnostics): бесплатные эндпоинты ip-api.com, включая
+         определение DNS-резолвера edns.ip-api.com (случайные поддомены), работают только по
+         HTTP. Никаких данных пользователя туда не уходит — только сам факт запроса. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">ip-api.com</domain>
+    </domain-config>
 </network-security-config>

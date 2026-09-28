@@ -54,11 +54,7 @@ data class SettingsUiState(
     val updateDownloading: Boolean = false,
     val updateDownloadProgress: Int = 0,
     val leakChecking: Boolean = false,
-    val leakChecked: Boolean = false,
-    val leakPublicIp: String? = null,
-    val leakCountry: String? = null,
-    val leakDnsServers: List<String> = emptyList(),
-    val leakError: Boolean = false
+    val leakReport: NetworkDiagnostics.Report? = null
 )
 
 @HiltViewModel
@@ -196,20 +192,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** См. NetworkDiagnostics — публичный IP/DNS сейчас, для самостоятельной проверки, что
-     *  трафик действительно идёт через туннель, а не только "статус подключено" на глаз. */
+    /** См. NetworkDiagnostics — IP и DNS через туннель против настоящих, с итоговым вердиктом. */
     fun checkLeak() {
+        if (_state.value.leakChecking) return
         _state.value = _state.value.copy(leakChecking = true)
         viewModelScope.launch {
-            val result = networkDiagnostics.check()
-            _state.value = _state.value.copy(
-                leakChecking = false,
-                leakChecked = true,
-                leakPublicIp = result.publicIp,
-                leakCountry = result.country,
-                leakDnsServers = result.dnsServers,
-                leakError = result.ipError
-            )
+            val report = networkDiagnostics.check()
+            _state.value = _state.value.copy(leakChecking = false, leakReport = report)
         }
     }
 
