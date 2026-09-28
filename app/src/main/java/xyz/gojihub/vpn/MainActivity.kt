@@ -3,19 +3,18 @@ package xyz.gojihub.vpn
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -41,8 +40,12 @@ import xyz.gojihub.vpn.ui.support.FaqScreen
 import xyz.gojihub.vpn.ui.support.NewTicketScreen
 import xyz.gojihub.vpn.ui.support.SupportListScreen
 import xyz.gojihub.vpn.ui.support.TicketChatScreen
+import xyz.gojihub.vpn.ui.theme.GlassBackdrop
+import xyz.gojihub.vpn.ui.theme.GlassTab
+import xyz.gojihub.vpn.ui.theme.GlassTabBar
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
+import xyz.gojihub.vpn.ui.theme.GojiTabIcons
 import xyz.gojihub.vpn.ui.theme.ThemeMode
 import javax.inject.Inject
 
@@ -52,6 +55,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var authRepository: AuthRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
             GodjiVpnTheme {
@@ -61,15 +65,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class BottomTab(val route: String, val label: String, val icon: String)
-
 @Composable
 fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
-    // При режиме "Системная" (см. ThemeMode, настройка Внешний вид → Тема оформления) следим
-    // за системной тёмной темой живьём, пока приложение открыто — раньше (до ThemeMode.SYSTEM)
-    // приложение всегда игнорировало системную тему и держалось только явного переключателя.
-    // isSystemInDarkTheme() перекомпонует этот блок при смене темы Android на лету — SideEffect
-    // ниже просто переносит актуальное значение в GodjiColors, если сейчас включён SYSTEM.
     val systemDark = isSystemInDarkTheme()
     val themeMode = GodjiColors.themeMode
     SideEffect {
@@ -78,14 +75,16 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
         }
     }
 
+    // v5: фон GlassBackdrop рисуется и под системными панелями — они прозрачные.
     val view = LocalView.current
     val isDark = GodjiColors.isDark
-    val barColor = GodjiColors.Background
     SideEffect {
         val window = (view.context as? android.app.Activity)?.window
         if (window != null) {
-            window.statusBarColor = barColor.toArgb()
-            window.navigationBarColor = barColor.toArgb()
+            @Suppress("DEPRECATION")
+            window.statusBarColor = Color.Transparent.toArgb()
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = Color.Transparent.toArgb()
             val controller = WindowCompat.getInsetsController(window, view)
             controller.isAppearanceLightStatusBars = !isDark
             controller.isAppearanceLightNavigationBars = !isDark
@@ -94,21 +93,15 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
 
     val navController = rememberNavController()
     val tabs = listOf(
-        BottomTab(GodjiDestinations.CONNECT, Loc.s.tabHome, "🏠"),
-        BottomTab(GodjiDestinations.SERVERS, Loc.s.tabServers, "🌐"),
-        BottomTab(GodjiDestinations.PLANS, Loc.s.tabPlans, "💳"),
-        BottomTab(GodjiDestinations.SETTINGS, Loc.s.tabSettings, "⚙️"),
+        GlassTab(GodjiDestinations.CONNECT, Loc.s.tabHome, GojiTabIcons.Home),
+        GlassTab(GodjiDestinations.SERVERS, Loc.s.tabServers, GojiTabIcons.Servers),
+        GlassTab(GodjiDestinations.PLANS, Loc.s.tabPlans, GojiTabIcons.Plans),
+        GlassTab(GodjiDestinations.SETTINGS, Loc.s.tabSettings, GojiTabIcons.Settings),
     )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in tabs.map { it.route }
 
-    // Реальный 401 от бэкенда (см. authInterceptor в NetworkModule) — единственный надёжный
-    // признак протухшей сессии. Раньше это решалось только сравнением с локально посчитанным
-    // expires_at при следующем холодном старте MainActivity, из-за чего приложение периодически
-    // "выходило из профиля" даже посреди активной работы (Android регулярно убивает фоновые
-    // процессы) ещё до того, как токен реально переставал бы приниматься сервером. Теперь
-    // реагируем сразу, во время работы приложения, а не только при пересоздании Activity.
     val sessionExpired by authRepository.sessionExpired.collectAsState()
     LaunchedEffect(sessionExpired) {
         if (sessionExpired) {
@@ -119,60 +112,16 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar(containerColor = GodjiColors.Chip) {
-                    tabs.forEach { tab ->
-                        val selected = currentRoute == tab.route
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                // Иконка чуть подрастает и "оседает" при выборе вкладки — раньше
-                                // переключение было совсем безжизненным (голый текст без иконок
-                                // и анимации).
-                                val scale by animateFloatAsState(
-                                    targetValue = if (selected) 1.22f else 1f,
-                                    animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
-                                    label = "tabIconScale"
-                                )
-                                Text(tab.icon, fontSize = 19.sp, modifier = Modifier.scale(scale))
-                            },
-                            // maxLines/overflow — на узких экранах или при крупном "Размере
-                            // шрифта" (Настройки → Внешний вид) длинные подписи вроде
-                            // "НАСТРОЙКИ"/"ПОДПИСКА" не помещались в узкую колонку нижней
-                            // панели и переносились по одной букве на строку. Многоточие
-                            // вместо этого — читаемая деградация, а не сломанная вёрстка.
-                            label = {
-                                Text(
-                                    tab.label,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedTextColor = GodjiColors.TealDeep,
-                                unselectedTextColor = GodjiColors.TextSecondary,
-                                indicatorColor = GodjiColors.Surface
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    ) { padding ->
+    // Вместо Scaffold + NavigationBar: общий фон → контент → плавающий стеклянный таб-бар.
+    GlassBackdrop {
         NavHost(
             navController = navController,
             startDestination = if (startLoggedIn) GodjiDestinations.CONNECT else GodjiDestinations.LOGIN,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                // 64dp капсула + 10dp отступ снизу + 10dp воздуха
+                .padding(bottom = if (showBottomBar) 84.dp else 0.dp)
         ) {
             composable(GodjiDestinations.LOGIN) {
                 LoginScreen(
@@ -307,6 +256,21 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
             ) {
                 AppTunnelingScreen(onBack = { navController.popBackStack() })
             }
+        }
+
+        if (showBottomBar) {
+            GlassTabBar(
+                tabs = tabs,
+                selectedRoute = currentRoute,
+                onSelect = { tab ->
+                    navController.navigate(tab.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }

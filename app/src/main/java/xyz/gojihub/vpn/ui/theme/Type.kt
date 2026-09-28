@@ -5,19 +5,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import xyz.gojihub.vpn.R
 
-// Manrope — статичные файлы на каждое начертание (вместо одного переменного шрифта
-// с синтетическим bold) — Bold/SemiBold/ExtraBold и т.п. рисуются настоящими глифами
-// шрифта, а не жирнее нарисованным системой Normal. Instrument Serif — заголовки (используется
-// точечно, где нужен редакторский засечковый акцент). Space Grotesk (редизайн Tactical Sand &
-// Void) — заголовки экранов и крупные цифры телеметрии; JetBrains Mono — служебные подписи и
-// значения (пинг, скорость, IP, версии). Оба — единственные переменные (variable) TTF-файлы,
-// доступные для этих семейств в репозитории google/fonts (там нет статичных начертаний), поэтому
-// разные насыщенности рисуются через FontVariation.Settings, а не через отдельные файлы.
+// v5 «Стекло»: во всём приложении один шрифт — Manrope (как в эталоне).
+// SpaceGroteskFamily / JetBrainsMonoFamily оставлены как ПСЕВДОНИМЫ Manrope, чтобы экраны 1.0.77,
+// которые их импортируют, компилировались без правок, но рисовали Manrope.
 val ManropeFamily = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
     Font(R.font.manrope_light, FontWeight.Light),
@@ -31,28 +25,9 @@ val InstrumentSerifFamily = FontFamily(
     Font(R.font.instrument_serif, FontWeight.Normal, FontStyle.Normal),
     Font(R.font.instrument_serif_italic, FontWeight.Normal, FontStyle.Italic)
 )
+val SpaceGroteskFamily = ManropeFamily
+val JetBrainsMonoFamily = ManropeFamily
 
-private fun variableFont(resId: Int, weight: FontWeight) = Font(
-    resId, weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight))
-)
-
-val SpaceGroteskFamily = FontFamily(
-    variableFont(R.font.space_grotesk_variable, FontWeight.Medium),
-    variableFont(R.font.space_grotesk_variable, FontWeight.SemiBold),
-    variableFont(R.font.space_grotesk_variable, FontWeight.Bold)
-)
-val JetBrainsMonoFamily = FontFamily(
-    variableFont(R.font.jetbrains_mono_variable, FontWeight.Medium),
-    variableFont(R.font.jetbrains_mono_variable, FontWeight.SemiBold)
-)
-
-// Ни один экран не берёт стиль текста из MaterialTheme.typography.* по имени — везде вызывают
-// Text(...) напрямую со своими fontWeight/fontSize и (для заголовков) отдельно передают
-// InstrumentSerifFamily. Но шрифт по умолчанию для любого такого Text() без своего fontFamily
-// всё равно берётся из LocalTextStyle.current, а это typography.bodyLarge — то есть пока
-// fontFamily не переопределён здесь на каждом стиле, весь обычный текст в приложении реально
-// рисуется системным Roboto, а не Manrope. Переопределяем fontFamily у всех стилей Typography,
-// чтобы Manrope был шрифтом по умолчанию для всего проекта.
 private val base = Typography()
 val GodjiTypography = Typography(
     displayLarge = base.displayLarge.copy(fontFamily = ManropeFamily),
@@ -60,7 +35,7 @@ val GodjiTypography = Typography(
     displaySmall = base.displaySmall.copy(fontFamily = ManropeFamily),
     headlineLarge = base.headlineLarge.copy(fontFamily = ManropeFamily),
     headlineMedium = base.headlineMedium.copy(fontFamily = ManropeFamily),
-    headlineSmall = TextStyle(fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 27.sp),
+    headlineSmall = TextStyle(fontFamily = ManropeFamily, fontWeight = FontWeight.Bold, fontSize = 27.sp),
     titleLarge = base.titleLarge.copy(fontFamily = ManropeFamily),
     titleMedium = TextStyle(fontFamily = ManropeFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp),
     titleSmall = base.titleSmall.copy(fontFamily = ManropeFamily),
