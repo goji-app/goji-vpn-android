@@ -31,6 +31,7 @@ class GodjiVpnService : VpnService() {
     companion object {
         const val ACTION_CONNECT = "xyz.gojihub.vpn.CONNECT"
         const val ACTION_DISCONNECT = "xyz.gojihub.vpn.DISCONNECT"
+        const val ACTION_RETRY = "xyz.gojihub.vpn.RETRY"
         const val EXTRA_VLESS_LINK = "vless_link"
         const val EXTRA_NODE_LABEL = "node_label"
         const val SOCKS_PORT = 10808

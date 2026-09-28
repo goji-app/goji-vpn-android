@@ -28,6 +28,12 @@ data class FeatureStrings(
     val shortcutConnectTo: (country: String) -> String,
     val shortcutConnecting: (country: String) -> String,
     val shortcutAlreadyOn: String,
+    // ── Kill switch: туннель упал, интернет заблокирован ──
+    val killSwitchChannel: String,
+    val killSwitchBlockedTitle: String,
+    val killSwitchBlockedText: (node: String?) -> String,
+    val killSwitchRetry: String,
+    val killSwitchTurnOff: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -54,6 +60,11 @@ data class FeatureStrings(
             shortcutConnectTo = { c -> "Подключиться: $c" },
             shortcutConnecting = { c -> "Подключаемся: $c" },
             shortcutAlreadyOn = "VPN уже подключён",
+            killSwitchChannel = "Предупреждения VPN",
+            killSwitchBlockedTitle = "Интернет заблокирован",
+            killSwitchBlockedText = { n -> (if (n != null) "Соединение с «$n» оборвалось. " else "VPN-соединение оборвалось. ") + "Kill switch не пускает трафик мимо VPN — пробуем переподключиться каждую минуту." },
+            killSwitchRetry = "Переподключить",
+            killSwitchTurnOff = "Отключить VPN",
         )
 
         private val EN = FeatureStrings(
@@ -74,6 +85,11 @@ data class FeatureStrings(
             shortcutConnectTo = { c -> "Connect: $c" },
             shortcutConnecting = { c -> "Connecting: $c" },
             shortcutAlreadyOn = "VPN is already on",
+            killSwitchChannel = "VPN alerts",
+            killSwitchBlockedTitle = "Internet is blocked",
+            killSwitchBlockedText = { n -> (if (n != null) "The connection to «$n» dropped. " else "The VPN connection dropped. ") + "Kill switch keeps traffic from leaving outside the VPN — retrying every minute." },
+            killSwitchRetry = "Reconnect",
+            killSwitchTurnOff = "Turn VPN off",
         )
 
         private val ZH = FeatureStrings(
@@ -94,6 +110,11 @@ data class FeatureStrings(
             shortcutConnectTo = { c -> "连接：$c" },
             shortcutConnecting = { c -> "正在连接：$c" },
             shortcutAlreadyOn = "VPN 已连接",
+            killSwitchChannel = "VPN 警报",
+            killSwitchBlockedTitle = "网络已被阻断",
+            killSwitchBlockedText = { n -> (if (n != null) "与「$n」的连接已中断。" else "VPN 连接已中断。") + "终止开关阻止流量绕过 VPN — 每分钟自动重试连接。" },
+            killSwitchRetry = "重新连接",
+            killSwitchTurnOff = "关闭 VPN",
         )
     }
 }
