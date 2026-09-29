@@ -13,9 +13,11 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.acos
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.min
 import kotlin.math.round
 import kotlin.math.sin
 import kotlin.random.Random
@@ -54,6 +56,10 @@ private const val HOME_LON = 37.62
 private const val CAM_DIST = 5.1f
 private const val FOV_Y = 38f
 private const val STREAM = 9
+// Перелёт при смене узла: сегментов дуги, длительность полёта и затухания (в единицах t, ~1с = 1).
+private const val FLIGHT_SEGMENTS = 96
+private const val FLIGHT_DUR = 1.6f
+private const val FLIGHT_FADE = 0.8f
 private val FALLBACK_NODE = GlobeNode("auto", 60.17, 24.94, "Finland") // GOJI_NODES.auto
 private val WHITE = floatArrayOf(1f, 1f, 1f)
 private val SAT_BODY = floatArrayOf(0xE9 / 255f, 0xEE / 255f, 0xF2 / 255f)
@@ -155,6 +161,15 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
     private var arcB = FloatArray(3)
     private var arcControl = FloatArray(3)
 
+    // Перелёт при смене узла: дуга от прежней страны к новой прорисовывается за FLIGHT_DUR,
+    // по ней летит светящаяся "голова", затем дуга гаснет за FLIGHT_FADE (единицы — t).
+    private var flightVbo: Vbo? = null
+    private var flightFrom = FloatArray(3)
+    private var flightTo = FloatArray(3)
+    private var flightCtrl = FloatArray(3)
+    private var flightStart = -1f
+    private var lastRealNode: GlobeNode? = null
+
     private val sats = ArrayList<Satellite>()
 
     private val projection = FloatArray(16)
@@ -213,8 +228,8 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         orbitVbo = upload(lineQuads(unitCircleXZ(96)), 8)
 
         // Новый GL-контекст — всё, что лежало в буферах старого, пересоздаём.
-        coastVbo = null; borderVbo = null; highlightVbo = null; arcVbo = null
-        geoUploaded = false; highlightBuilt = false; arcKey = null
+        coastVbo = null; borderVbo = null; highlightVbo = null; arcVbo = null; flightVbo = null
+        geoUploaded = false; highlightBuilt = false; arcKey = null; flightStart = -1f
 
         if (sats.isEmpty()) buildSatellites()
         if (!geoRequested) {
@@ -257,6 +272,17 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         if (firstFrame) { rotY = targetY; rotX = targetX; firstFrame = false }
         if (!on || lastNodeId != nd.id) locked = false
         lastNodeId = nd.id
+
+        // Смена местоположения узла (другой узел или уточнённая реальная страна выхода у того
+        // же узла) при видимом маркере — запускаем перелёт и разрешаем глобусу довернуться.
+        val real = currentNode
+        val prev = lastRealNode
+        if (real != null && prev != null && (prev.lat != real.lat || prev.lon != real.lon)) {
+            locked = false
+            if (showMarker) startFlight(prev, real)
+        }
+        if (real != null) lastRealNode = real
+        val flightP = flightProgress()
 
         val wantCountry = if (showMarker) nd.country else null
         if (geoUploaded && (!highlightBuilt || highlightKey != wantCountry)) {
@@ -328,6 +354,14 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
                 items += TransparentItem(modelZ(pos)) { sphereAt(pos, r, c, a) }
             }
         }
+        // "Голова" перелёта — белое ядро и мягкое свечение цвета выделения.
+        if (flightP != null && flightP < 1f) {
+            val head = FloatArray(3)
+            GlobeMath.quadBezier(flightFrom, flightCtrl, flightTo, easeInOut(flightP), head)
+            val hz = modelZ(head)
+            items += TransparentItem(hz) { sphereAt(head, 0.034f, th.hi, 0.35f) }
+            items += TransparentItem(hz + 0.0001f) { sphereAt(head, 0.014f, WHITE, 1f) }
+        }
         for (sf in satFrames) {
             val blinkA = if (sin(t * 5f + sf.sat.ph) > 0.6f) 1f else 0.15f
             val blinkC = if (sf.sat.blinkRed) SAT_RED else WHITE
@@ -352,6 +386,16 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         if (on || connecting) {
             drawLines(arcVbo, mvp, th.arc, if (on) 0.35f else 0.15f + sin(t * 5f) * 0.1f, 0f, 0.0032f)
         }
+        val fv = flightVbo
+        if (fv != null && flightP != null) {
+            // Прорисованная часть дуги растёт вместе с "головой"; после прилёта — затухание.
+            val shown = (easeInOut(min(flightP, 1f)) * FLIGHT_SEGMENTS).toInt().coerceIn(0, FLIGHT_SEGMENTS)
+            val fade = if (flightP <= 1f) 1f else (1f - (flightP - 1f) * FLIGHT_DUR / FLIGHT_FADE).coerceIn(0f, 1f)
+            drawLines(Vbo(fv.id, shown * 6), mvp, th.hi, 0.85f * fade, 0f, 0.0042f)
+            GLES20.glDepthMask(false)
+            drawLines(Vbo(fv.id, shown * 6), mvp, th.hi, 0.22f * fade, 0f, 0.012f)
+            GLES20.glDepthMask(true)
+        }
         drawLines(coastVbo, mvp, th.land, th.landOp, hairPx, 0f)
         drawLines(borderVbo, mvp, th.land, th.landOp * 0.5f, hairPx, 0f)
         if (showMarker) {
@@ -372,6 +416,39 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             onLabelUpdate?.invoke(false, 0f, 0f, "")
         }
     }
+
+    // ── перелёт ───────────────────────────────────────────────────
+
+    private fun startFlight(from: GlobeNode, to: GlobeNode) {
+        val a = GlobeMath.toVec(from.lat, from.lon, R * 1.012f)
+        val b = GlobeMath.toVec(to.lat, to.lon, R * 1.012f)
+        val na = GlobeMath.normalize(a); val nb = GlobeMath.normalize(b)
+        val dot = (na[0] * nb[0] + na[1] * nb[1] + na[2] * nb[2]).coerceIn(-1f, 1f)
+        val angle = acos(dot)
+        if (angle < 0.02f) return // ~1° — соседние точки, лететь некуда
+        flightFrom = a
+        flightTo = b
+        // Чем дальше лететь, тем выше дуга.
+        flightCtrl = GlobeMath.midControlPoint(a, b, R * (1.18f + 0.32f * angle / PI.toFloat()))
+        deleteVbo(flightVbo)
+        flightVbo = upload(lineQuads(bezierSegments(flightFrom, flightCtrl, flightTo, FLIGHT_SEGMENTS)), 8)
+        flightStart = t
+    }
+
+    /** 0..1 — полёт, 1..(1+FADE/DUR) — затухание дуги, null — перелёта нет. */
+    private fun flightProgress(): Float? {
+        if (flightStart < 0f || flightVbo == null) return null
+        val p = (t - flightStart) / FLIGHT_DUR
+        if (p > 1f + FLIGHT_FADE / FLIGHT_DUR) {
+            deleteVbo(flightVbo)
+            flightVbo = null
+            flightStart = -1f
+            return null
+        }
+        return p
+    }
+
+    private fun easeInOut(x: Float): Float = if (x < 0.5f) 2f * x * x else 1f - (-2f * x + 2f).let { it * it } / 2f
 
     // ── отрисовка ─────────────────────────────────────────────────
 
