@@ -93,6 +93,18 @@ data class FeatureStrings(
     val netRulesTrustedSection: String,
     val netRulesTrustedEmpty: String,
     val netRulesFootnote: String,
+    // ── Сайты мимо VPN ──
+    val bypassTitle: String,
+    val bypassLinkDesc: String,
+    val bypassIntro: String,
+    val bypassHint: String,
+    val bypassAdd: String,
+    val bypassInvalid: String,
+    val bypassReconnectHint: String,
+    val bypassApply: String,
+    val bypassListSection: (count: Int) -> String,
+    val bypassEmpty: String,
+    val bypassWithSubdomains: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -179,6 +191,17 @@ data class FeatureStrings(
             netRulesTrustedSection = "Доверенные сети",
             netRulesTrustedEmpty = "Пока нет. Подключись к своей сети (дом, работа) и нажми «Доверять».",
             netRulesFootnote = "Правила срабатывают при смене сети, пока приложение открыто или VPN включён. Чтобы VPN поднимался даже после перезагрузки — включи «Всегда включённый VPN».",
+            bypassTitle = "Сайты мимо VPN",
+            bypassLinkDesc = "Домены, которые открываются напрямую",
+            bypassIntro = "Трафик к этим сайтам (и их поддоменам) пойдёт напрямую через твоего провайдера, остальное — через VPN. Удобно для банков, госуслуг и локальных сервисов, которые не любят VPN.",
+            bypassHint = "Например, sberbank.ru",
+            bypassAdd = "Добавить",
+            bypassInvalid = "Это не похоже на адрес сайта",
+            bypassReconnectHint = "Изменения применятся после переподключения VPN",
+            bypassApply = "Применить",
+            bypassListSection = { n -> "Сайты · $n" },
+            bypassEmpty = "Список пуст — весь трафик идёт через VPN.",
+            bypassWithSubdomains = "вместе с поддоменами",
         )
 
         private val EN = FeatureStrings(
@@ -259,6 +282,17 @@ data class FeatureStrings(
             netRulesTrustedSection = "Trusted networks",
             netRulesTrustedEmpty = "None yet. Join your own network (home, work) and tap «Trust».",
             netRulesFootnote = "Rules apply when the network changes while the app is open or the VPN is on. To have the VPN start even after a reboot, enable «Always-on VPN».",
+            bypassTitle = "Sites outside VPN",
+            bypassLinkDesc = "Domains that open directly",
+            bypassIntro = "Traffic to these sites (and their subdomains) goes directly through your ISP, everything else goes through the VPN. Handy for banks, government and local services that dislike VPNs.",
+            bypassHint = "For example, sberbank.ru",
+            bypassAdd = "Add",
+            bypassInvalid = "This doesn't look like a website address",
+            bypassReconnectHint = "Changes apply after the VPN reconnects",
+            bypassApply = "Apply",
+            bypassListSection = { n -> "Sites · $n" },
+            bypassEmpty = "The list is empty — all traffic goes through the VPN.",
+            bypassWithSubdomains = "including subdomains",
         )
 
         private val ZH = FeatureStrings(
@@ -339,6 +373,17 @@ data class FeatureStrings(
             netRulesTrustedSection = "受信任网络",
             netRulesTrustedEmpty = "暂无。连接到你自己的网络（家、公司）后点击「信任」。",
             netRulesFootnote = "当应用打开或 VPN 开启时，规则会在网络切换时生效。若希望重启后也自动开启 VPN，请启用「始终开启的 VPN」。",
+            bypassTitle = "绕过 VPN 的网站",
+            bypassLinkDesc = "直接访问的域名",
+            bypassIntro = "访问这些网站（及其子域名）的流量将通过你的运营商直接连接，其余流量经过 VPN。适用于不支持 VPN 的银行、政务和本地服务。",
+            bypassHint = "例如 sberbank.ru",
+            bypassAdd = "添加",
+            bypassInvalid = "这看起来不像网站地址",
+            bypassReconnectHint = "重新连接 VPN 后更改生效",
+            bypassApply = "应用",
+            bypassListSection = { n -> "网站 · $n" },
+            bypassEmpty = "列表为空 — 所有流量都经过 VPN。",
+            bypassWithSubdomains = "包括子域名",
         )
     }
 }

@@ -33,6 +33,7 @@ import xyz.gojihub.vpn.ui.navigation.GodjiDestinations
 import xyz.gojihub.vpn.ui.plans.PlansScreen
 import xyz.gojihub.vpn.ui.servers.ServersScreen
 import xyz.gojihub.vpn.ui.settings.AppTunnelingScreen
+import xyz.gojihub.vpn.ui.settings.BypassDomainsScreen
 import xyz.gojihub.vpn.ui.settings.LogLevelScreen
 import xyz.gojihub.vpn.ui.settings.NetworkRulesScreen
 import xyz.gojihub.vpn.ui.settings.PingSettingsScreen
@@ -205,6 +206,7 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                     onOpenLogLevel = { navController.navigate(GodjiDestinations.LOG_LEVEL) },
                     onOpenAppTunneling = { navController.navigate(GodjiDestinations.APP_TUNNELING) },
                     onOpenNetworkRules = { navController.navigate(GodjiDestinations.NETWORK_RULES) },
+                    onOpenBypassDomains = { navController.navigate(GodjiDestinations.BYPASS_DOMAINS) },
                     onOpenSupport = { navController.navigate(GodjiDestinations.SUPPORT_LIST) }
                 )
             }
@@ -268,6 +270,13 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                 exitTransition = { ExitTransition.None }
             ) {
                 LogLevelScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                GodjiDestinations.BYPASS_DOMAINS,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) {
+                BypassDomainsScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 GodjiDestinations.NETWORK_RULES,

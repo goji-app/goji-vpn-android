@@ -63,6 +63,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val serverSortKey = stringPreferencesKey("server_sort")
     private val trustedSsidsKey = stringSetPreferencesKey("trusted_wifi_ssids")
     private val disconnectOnTrustedKey = booleanPreferencesKey("disconnect_on_trusted_wifi")
+    private val bypassDomainsKey = stringSetPreferencesKey("bypass_domains")
 
     val preferredNodeId: Flow<String?> = context.dataStore.data.map { it[preferredNodeKey] }
 
@@ -210,7 +211,30 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit { it[disconnectOnTrustedKey] = enabled }
     }
 
+    /** "Сайты мимо VPN": домены (уже нормализованные, в punycode), трафик к которым вместе с
+     *  поддоменами GodjiVpnService отправляет напрямую — правило routing "domain -> direct". */
+    val bypassDomains: Flow<Set<String>> = context.dataStore.data.map { it[bypassDomainsKey] ?: emptySet() }
+    suspend fun bypassDomainsNow(): Set<String> = bypassDomains.first()
+    suspend fun addBypassDomain(domain: String) {
+        context.dataStore.edit { it[bypassDomainsKey] = (it[bypassDomainsKey] ?: emptySet()) + domain }
+    }
+    suspend fun removeBypassDomain(domain: String) {
+        context.dataStore.edit { it[bypassDomainsKey] = (it[bypassDomainsKey] ?: emptySet()) - domain }
+    }
+
     companion object {
+        /** "https://www.Example.com:443/path" → "example.com"; кириллические домены → punycode.
+         *  null — если это не похоже на домен. */
+        fun normalizeDomain(input: String): String? {
+            var d = input.trim().lowercase()
+            d = d.substringAfter("://")
+            d = d.substringBefore('/').substringBefore('?').substringBefore('#').substringBefore(':')
+            d = d.removePrefix("*.").removePrefix(".").removePrefix("www.").trimEnd('.')
+            if (d.isEmpty()) return null
+            val ascii = runCatching { java.net.IDN.toASCII(d) }.getOrNull() ?: return null
+            return ascii.takeIf { Regex("""^[a-z0-9-]+(\.[a-z0-9-]+)+$""").matches(it) }
+        }
+
         const val DEFAULT_PING_URL = "https://cp.cloudflare.com/generate_204"
     }
 }
