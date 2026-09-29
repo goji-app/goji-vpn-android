@@ -26,6 +26,17 @@ class GojiWidgetActionReceiver : BroadcastReceiver() {
                 context.widgetEntryPoint().subscriptionRepository().select(nodeId)
                 GojiWidgetProvider.refresh(context)
             }
+            ACTION_PREV_NODE, ACTION_NEXT_NODE -> {
+                // Стрелки ‹ › компактного виджета — соседний узел по кругу. select() сам
+                // переподключит туннель, если VPN сейчас включён.
+                val repository = context.widgetEntryPoint().subscriptionRepository()
+                val nodes = repository.nodes.value
+                if (nodes.isEmpty()) return
+                val index = nodes.indexOfFirst { it.id == repository.selectedId.value }.coerceAtLeast(0)
+                val step = if (intent.action == ACTION_NEXT_NODE) 1 else -1
+                repository.select(nodes[(index + step + nodes.size) % nodes.size].id)
+                GojiWidgetProvider.refresh(context)
+            }
             ACTION_CONNECT -> {
                 val repository = context.widgetEntryPoint().subscriptionRepository()
                 val node = repository.selectedNode() ?: return
@@ -54,6 +65,8 @@ class GojiWidgetActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SELECT_NODE = "xyz.gojihub.vpn.widget.SELECT_NODE"
         const val ACTION_CONNECT = "xyz.gojihub.vpn.widget.CONNECT"
+        const val ACTION_PREV_NODE = "xyz.gojihub.vpn.widget.PREV_NODE"
+        const val ACTION_NEXT_NODE = "xyz.gojihub.vpn.widget.NEXT_NODE"
         const val EXTRA_NODE_ID = "node_id"
     }
 }

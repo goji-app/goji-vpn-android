@@ -19,6 +19,8 @@ import coil.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -54,6 +56,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
     @Inject lateinit var subscriptionRepository: SubscriptionRepository
     @Inject lateinit var vpnStateObserver: VpnStateObserver
     @Inject lateinit var networkRulesManager: xyz.gojihub.vpn.network.NetworkRulesManager
+    @Inject lateinit var pingRepository: xyz.gojihub.vpn.subscription.PingRepository
 
     @Volatile private var lastForegroundRefreshAt = 0L
 
@@ -73,6 +76,9 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
                     .build()
             }
             .build()
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    private fun widgetPings() = pingRepository.pings.drop(1).debounce(1500)
 
     private fun currentProcessName(): String =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) getProcessName()
@@ -109,6 +115,10 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
         }
         vpnStateObserver.start()
         networkRulesManager.start()
+        // Пинги в списке серверов большого виджета — обновляем виджет, когда пришли новые.
+        CoroutineScope(Dispatchers.Default).launch {
+            widgetPings().collect { xyz.gojihub.vpn.widget.GojiWidgetProvider.refresh(this@GodjiApplication) }
+        }
         CoroutineScope(Dispatchers.IO).launch { LastNodeShortcut.publish(this@GodjiApplication) }
         schedulePeriodicRefresh()
         scheduleGeoDataRefresh()

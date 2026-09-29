@@ -75,7 +75,8 @@ class GojiWidgetProvider : AppWidgetProvider() {
             val cached = NodeListCache.load(context)
             val selected = cached?.nodes?.firstOrNull { it.id == cached.selectedId }
             val nodeLabel = selected?.let { n ->
-                n.geo?.displayCityCountry(Loc.lang) ?: stripLeadingFlag(n.name)
+                val flag = n.geo?.code?.let(xyz.gojihub.vpn.geo.CountryGeoLookup::flagEmoji) ?: "🌐"
+                "$flag  " + (n.geo?.displayCityCountry(Loc.lang) ?: stripLeadingFlag(n.name))
             } ?: Loc.s.widgetNotSelected
 
             val views = RemoteViews(context.packageName, R.layout.widget_goji)
@@ -83,6 +84,8 @@ class GojiWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_node, nodeLabel)
             views.setOnClickPendingIntent(R.id.widget_button, connectToggleIntent(context, running))
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, requestCode = 1))
+            views.setOnClickPendingIntent(R.id.widget_prev, nodeStepIntent(context, GojiWidgetActionReceiver.ACTION_PREV_NODE, requestCode = 2))
+            views.setOnClickPendingIntent(R.id.widget_next, nodeStepIntent(context, GojiWidgetActionReceiver.ACTION_NEXT_NODE, requestCode = 3))
             return views
         }
 
@@ -143,6 +146,12 @@ class GojiWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         }
+
+        private fun nodeStepIntent(context: Context, action: String, requestCode: Int): PendingIntent = PendingIntent.getBroadcast(
+            context, requestCode,
+            Intent(context, GojiWidgetActionReceiver::class.java).setAction(action),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         private fun openAppIntent(context: Context, requestCode: Int): PendingIntent = PendingIntent.getActivity(
             context, requestCode,

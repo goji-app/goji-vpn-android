@@ -17,6 +17,7 @@ import xyz.gojihub.vpn.subscription.SubscriptionRepository
 interface WidgetEntryPoint {
     fun subscriptionRepository(): SubscriptionRepository
     fun settingsRepository(): SettingsRepository
+    fun pingRepository(): xyz.gojihub.vpn.subscription.PingRepository
 }
 
 fun Context.widgetEntryPoint(): WidgetEntryPoint =

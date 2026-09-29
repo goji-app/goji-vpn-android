@@ -27,4 +27,15 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
+    <!-- Последний известный пинг узла (PingRepository) — чтобы выбирать не вслепую. -->
+    <TextView
+        android:id="@+id/item_ping"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:maxLines="1"
+        android:textColor="@color/widget_text_secondary"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
 </LinearLayout>

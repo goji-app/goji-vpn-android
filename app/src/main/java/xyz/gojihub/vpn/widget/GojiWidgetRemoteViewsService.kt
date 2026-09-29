@@ -21,13 +21,16 @@ class GojiWidgetRemoteViewsService : RemoteViewsService() {
 private class GojiWidgetItemFactory(private val context: Context) : RemoteViewsService.RemoteViewsFactory {
     private var nodes: List<VlessNode> = emptyList()
     private var selectedId: String? = null
+    private var pings: Map<String, Int> = emptyMap()
 
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
-        val repository = context.widgetEntryPoint().subscriptionRepository()
+        val entryPoint = context.widgetEntryPoint()
+        val repository = entryPoint.subscriptionRepository()
         nodes = repository.nodes.value
         selectedId = repository.selectedId.value
+        pings = entryPoint.pingRepository().pings.value
     }
 
     override fun onDestroy() {}
@@ -44,6 +47,15 @@ private class GojiWidgetItemFactory(private val context: Context) : RemoteViewsS
         val views = RemoteViews(context.packageName, R.layout.widget_server_item)
         views.setTextViewText(R.id.item_flag, flag)
         views.setTextViewText(R.id.item_name, name)
+        val ping = pings[node.id]
+        views.setTextViewText(
+            R.id.item_ping,
+            when {
+                ping == null || ping == -2 -> ""
+                ping < 0 -> "—"
+                else -> Loc.s.serversPingMs(ping)
+            }
+        )
         views.setInt(
             R.id.item_root, "setBackgroundResource",
             if (node.id == selectedId) R.drawable.widget_list_item_selected else R.drawable.widget_list_item
