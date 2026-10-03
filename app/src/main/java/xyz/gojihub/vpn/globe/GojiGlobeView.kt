@@ -7,6 +7,7 @@ import android.opengl.EGLConfig
 import android.opengl.EGLDisplay
 import android.opengl.GLSurfaceView
 import android.view.TextureView
+import android.view.View
 
 /**
  * Прозрачный GL-холст на TextureView — как <canvas> с `alpha: true` в эталоне
@@ -24,8 +25,26 @@ class GojiGlobeView(context: Context) : TextureView(context), TextureView.Surfac
     }
 
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        renderThread = GlobeRenderThread(surface, goji, width, height).also { it.start() }
+        renderThread = GlobeRenderThread(surface, goji, width, height).also {
+            it.setPaused(!isVisibleNow())
+            it.start()
+        }
     }
+
+    // Свёрнутое приложение и погашенный экран не уничтожают SurfaceTexture — раньше поток
+    // продолжал рисовать 60 кадров/с невидимый глобус, расходуя GPU/CPU и батарею в фоне.
+    // Окно активити при onStop становится невидимым — по этому сигналу и ставим на паузу.
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        renderThread?.setPaused(!isVisibleNow())
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        renderThread?.setPaused(!isVisibleNow())
+    }
+
+    private fun isVisibleNow(): Boolean = windowVisibility == View.VISIBLE && isShown
 
     override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
         renderThread?.onSizeChanged(width, height)
@@ -48,6 +67,15 @@ private class GlobeRenderThread(
 ) : Thread("GojiGlobeGL") {
     @Volatile private var running = true
     @Volatile private var sizeChanged = true
+    private val pauseLock = Object()
+    @Volatile private var paused = false
+
+    fun setPaused(value: Boolean) {
+        synchronized(pauseLock) {
+            paused = value
+            pauseLock.notifyAll()
+        }
+    }
 
     fun onSizeChanged(w: Int, h: Int) {
         width = w; height = h; sizeChanged = true
@@ -55,6 +83,7 @@ private class GlobeRenderThread(
 
     fun requestExitAndWait() {
         running = false
+        setPaused(false)
         try { join(2000) } catch (_: InterruptedException) {}
     }
 
@@ -76,6 +105,13 @@ private class GlobeRenderThread(
 
         renderer.onSurfaceCreated(null, null)
         while (running) {
+            // Пауза — поток спит без единого кадра, пока глобус снова не станет видимым.
+            synchronized(pauseLock) {
+                while (paused && running) {
+                    try { pauseLock.wait() } catch (_: InterruptedException) {}
+                }
+            }
+            if (!running) break
             val frameStart = System.nanoTime()
             if (sizeChanged) {
                 sizeChanged = false
@@ -83,7 +119,9 @@ private class GlobeRenderThread(
             }
             renderer.onDrawFrame(null)
             EGL14.eglSwapBuffers(display, surface)
-            val sleepMs = 16 - (System.nanoTime() - frameStart) / 1_000_000
+            // 60 кадров/с, пока что-то заметно движется, иначе 30 (см. wantsSmoothFrames).
+            val frameMs = if ((renderer as? GojiGlobeRenderer)?.wantsSmoothFrames != false) 16 else 33
+            val sleepMs = frameMs - (System.nanoTime() - frameStart) / 1_000_000
             if (sleepMs > 0) try { sleep(sleepMs) } catch (_: InterruptedException) {}
         }
 

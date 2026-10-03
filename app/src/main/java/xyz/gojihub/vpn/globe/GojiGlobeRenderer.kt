@@ -18,6 +18,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.sin
 import kotlin.random.Random
@@ -189,6 +190,15 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
     private var firstFrame = true
     private var lastNodeId: String? = null
     private var t = 0f
+    private var lastFrameNanos = 0L
+    private var frameScale = 1f
+    private var lastLabelVisible: Boolean? = null
+    private var lastLabelX = 0f
+    private var lastLabelY = 0f
+    private var lastLabelTitle = ""
+
+    /** Читается рендер-потоком (GojiGlobeView): true — рисовать 60 кадров/с, false — 30. */
+    @Volatile var wantsSmoothFrames: Boolean = true
 
     private val homePos = GlobeMath.toVec(HOME_LAT, HOME_LON, R * 1.012f)
 
@@ -256,7 +266,14 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             highlightBuilt = false
         }
 
-        t += 0.016f
+        // Время, а не кадры: эталон (three.js, rAF) рассчитан на 60 кадров/с и прибавляет 0.016
+        // за кадр. Рендер-поток теперь снижает частоту, когда картинка почти статична (см.
+        // wantsSmoothFrames и GojiGlobeView), поэтому все приращения масштабируются на долю
+        // "кадров по 1/60 с", прошедших с прошлой отрисовки — скорость анимаций не меняется.
+        val now = System.nanoTime()
+        frameScale = if (lastFrameNanos == 0L) 1f else ((now - lastFrameNanos) / 16_666_667f).coerceIn(0.25f, 4f)
+        lastFrameNanos = now
+        t += 0.016f * frameScale
         val th = theme
         val st = status
         val on = st == "on"
@@ -304,13 +321,13 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
         if (on) {
             val dx = targetX - rotX
             if (abs(wrapY) < 0.002f && abs(dx) < 0.002f) locked = true
-            if (!locked) { rotY += wrapY * 0.06f; rotX += dx * 0.06f }
+            if (!locked) { rotY += wrapY * ease(0.06f); rotX += dx * ease(0.06f) }
         } else if (connecting) {
-            rotY += wrapY * 0.05f
-            rotX += (targetX - rotX) * 0.05f
+            rotY += wrapY * ease(0.05f)
+            rotX += (targetX - rotX) * ease(0.05f)
         } else {
-            rotY += 0.0013f
-            rotX += (-0.16f - rotX) * 0.02f
+            rotY += 0.0013f * frameScale
+            rotX += (-0.16f - rotX) * ease(0.02f)
         }
 
         Matrix.setLookAtM(view, 0, 0f, 0f, CAM_DIST, 0f, 0f, 0f, 0f, 1f, 0f)
@@ -411,10 +428,16 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
 
         if (showMarker) {
             val screen = project(nodePos)
-            onLabelUpdate?.invoke(screen != null, screen?.get(0) ?: 0f, screen?.get(1) ?: 0f, nd.country)
+            postLabel(screen != null, screen?.get(0) ?: 0f, screen?.get(1) ?: 0f, nd.country)
         } else {
-            onLabelUpdate?.invoke(false, 0f, 0f, "")
+            postLabel(false, 0f, 0f, "")
         }
+
+        // Плавные 60 кадров/с нужны, только пока что-то заметно движется: идёт подключение,
+        // глобус доворачивается к узлу, летит перелёт или на экране входа летают спутники.
+        // В остальное время (медленное вращение "выключено", застывший кадр "подключено")
+        // хватает 30 — вдвое меньше работы GPU/CPU без видимой разницы.
+        wantsSmoothFrames = connecting || (on && !locked) || flightP != null || satellites
     }
 
     // ── перелёт ───────────────────────────────────────────────────
@@ -446,6 +469,18 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
             return null
         }
         return p
+    }
+
+    /** Коэффициент экспоненциального сглаживания "k за кадр 60 Гц" для текущего шага времени. */
+    private fun ease(k: Float): Float = 1f - (1f - k).pow(frameScale)
+
+    /** Подпись страны поверх глобуса — в главный поток только при заметном изменении, а не
+     *  60 раз в секунду: каждая отправка — запись в Compose-состояние и перекомпоновка. */
+    private fun postLabel(visible: Boolean, x: Float, y: Float, title: String) {
+        if (visible == lastLabelVisible && title == lastLabelTitle &&
+            abs(x - lastLabelX) < 0.0015f && abs(y - lastLabelY) < 0.0015f) return
+        lastLabelVisible = visible; lastLabelX = x; lastLabelY = y; lastLabelTitle = title
+        onLabelUpdate?.invoke(visible, x, y, title)
     }
 
     private fun easeInOut(x: Float): Float = if (x < 0.5f) 2f * x * x else 1f - (-2f * x + 2f).let { it * it } / 2f
@@ -579,7 +614,7 @@ class GojiGlobeRenderer(private val context: Context, initialTheme: GlobeTheme =
 
     /** satLayer в сцене, не в globe — спутники не вращаются вместе с планетой. */
     private fun satelliteFrames(): List<SatFrame> = sats.map { o ->
-        o.a += o.sp
+        o.a += o.sp * frameScale
         val plane = FloatArray(16)
         Matrix.setIdentityM(plane, 0)
         Matrix.rotateM(plane, 0, o.rotX, 1f, 0f, 0f) // Euler XYZ: Rx·Ry·Rz
