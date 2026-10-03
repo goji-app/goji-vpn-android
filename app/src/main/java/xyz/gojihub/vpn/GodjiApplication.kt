@@ -141,8 +141,10 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
         // рано или поздно скачает свежие geoip.dat/geosite.dat, но при первом же реальном
         // подключении (см. GodjiVpnService.resolveGeoDataRules) лучше уже иметь российский
         // набор runetfreedom, а не только общий, встроенный в assets (см. GeoAssets).
-        CoroutineScope(Dispatchers.IO).launch { GeoDataDownloader.refresh(this@GodjiApplication) }
-        CoroutineScope(Dispatchers.IO).launch { MobileWhitelistDownloader.refresh(this@GodjiApplication) }
+        // Только если давно не проверяли: раньше ~26 МБ геоданных скачивались заново при КАЖДОМ
+        // старте процесса (запуск приложения, перезапуск после выгрузки системой, Always-on).
+        CoroutineScope(Dispatchers.IO).launch { GeoDataDownloader.refresh(this@GodjiApplication, maxAgeMs = TimeUnit.HOURS.toMillis(24)) }
+        CoroutineScope(Dispatchers.IO).launch { MobileWhitelistDownloader.refresh(this@GodjiApplication, maxAgeMs = TimeUnit.DAYS.toMillis(7)) }
 
         // Уведомление о новой новости (см. BroadcastNotifier, вызывается изнутри
         // subscriptionRepository.refresh()) иначе появлялось бы только раз в час (фоновый

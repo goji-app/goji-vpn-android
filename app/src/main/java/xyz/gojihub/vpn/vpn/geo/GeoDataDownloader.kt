@@ -1,9 +1,7 @@
 package xyz.gojihub.vpn.vpn.geo
 
 import android.content.Context
-import android.util.Log
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -33,35 +31,14 @@ object GeoDataDownloader {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    fun refresh(context: Context): Boolean {
+    /** [maxAgeMs] — не качать, если последняя успешная проверка была не раньше этого срока
+     *  (при старте приложения — раз в сутки; периодический воркер передаёт 0).
+     *  0 — проверить в любом случае (условный запрос: без изменений сервер ответит 304). */
+    fun refresh(context: Context, maxAgeMs: Long = 0L): Boolean {
         val dir = File(context.filesDir, "geoassets").apply { mkdirs() }
-        val okIp = downloadOne(GEOIP_URL, File(dir, "geoip.dat"))
-        val okSite = downloadOne(GEOSITE_URL, File(dir, "geosite.dat"))
-        return okIp && okSite
-    }
-
-    private fun downloadOne(url: String, dest: File): Boolean {
-        return try {
-            val request = Request.Builder().url(url).build()
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "GeoDataDownloader: HTTP ${response.code} для $url")
-                    return false
-                }
-                val bytes = response.body?.bytes()
-                if (bytes == null || bytes.size < MIN_VALID_SIZE) {
-                    Log.w(TAG, "GeoDataDownloader: подозрительно маленький ответ ($url, ${bytes?.size ?: 0} байт) — отброшен")
-                    return false
-                }
-                val tmp = File(dest.parentFile, "${dest.name}.tmp")
-                tmp.writeBytes(bytes)
-                tmp.renameTo(dest)
-                Log.d(TAG, "GeoDataDownloader: $url -> ${dest.name} (${bytes.size} байт)")
-                true
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "GeoDataDownloader: скачивание $url провалилось", t)
-            false
-        }
+        return listOf(GEOIP_URL to "geoip.dat", GEOSITE_URL to "geosite.dat").map { (url, name) ->
+            val dest = File(dir, name)
+            GeoFileDownload.isFresh(dest, maxAgeMs) || GeoFileDownload.download(client, url, dest, MIN_VALID_SIZE)
+        }.all { it }
     }
 }

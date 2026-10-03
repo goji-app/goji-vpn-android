@@ -1,9 +1,7 @@
 package xyz.gojihub.vpn.vpn.geo
 
 import android.content.Context
-import android.util.Log
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -31,35 +29,14 @@ object MobileWhitelistDownloader {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    fun refresh(context: Context): Boolean {
+    /** [maxAgeMs] — не качать, если последняя успешная проверка была не раньше этого срока
+     *  (при старте приложения — раз в неделю; периодический воркер передаёт 0).
+     *  0 — проверить в любом случае (условный запрос: без изменений сервер ответит 304). */
+    fun refresh(context: Context, maxAgeMs: Long = 0L): Boolean {
         val dir = File(context.filesDir, "geoassets").apply { mkdirs() }
-        val okDomains = downloadOne(DOMAINS_URL, File(dir, "mobile_whitelist_domains.txt"))
-        val okCidr = downloadOne(CIDR_URL, File(dir, "mobile_whitelist_cidr.txt"))
-        return okDomains && okCidr
-    }
-
-    private fun downloadOne(url: String, dest: File): Boolean {
-        return try {
-            val request = Request.Builder().url(url).build()
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "MobileWhitelistDownloader: HTTP ${response.code} для $url")
-                    return false
-                }
-                val bytes = response.body?.bytes()
-                if (bytes == null || bytes.size < MIN_VALID_SIZE) {
-                    Log.w(TAG, "MobileWhitelistDownloader: подозрительно маленький ответ ($url, ${bytes?.size ?: 0} байт) — отброшен")
-                    return false
-                }
-                val tmp = File(dest.parentFile, "${dest.name}.tmp")
-                tmp.writeBytes(bytes)
-                tmp.renameTo(dest)
-                Log.d(TAG, "MobileWhitelistDownloader: $url -> ${dest.name} (${bytes.size} байт)")
-                true
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "MobileWhitelistDownloader: скачивание $url провалилось", t)
-            false
-        }
+        return listOf(DOMAINS_URL to "mobile_whitelist_domains.txt", CIDR_URL to "mobile_whitelist_cidr.txt").map { (url, name) ->
+            val dest = File(dir, name)
+            GeoFileDownload.isFresh(dest, maxAgeMs) || GeoFileDownload.download(client, url, dest, MIN_VALID_SIZE)
+        }.all { it }
     }
 }
