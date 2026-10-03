@@ -145,12 +145,13 @@ class PlansViewModel @Inject constructor(
     private var rawPlans: List<PlanInfo> = emptyList()
 
     init {
-        load()
+        load(force = false)
     }
 
-    private fun load() {
+    /** [force] = false — при открытии вкладки: свежая (<30 с) подписка не перезапрашивается. */
+    private fun load(force: Boolean = true) {
         viewModelScope.launch {
-            subscriptionRepository.refresh()
+            if (force) subscriptionRepository.refresh() else subscriptionRepository.refreshIfStale()
             val sub = subscriptionRepository.subscription.value
             _state.value = _state.value.copy(
                 planName = sub?.planName ?: "—",

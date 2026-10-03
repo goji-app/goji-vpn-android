@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -110,9 +111,30 @@ class SubscriptionRepository @Inject constructor(
     private val _selectedId = MutableStateFlow(cachedOnDisk?.selectedId)
     val selectedId: StateFlow<String?> = _selectedId.asStateFlow()
 
+    // Автоматические обновления (открытие приложения: Главная, Серверы, Подписка и возврат на
+    // передний план — почти одновременно) раньше шли 3–4 раза подряд, каждое — 4 сетевых
+    // запроса и разбор списка узлов. refreshIfStale() склеивает одновременные вызовы в один и
+    // пропускает обновление, если свежее было меньше REFRESH_MIN_INTERVAL_MS назад.
+    private val refreshMutex = kotlinx.coroutines.sync.Mutex()
+    @Volatile private var lastRefreshAt = 0L
+    @Volatile private var lastRefreshOk = false
+
+    suspend fun refreshIfStale(maxAgeMs: Long = REFRESH_MIN_INTERVAL_MS): Boolean {
+        if (System.currentTimeMillis() - lastRefreshAt < maxAgeMs) return lastRefreshOk
+        return refreshMutex.withLock {
+            // Пока ждали, другой вызов мог уже обновить — его результат и вернём.
+            if (System.currentTimeMillis() - lastRefreshAt < maxAgeMs) lastRefreshOk else refresh()
+        }
+    }
+
     /** @return true, если подписку удалось реально получить с бэкенда (для UI ручного
      *  обновления — показать "обновлено" или ошибку сети/сервера). */
-    suspend fun refresh(): Boolean {
+    suspend fun refresh(): Boolean = refreshInternal().also {
+        lastRefreshOk = it
+        lastRefreshAt = System.currentTimeMillis()
+    }
+
+    private suspend fun refreshInternal(): Boolean {
         var active = runCatching { api.getSubscriptions() }
             .onFailure {
                 if (BuildConfig.DEBUG) android.util.Log.e("GodjiSub", "getSubscriptions failed", it)
@@ -185,6 +207,10 @@ class SubscriptionRepository @Inject constructor(
             }
         }
         return freshLink != null || nodes.isNotEmpty()
+    }
+
+    private companion object {
+        const val REFRESH_MIN_INTERVAL_MS = 30_000L
     }
 
     fun select(id: String) {

@@ -156,7 +156,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
                 val now = System.currentTimeMillis()
                 if (now - lastForegroundRefreshAt < 60_000) return
                 lastForegroundRefreshAt = now
-                CoroutineScope(Dispatchers.IO).launch { subscriptionRepository.refresh() }
+                CoroutineScope(Dispatchers.IO).launch { subscriptionRepository.refreshIfStale() }
             }
         })
     }

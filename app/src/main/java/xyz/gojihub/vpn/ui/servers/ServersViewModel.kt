@@ -115,7 +115,7 @@ class ServersViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            subscriptionRepository.refresh()
+            subscriptionRepository.refreshIfStale()
             pingRepository.pingAllInternalIfStale()
         }
     }

@@ -91,7 +91,7 @@ class ConnectViewModel @Inject constructor(
         viewModelScope.launch {
             // "Автообновление подписки и пинга при открытии приложения" — экран "Защита"
             // это стартовый экран, поэтому именно здесь считаем момент открытия приложения.
-            subscriptionRepository.refresh()
+            subscriptionRepository.refreshIfStale()
             pingRepository.pingAllInternalIfStale()
         }
 
