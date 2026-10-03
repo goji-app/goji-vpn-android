@@ -28,6 +28,7 @@ import xyz.gojihub.vpn.subscription.PingRepository
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
 import xyz.gojihub.vpn.subscription.VlessNode
 import xyz.gojihub.vpn.subscription.toGlobeNode
+import xyz.gojihub.vpn.util.AppVisibility
 import xyz.gojihub.vpn.util.formatDate
 import xyz.gojihub.vpn.util.stripLeadingFlag
 import xyz.gojihub.vpn.vpn.GodjiVpnService
@@ -91,7 +92,7 @@ class ConnectViewModel @Inject constructor(
             // "Автообновление подписки и пинга при открытии приложения" — экран "Защита"
             // это стартовый экран, поэтому именно здесь считаем момент открытия приложения.
             subscriptionRepository.refresh()
-            pingRepository.pingAllInternal()
+            pingRepository.pingAllInternalIfStale()
         }
 
         viewModelScope.launch {
@@ -140,8 +141,13 @@ class ConnectViewModel @Inject constructor(
                         // для случая, когда туннель уже упал, а UI ещё не обновился спустя тик таймера.
                         connectedTimeLabel = if (running) _state.value.connectedTimeLabel else "00:00:00"
                     )
-                    if (running) startSpeedPolling() else stopSpeedPolling()
                 }
+        }
+        viewModelScope.launch {
+            // Скорость и таймер раз в секунду нужны только на видимом экране: в свёрнутом
+            // приложении ViewModel жива, и раньше этот цикл будил процессор впустую.
+            combine(GodjiVpnService.isRunning, AppVisibility.visible) { running, visible -> running && visible }
+                .collect { active -> if (active) startSpeedPolling() else stopSpeedPolling() }
         }
         viewModelScope.launch {
             // "connecting" сюда больше не трогаем — единственный источник правды для него

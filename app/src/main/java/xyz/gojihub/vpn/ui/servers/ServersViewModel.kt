@@ -116,7 +116,7 @@ class ServersViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             subscriptionRepository.refresh()
-            pingRepository.pingAllInternal()
+            pingRepository.pingAllInternalIfStale()
         }
     }
 
@@ -125,6 +125,8 @@ class ServersViewModel @Inject constructor(
     fun pingOne(id: String) = pingRepository.pingOne(id)
 
     fun pingAll() = pingRepository.pingAll()
+
+    fun pingAllIfStale() = pingRepository.pingAllIfStale()
 
     fun toggleFavorite(id: String) = viewModelScope.launch { settingsRepository.toggleFavoriteServer(id) }
 

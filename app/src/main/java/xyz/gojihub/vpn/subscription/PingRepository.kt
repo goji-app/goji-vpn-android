@@ -77,12 +77,31 @@ class PingRepository @Inject constructor(
         scope.launch { pingAllInternal() }
     }
 
+    // Момент последней полной проверки всех узлов — для автоматических проверок (открытие
+    // приложения, заход на "Серверы"): каждая полная проверка поднимает временные экземпляры
+    // Xray на все узлы (а при включённом VPN — ещё и процесс ":ping"), и раньше одно только
+    // открытие приложения запускало её 2 раза подряд, плюс ещё раз на каждый заход на вкладку.
+    @Volatile private var lastFullPingAt = 0L
+
+    /** Автоматическая проверка: только если последняя полная была дольше [maxAgeMs] назад.
+     *  Кнопка "Пинг" по-прежнему проверяет сразу (pingAll). */
+    fun pingAllIfStale(maxAgeMs: Long = AUTO_PING_MIN_INTERVAL_MS) {
+        if (System.currentTimeMillis() - lastFullPingAt < maxAgeMs) return
+        scope.launch { pingAllInternal() }
+    }
+
+    suspend fun pingAllInternalIfStale(maxAgeMs: Long = AUTO_PING_MIN_INTERVAL_MS) {
+        if (System.currentTimeMillis() - lastFullPingAt < maxAgeMs) return
+        pingAllInternal()
+    }
+
     suspend fun pingAllInternal() {
         // Guard — без него авто-пинг при каждом заходе на вкладку "Серверы" (см. ServersScreen)
         // мог бы запускать параллельную проверку поверх уже идущей (например, если пользователь
         // быстро туда-обратно переключает вкладки), удваивая нагрузку на libXray без пользы.
         if (_checkingAll.value) return
         _checkingAll.value = true
+        lastFullPingAt = System.currentTimeMillis()
         val method = settingsRepository.pingMethodNow()
         val url = settingsRepository.pingTestUrlNow()
         val nodes = subscriptionRepository.nodes.value
@@ -271,6 +290,7 @@ class PingRepository @Inject constructor(
         // периодически уходила в "недоступен" при пакетном "обновить всё".
         const val TIMEOUT_SECONDS = 4
         const val MAX_BATCH_SIZE = 5
+        const val AUTO_PING_MIN_INTERVAL_MS = 60_000L
         // Пачка до MAX_BATCH_SIZE конфигов по TIMEOUT_SECONDS каждый + запуск процесса ":ping".
         const val ISOLATED_TIMEOUT_MS = 30_000L
         const val TAG = "GodjiPing"

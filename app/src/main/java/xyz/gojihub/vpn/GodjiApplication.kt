@@ -36,6 +36,7 @@ import xyz.gojihub.vpn.update.AppUpdateChecker
 import xyz.gojihub.vpn.update.AppUpdateNotifier
 import xyz.gojihub.vpn.update.UpdateCheckWorker
 import xyz.gojihub.vpn.util.AppLogger
+import xyz.gojihub.vpn.util.AppVisibility
 import xyz.gojihub.vpn.vpn.GeoAssets
 import xyz.gojihub.vpn.vpn.GodjiVpnService
 import xyz.gojihub.vpn.vpn.GojiTileService
@@ -108,6 +109,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             Loc.lang = settingsRepository.appLanguageNow()
             AppLogger.level = settingsRepository.logLevelNow()
         }
+        AppVisibility.install()
         vpnStateObserver.addListener { running ->
             GojiTileService.requestUpdate(this)
             // Узел только что стал "последним" — обновляем подпись ярлыка на иконке.

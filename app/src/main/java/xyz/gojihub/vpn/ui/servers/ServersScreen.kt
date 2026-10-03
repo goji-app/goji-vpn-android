@@ -56,7 +56,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
     // LaunchedEffect(Unit) срабатывает ровно при каждом открытии "Серверов", а не один раз за
     // всё время жизни приложения. Раньше нужно было нажимать "⚡" вручную — выбор шёл вслепую.
     // PingRepository.pingAllInternal() сам не даст двум проверкам наложиться друг на друга.
-    LaunchedEffect(Unit) { viewModel.pingAll() }
+    LaunchedEffect(Unit) { viewModel.pingAllIfStale() }
 
     // Эталон: колонка padding 16, gap 12; шапка padding 0 4px, выравнивание по низу.
     Column(

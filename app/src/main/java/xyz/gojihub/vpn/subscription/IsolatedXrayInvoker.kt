@@ -20,8 +20,10 @@ import javax.inject.Singleton
 
 /**
  * Клиент PingProcessService: отправляет запрос LibXray в процесс ":ping" и ждёт ответ.
- * Привязка создаётся при первом запросе и держится, пока жив процесс приложения; если
- * процесс ":ping" умер (система забрала память), следующий запрос привяжется заново.
+ * Привязка создаётся при первом запросе и снимается через IDLE_UNBIND_MS без запросов —
+ * процесс ":ping" с загруженным libXray весит ~100+ МБ, и раньше он держался всё время
+ * жизни приложения ради проверки пинга раз в несколько минут. Следующий запрос привяжется
+ * заново (BIND_AUTO_CREATE поднимет процесс).
  */
 @Singleton
 class IsolatedXrayInvoker @Inject constructor(
@@ -34,6 +36,7 @@ class IsolatedXrayInvoker @Inject constructor(
     @Volatile private var service: Messenger? = null
     @Volatile private var connected = CompletableDeferred<Messenger>()
     @Volatile private var binding = false
+    private val idleUnbind = Runnable { unbindIfIdle() }
 
     private val replyMessenger = Messenger(Handler(Looper.getMainLooper()) { msg ->
         if (msg.what != PingProcessService.MSG_RESULT) return@Handler false
@@ -68,6 +71,7 @@ class IsolatedXrayInvoker @Inject constructor(
 
     /** JSON-строка запроса LibXray → JSON-строка ответа (как у LibXray.invoke). */
     suspend fun invoke(request: String, timeoutMs: Long): String {
+        mainHandler.removeCallbacks(idleUnbind)
         val messenger = withTimeout(BIND_TIMEOUT_MS) { ensureBound().await() }
         val id = nextId.getAndIncrement()
         val deferred = CompletableDeferred<String>()
@@ -81,7 +85,17 @@ class IsolatedXrayInvoker @Inject constructor(
             return withTimeout(timeoutMs) { deferred.await() }
         } finally {
             pending.remove(id)
+            mainHandler.removeCallbacks(idleUnbind)
+            mainHandler.postDelayed(idleUnbind, IDLE_UNBIND_MS)
         }
+    }
+
+    private fun unbindIfIdle() {
+        if (pending.isNotEmpty() || !binding) return
+        runCatching { context.unbindService(connection) }
+        binding = false
+        service = null
+        connected = CompletableDeferred()
     }
 
     private fun ensureBound(): CompletableDeferred<Messenger> {
@@ -111,5 +125,6 @@ class IsolatedXrayInvoker @Inject constructor(
 
     private companion object {
         const val BIND_TIMEOUT_MS = 5_000L
+        const val IDLE_UNBIND_MS = 60_000L
     }
 }
