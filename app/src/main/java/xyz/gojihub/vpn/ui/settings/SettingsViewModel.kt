@@ -43,7 +43,7 @@ data class SettingsUiState(
     val haptics: Boolean = true,
     val pingMethod: PingMethod = PingMethod.PROXY_GET,
     val pingTestUrl: String = SettingsRepository.DEFAULT_PING_URL,
-    val logLevel: LogLevel = LogLevel.DEBUG,
+    val logLevel: LogLevel = LogLevel.DEFAULT,
     val appVersion: String = BuildConfig.VERSION_NAME,
     val xrayVersion: String = SettingsViewModel.BUNDLED_XRAY_VERSION,
     val hwid: String = "",

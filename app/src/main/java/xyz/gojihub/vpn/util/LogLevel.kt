@@ -7,6 +7,10 @@ enum class LogLevel(val rank: Int) {
     NONE(0), ERROR(1), WARNING(2), INFO(3), DEBUG(4);
 
     companion object {
-        fun fromName(name: String?): LogLevel = entries.firstOrNull { it.name == name } ?: DEBUG
+        /** Для тех, кто уровень не выбирал: Info — подробный Debug пишет на диск много лишнего
+         *  (дампы ответов и конфигов) и включается вручную для диагностики. */
+        val DEFAULT = INFO
+
+        fun fromName(name: String?): LogLevel = entries.firstOrNull { it.name == name } ?: DEFAULT
     }
 }
