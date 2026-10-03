@@ -1,6 +1,9 @@
 package xyz.gojihub.vpn.vpn.geo
 
+import java.io.BufferedInputStream
+import java.io.DataInputStream
 import java.io.File
+import java.io.FileInputStream
 import java.net.InetAddress
 
 /**
@@ -43,20 +46,8 @@ object GeoDataParser {
         val key = CacheKey(file.absolutePath, file.lastModified(), file.length(), wanted)
         domainCache?.let { (cachedKey, cachedValue) -> if (cachedKey == key) return cachedValue }
         val result = mutableMapOf<String, MutableList<String>>()
-        val buf = file.readBytes()
-        val reader = ProtoReader(buf, 0, buf.size)
-        while (reader.hasMore()) {
-            val (field, wireType) = reader.readTag()
-            if (field == 1 && wireType == 2) {
-                val (start, end) = reader.readLengthDelimitedRange()
-                val countryCode = peekCountryCode(buf, start, end) ?: continue
-                if (countryCode.uppercase() in wanted) {
-                    result.getOrPut(countryCode.uppercase()) { mutableListOf() }
-                        .addAll(decodeDomains(buf, start, end))
-                }
-            } else {
-                reader.skip(wireType)
-            }
+        forEachWantedEntry(file, wanted) { code, entry ->
+            result.getOrPut(code) { mutableListOf() }.addAll(decodeDomains(entry, 0, entry.size))
         }
         domainCache = key to result
         return result
@@ -68,24 +59,91 @@ object GeoDataParser {
         val key = CacheKey(file.absolutePath, file.lastModified(), file.length(), wanted)
         cidrCache?.let { (cachedKey, cachedValue) -> if (cachedKey == key) return cachedValue }
         val result = mutableMapOf<String, MutableList<String>>()
-        val buf = file.readBytes()
-        val reader = ProtoReader(buf, 0, buf.size)
-        while (reader.hasMore()) {
-            val (field, wireType) = reader.readTag()
-            if (field == 1 && wireType == 2) {
-                val (start, end) = reader.readLengthDelimitedRange()
-                val countryCode = peekCountryCode(buf, start, end) ?: continue
-                if (countryCode.uppercase() in wanted) {
-                    result.getOrPut(countryCode.uppercase()) { mutableListOf() }
-                        .addAll(decodeCidrs(buf, start, end))
-                }
-            } else {
-                reader.skip(wireType)
-            }
+        forEachWantedEntry(file, wanted) { code, entry ->
+            result.getOrPut(code) { mutableListOf() }.addAll(decodeCidrs(entry, 0, entry.size))
         }
         cidrCache = key to result
         return result
     }
+
+    /**
+     * Потоковый проход по верхнему уровню GeoIPList/GeoSiteList (repeated entry = 1) без чтения
+     * файла целиком: geoip.dat весит ~23 МБ, и раньше readBytes() на каждое (первое после
+     * запуска) подключение выделял весь файл в памяти ради одной-двух нужных категорий. Теперь
+     * у каждой записи читается только начало (там поле №1 — country_code), нужные записи
+     * дочитываются целиком, остальные пропускаются skip'ом — пик памяти = самая большая
+     * нужная категория.
+     */
+    private inline fun forEachWantedEntry(file: File, wanted: Set<String>, onEntry: (code: String, entry: ByteArray) -> Unit) {
+        DataInputStream(BufferedInputStream(FileInputStream(file), 64 * 1024)).use { input ->
+            while (true) {
+                val tag = readStreamVarint(input) ?: break
+                val field = (tag shr 3).toInt()
+                val wireType = (tag and 0x7).toInt()
+                if (field != 1 || wireType != 2) {
+                    skipStream(input, wireType)
+                    continue
+                }
+                val len = readStreamVarint(input)?.toInt() ?: break
+                val prefixLen = minOf(len, HEADER_PEEK_BYTES)
+                val prefix = ByteArray(prefixLen).also { input.readFully(it) }
+                // country_code почти всегда первое поле записи и умещается в начало; если вдруг
+                // нет — дочитываем запись целиком и ищем поле там.
+                var entry: ByteArray? = null
+                val code = (runCatching { peekCountryCode(prefix, 0, prefixLen) }.getOrNull()
+                    ?: readRest(input, prefix, len).also { entry = it }.let { peekCountryCode(it, 0, it.size) })
+                    ?.uppercase()
+                if (code != null && code in wanted) {
+                    onEntry(code, entry ?: readRest(input, prefix, len))
+                } else if (entry == null) {
+                    skipFully(input, (len - prefixLen).toLong())
+                }
+            }
+        }
+    }
+
+    private fun readRest(input: DataInputStream, prefix: ByteArray, len: Int): ByteArray {
+        val full = prefix.copyOf(len)
+        if (len > prefix.size) input.readFully(full, prefix.size, len - prefix.size)
+        return full
+    }
+
+    private fun readStreamVarint(input: DataInputStream): Long? {
+        var result = 0L
+        var shift = 0
+        while (true) {
+            val b = input.read()
+            if (b < 0) return if (shift == 0) null else error("обрезанный varint")
+            result = result or ((b.toLong() and 0x7F) shl shift)
+            if (b and 0x80 == 0) return result
+            shift += 7
+        }
+    }
+
+    private fun skipStream(input: DataInputStream, wireType: Int) {
+        when (wireType) {
+            0 -> readStreamVarint(input)
+            2 -> skipFully(input, readStreamVarint(input) ?: 0)
+            1 -> skipFully(input, 8)
+            5 -> skipFully(input, 4)
+            else -> error("unsupported protobuf wire type $wireType")
+        }
+    }
+
+    private fun skipFully(input: DataInputStream, count: Long) {
+        var left = count
+        while (left > 0) {
+            val skipped = input.skip(left)
+            if (skipped <= 0) {
+                if (input.read() < 0) return
+                left--
+            } else {
+                left -= skipped
+            }
+        }
+    }
+
+    private const val HEADER_PEEK_BYTES = 128
 
     /** Ищет только строковое поле №1 (country_code) в подсообщении GeoSite/GeoIP, не
      *  трогая остальные (потенциально огромные) поля — без этого пришлось бы декодировать
