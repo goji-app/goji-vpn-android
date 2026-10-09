@@ -48,9 +48,6 @@ import xyz.gojihub.vpn.ui.theme.GlassTabBar
 import xyz.gojihub.vpn.ui.theme.GodjiColors
 import xyz.gojihub.vpn.ui.theme.GodjiVpnTheme
 import xyz.gojihub.vpn.ui.theme.GojiTabIcons
-import xyz.gojihub.vpn.ui.theme.LocalLiquidScene
-import xyz.gojihub.vpn.ui.theme.liquidBackdropSource
-import xyz.gojihub.vpn.ui.theme.rememberLiquidBackdrop
 import xyz.gojihub.vpn.ui.theme.ThemeMode
 import javax.inject.Inject
 
@@ -119,14 +116,11 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
 
     // Вместо Scaffold + NavigationBar: общий фон → контент → плавающий стеклянный таб-бар.
     GlassBackdrop {
-        // Содержимое экрана отдельным слоем — его (вместе с фоном) преломляет таб-бар.
-        val scene = rememberLiquidBackdrop()
         NavHost(
             navController = navController,
             startDestination = if (startLoggedIn) GodjiDestinations.CONNECT else GodjiDestinations.LOGIN,
             modifier = Modifier
                 .fillMaxSize()
-                .liquidBackdropSource(scene)
                 .windowInsetsPadding(WindowInsets.systemBars)
                 // 64dp капсула + 10dp отступ снизу + 10dp воздуха
                 .padding(bottom = if (showBottomBar) 84.dp else 0.dp)
@@ -300,7 +294,7 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
             }
         }
 
-        if (showBottomBar) CompositionLocalProvider(LocalLiquidScene provides scene) {
+        if (showBottomBar) {
             GlassTabBar(
                 tabs = tabs,
                 selectedRoute = currentRoute,

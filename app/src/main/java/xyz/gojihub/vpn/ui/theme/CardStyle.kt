@@ -90,7 +90,6 @@ private fun Modifier.glassSurface(shape: Shape, level: GlassLevel, overlay: Colo
     // строк ВНУТРИ карточек (Faint — под ними карточка, а не фон) и не во всплывающих окнах
     // (у диалога своё окно — слой фона активити там не совпадает по координатам).
     val backdrop = LocalLiquidBackdrop.current
-    val scene = LocalLiquidScene.current
     val view = LocalView.current
     if (LiquidGlass.supported && LiquidGlass.enabled && level != GlassLevel.Faint &&
         backdrop != null && backdrop.view === view
@@ -99,7 +98,7 @@ private fun Modifier.glassSurface(shape: Shape, level: GlassLevel, overlay: Colo
         val dark = GodjiColors.isDark
         return@composed this
             .liquidGlass(
-                backdrops = listOfNotNull(backdrop, scene.takeIf { it?.view === view }),
+                backdrop = backdrop,
                 shape = shape,
                 material = if (lens) LiquidMaterial.Clear else LiquidMaterial.Regular,
                 overlay = if (lens) null else overlay,

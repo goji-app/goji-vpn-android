@@ -3,6 +3,7 @@ package xyz.gojihub.vpn.ui.theme
 import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.os.Build
+import android.os.SystemClock
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
@@ -18,22 +19,24 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
-import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.node.requireGraphicsContext
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -49,6 +52,8 @@ import kotlin.math.roundToInt
  *  • блик сверху/снизу (spread 1.08) и мягкая подсветка у кромки, тень боковой кромки (0.98).
  * Работает на Android 13+ (RuntimeShader). Ниже, во всплывающих окнах (другое окно — другой
  * слой) или при выключенной настройке остаётся прежнее стекло (см. CardStyle.glassSurface).
+ * Ради производительности фон снимается ~8 раз в секунду, а размывается в 1/4 разрешения
+ * (см. SourceNode и GlassNode).
  */
 object LiquidGlass {
     /** Настройка "Жидкое стекло" (Настройки → Внешний вид); читается в композиции. */
@@ -65,13 +70,8 @@ class LiquidBackdrop internal constructor(internal val view: View) {
     internal var origin: Offset = Offset.Zero
 }
 
-/** Фон приложения (кольца, точки, пятна) — для карточек, плашек, кнопок. */
+/** Фон приложения (кольца, точки, пятна) — его преломляют карточки, плашки, кнопки, таб-бар. */
 val LocalLiquidBackdrop = staticCompositionLocalOf<LiquidBackdrop?> { null }
-
-/** Содержимое экрана над фоном — только для таб-бара (он лежит поверх экрана). Провайдится
- *  точечно вокруг таб-бара: карточка внутри записываемого экрана не должна читать слой,
- *  в который пишет сама (цикл RenderNode). */
-val LocalLiquidScene = staticCompositionLocalOf<LiquidBackdrop?> { null }
 
 @Composable
 fun rememberLiquidBackdrop(): LiquidBackdrop {
@@ -89,14 +89,26 @@ private data class SourceElement(val backdrop: LiquidBackdrop) : ModifierNodeEle
     override fun InspectorInfo.inspectableProperties() { name = "liquidBackdropSource" }
 }
 
+/**
+ * Пятна фона дрейфуют непрерывно. Если переписывать слой каждый кадр, каждое стекло на экране
+ * заново размывает и преломляет свой участок с частотой экрана (120 Гц) — в 1.0.110 это
+ * заметно тормозило всё приложение. Поэтому слой обновляется не чаще раза в
+ * [SNAPSHOT_INTERVAL_MS] (пятна за это время сдвигаются на доли dp — разницы не видно), а между
+ * обновлениями фон рисуется напрямую и стекло берёт готовую картинку из кэша HWUI.
+ */
 private class SourceNode(var backdrop: LiquidBackdrop) : Modifier.Node(), DrawModifierNode, GlobalPositionAwareModifierNode {
     private var layer: GraphicsLayer? = null
+    private var recordedAt = 0L
+    private var recordedSize = IntSize.Zero
+    private var trailing: Job? = null
 
     override fun onAttach() {
         layer = requireGraphicsContext().createGraphicsLayer().also { backdrop.layer = it }
+        recordedAt = 0L
     }
 
     override fun onDetach() {
+        trailing = null
         layer?.let {
             if (backdrop.layer === it) backdrop.layer = null
             requireGraphicsContext().releaseGraphicsLayer(it)
@@ -106,63 +118,97 @@ private class SourceNode(var backdrop: LiquidBackdrop) : Modifier.Node(), DrawMo
 
     override fun ContentDrawScope.draw() {
         val l = layer ?: return drawContent()
-        l.record { this@draw.drawContent() }
-        drawLayer(l)
+        val now = SystemClock.uptimeMillis()
+        val sz = IntSize(size.width.roundToInt(), size.height.roundToInt())
+        val wait = SNAPSHOT_INTERVAL_MS - (now - recordedAt)
+        if (wait <= 0 || sz != recordedSize) {
+            recordedAt = now
+            recordedSize = sz
+            l.record { this@draw.drawContent() }
+            drawLayer(l)
+        } else {
+            drawContent()
+            // Последнее изменение внутри окна тоже должно попасть в слой.
+            if (trailing == null) trailing = coroutineScope.launch {
+                delay(wait)
+                trailing = null
+                invalidateDraw()
+            }
+        }
     }
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         backdrop.origin = coordinates.positionInWindow()
     }
+
+    private companion object {
+        const val SNAPSHOT_INTERVAL_MS = 125L
+    }
 }
 
 /**
- * Рисует под содержимым элемента жидкое стекло формы [shape] из слоёв [backdrops] (снизу
- * вверх). [overlay] — цветной оттенок поверх стекла (как раньше tint у godjiCard).
+ * Рисует под содержимым элемента жидкое стекло формы [shape] из слоя [backdrop].
+ * [overlay] — цветной оттенок поверх стекла (как раньше tint у godjiCard).
  */
 internal fun Modifier.liquidGlass(
-    backdrops: List<LiquidBackdrop>,
+    backdrop: LiquidBackdrop,
     shape: Shape,
     material: LiquidMaterial,
     overlay: Color?,
     dark: Boolean
-): Modifier = this then GlassElement(backdrops, shape, material, overlay, dark)
+): Modifier = this then GlassElement(backdrop, shape, material, overlay, dark)
 
 private data class GlassElement(
-    val backdrops: List<LiquidBackdrop>,
+    val backdrop: LiquidBackdrop,
     val shape: Shape,
     val material: LiquidMaterial,
     val overlay: Color?,
     val dark: Boolean
 ) : ModifierNodeElement<GlassNode>() {
-    override fun create() = GlassNode(backdrops, shape, material, overlay, dark)
+    override fun create() = GlassNode(backdrop, shape, material, overlay, dark)
     override fun update(node: GlassNode) {
-        node.backdrops = backdrops; node.shape = shape; node.material = material
+        node.backdrop = backdrop; node.shape = shape; node.material = material
         node.overlay = overlay; node.dark = dark
         node.invalidateDraw()
     }
     override fun InspectorInfo.inspectableProperties() { name = "liquidGlass" }
 }
 
+/**
+ * Два слоя. [frost] — участок фона в 1/[DOWNSCALE] разрешения с размытием материала: размытой
+ * картинке полное разрешение не нужно, а пикселей в 16 раз меньше. [glass] — в полном
+ * разрешении: растягивает frost обратно и пропускает через AGSL-шейдер (преломлению у кромки,
+ * тону и бликам нужна чёткость). Поля вокруг элемента — только на сдвиг преломления и радиус
+ * размытия (1.5σ, а не 3σ, как было).
+ */
 private class GlassNode(
-    var backdrops: List<LiquidBackdrop>,
+    var backdrop: LiquidBackdrop,
     var shape: Shape,
     var material: LiquidMaterial,
     var overlay: Color?,
     var dark: Boolean
-) : Modifier.Node(), DrawModifierNode, GlobalPositionAwareModifierNode, CompositionLocalConsumerModifierNode {
-    private var layer: GraphicsLayer? = null
+) : Modifier.Node(), DrawModifierNode, GlobalPositionAwareModifierNode {
+    private var frost: GraphicsLayer? = null
+    private var glass: GraphicsLayer? = null
     private var position = Offset.Zero
     private var shader: RuntimeShader? = null
     private var effectKey: Any? = null
+    private var recordKey: Any? = null
 
     override fun onAttach() {
-        layer = requireGraphicsContext().createGraphicsLayer()
+        val ctx = requireGraphicsContext()
+        frost = ctx.createGraphicsLayer()
+        glass = ctx.createGraphicsLayer()
     }
 
     override fun onDetach() {
-        layer?.let { requireGraphicsContext().releaseGraphicsLayer(it) }
-        layer = null
+        val ctx = requireGraphicsContext()
+        frost?.let { ctx.releaseGraphicsLayer(it) }
+        glass?.let { ctx.releaseGraphicsLayer(it) }
+        frost = null
+        glass = null
         effectKey = null
+        recordKey = null
     }
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
@@ -174,24 +220,29 @@ private class GlassNode(
     }
 
     override fun ContentDrawScope.draw() {
-        val l = layer
-        if (l == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || size.minDimension <= 0f) {
+        val f = frost
+        val g = glass
+        if (f == null || g == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || size.minDimension <= 0f) {
             drawContent(); return
         }
-        drawGlass(l)
+        drawGlass(f, g)
         drawContent()
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun ContentDrawScope.drawGlass(l: GraphicsLayer) {
+    private fun ContentDrawScope.drawGlass(f: GraphicsLayer, g: GraphicsLayer) {
+        val src = backdrop.layer ?: return
         val radius = when (val o = shape.createOutline(size, layoutDirection, this)) {
             is Outline.Rounded -> o.roundRect.topLeftCornerRadius.x
             is Outline.Rectangle -> 0f
             is Outline.Generic -> min(size.width, size.height) / 2f
         }
-        val amount = (if (material == LiquidMaterial.Clear) CLEAR_REFRACTION else REGULAR_REFRACTION).dp.toPx()
-        val sigma = if (material == LiquidMaterial.Regular) (if (dark) DARK_BLUR else LIGHT_BLUR).dp.toPx() else 0f
-        val pad = ceil(amount + sigma * 3f)
+        val regular = material == LiquidMaterial.Regular
+        val amount = (if (regular) REGULAR_REFRACTION else CLEAR_REFRACTION).dp.toPx()
+        val sigma = if (regular) (if (dark) DARK_BLUR else LIGHT_BLUR).dp.toPx() else 0f
+        val k = if (regular) 1f / DOWNSCALE else 1f
+        val padG = ceil(amount).toInt()
+        val padF = ceil(amount + sigma * 1.5f).toInt()
         val w = size.width.roundToInt()
         val h = size.height.roundToInt()
 
@@ -200,30 +251,44 @@ private class GlassNode(
             effectKey = key
             val s = shader ?: RuntimeShader(GLASS_AGSL).also { shader = it }
             s.setFloatUniform("size", w.toFloat(), h.toFloat())
-            s.setFloatUniform("pad", pad)
+            s.setFloatUniform("pad", padG.toFloat())
             s.setFloatUniform("radius", radius)
             s.setFloatUniform("amount", amount)
             s.setFloatUniform("density", density)
             s.setFloatUniform("dark", if (dark) 1f else 0f)
-            s.setFloatUniform("regular", if (material == LiquidMaterial.Regular) 1f else 0f)
+            s.setFloatUniform("regular", if (regular) 1f else 0f)
             val o = overlay ?: Color.Transparent
             s.setFloatUniform("overlay", o.red, o.green, o.blue, o.alpha)
-            val glass = android.graphics.RenderEffect.createRuntimeShaderEffect(s, "content")
-            l.renderEffect = if (sigma > 0f) {
-                android.graphics.RenderEffect.createChainEffect(
-                    glass, android.graphics.RenderEffect.createBlurEffect(sigma, sigma, Shader.TileMode.CLAMP)
-                ).asComposeRenderEffect()
-            } else glass.asComposeRenderEffect()
+            g.renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(s, "content").asComposeRenderEffect()
+            f.renderEffect = if (sigma > 0f) {
+                android.graphics.RenderEffect.createBlurEffect(sigma * k, sigma * k, Shader.TileMode.CLAMP).asComposeRenderEffect()
+            } else null
         }
 
-        // Участок фона под элементом (+ поля под преломление и размытие).
-        l.record(IntSize(w + 2 * pad.toInt(), h + 2 * pad.toInt())) {
-            for (b in backdrops) {
-                val src = b.layer ?: continue
-                translate(b.origin.x - position.x + pad, b.origin.y - position.y + pad) { drawLayer(src) }
+        // Перезаписываем слои, только если что-то сдвинулось: изменения самого фона доходят
+        // по ссылке на его слой, а лишняя перезапись заставила бы HWUI заново прогнать
+        // размытие и шейдер — например, на каждом кадре анимации внутри карточки.
+        val rk = listOf(src, backdrop.origin, position, w, h, padF, padG, k)
+        if (rk == recordKey) {
+            translate(-padG.toFloat(), -padG.toFloat()) { drawLayer(g) }
+            return
+        }
+        recordKey = rk
+
+        // Участок фона под элементом (+ поля) в уменьшенном масштабе.
+        val fw = ceil((w + 2 * padF) * k).toInt().coerceAtLeast(1)
+        val fh = ceil((h + 2 * padF) * k).toInt().coerceAtLeast(1)
+        f.record(IntSize(fw, fh)) {
+            scale(k, k, pivot = Offset.Zero) {
+                translate(backdrop.origin.x - position.x + padF, backdrop.origin.y - position.y + padF) { drawLayer(src) }
             }
         }
-        translate(-pad, -pad) { drawLayer(l) }
+        g.record(IntSize(w + 2 * padG, h + 2 * padG)) {
+            translate((padG - padF).toFloat(), (padG - padF).toFloat()) {
+                scale(1f / k, 1f / k, pivot = Offset.Zero) { drawLayer(f) }
+            }
+        }
+        translate(-padG.toFloat(), -padG.toFloat()) { drawLayer(g) }
     }
 
     private companion object {
@@ -235,6 +300,7 @@ private class GlassNode(
         // размытию с эквивалентной силой (средневзвешенное по fillOpacity).
         const val LIGHT_BLUR = 12.7f
         const val DARK_BLUR = 16.7f
+        const val DOWNSCALE = 4f
     }
 }
 
