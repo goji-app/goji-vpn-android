@@ -188,7 +188,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
             Text(it, color = GodjiColors.Danger, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
 
-        StatsCard(state)
+        SpeedCard(state)
 
         AnimatedContent(
             targetState = state.banner to state.bannerKind,
@@ -382,37 +382,80 @@ private fun NetworkPill(net: NetState) {
     }
 }
 
-/** Эталон: padding 14px 4px, две колонки gap 4, разделитель — border-right первой колонки. */
+/** Плашка скорости (концепт Goji 2.0): текущие ↓/↑ и мини-график скачивания за последние
+ *  ~30 с (downHistory/upHistory из ConnectViewModel; отдача — тонкой линией под ним). */
 @Composable
-private fun StatsCard(state: ConnectUiState) {
+private fun SpeedCard(state: ConnectUiState) {
     Row(
         Modifier
             .fillMaxWidth()
             .godjiCard()
-            .padding(horizontal = 4.dp, vertical = 9.dp)
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        StatColumn(Loc.s.statDownload, state.downSpeedMbps, GodjiColors.Teal, down = true, Modifier.weight(1f))
-        Box(Modifier.width(1.dp).fillMaxHeight().background(GodjiColors.Hair))
-        StatColumn(Loc.s.statUpload, state.upSpeedMbps, GodjiColors.Terracotta, down = false, Modifier.weight(1f))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(Loc.f.speedNow, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(Icons.Filled.ArrowDownward, contentDescription = null, tint = GodjiColors.Teal, modifier = Modifier.size(16.dp))
+                Text(
+                    "%.1f".format(state.downSpeedMbps), color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp, lineHeight = 24.sp, letterSpacing = (-0.4).sp
+                )
+                Spacer(Modifier.width(6.dp))
+                Icon(Icons.Filled.ArrowUpward, contentDescription = null, tint = GodjiColors.Terracotta, modifier = Modifier.size(13.dp))
+                Text(
+                    "%.1f ${Loc.s.speedUnit}".format(state.upSpeedMbps), color = GodjiColors.TextSecondary,
+                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1
+                )
+            }
+        }
+        SpeedSparkline(state.downHistory, state.upHistory, Modifier.size(width = 108.dp, height = 40.dp))
     }
 }
 
+/** Сглаженная линия скорости: скачивание — акцентом с лёгкой заливкой, отдача — тонкой
+ *  тёплой линией. Без данных (не подключено) — пунктирная базовая линия. */
 @Composable
-private fun StatColumn(label: String, speedMbps: Double, accent: Color, down: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(
-                if (down) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
-                contentDescription = null, tint = accent, modifier = Modifier.size(12.dp)
+private fun SpeedSparkline(down: List<Float>, up: List<Float>, modifier: Modifier = Modifier) {
+    val accent = GodjiColors.Teal
+    val warm = GodjiColors.Terracotta
+    val muted = GodjiColors.OutlineVariant
+    Canvas(modifier) {
+        val stroke = 2.5.dp.toPx()
+        val top = stroke
+        val bottom = size.height - stroke
+        if (down.size < 2) {
+            drawLine(
+                muted, Offset(0f, bottom), Offset(size.width, bottom), strokeWidth = 2.dp.toPx(),
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 8f)),
+                cap = StrokeCap.Round
             )
-            Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
+            return@Canvas
         }
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text("%.1f".format(speedMbps), color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 20.sp, letterSpacing = (-0.4).sp, modifier = Modifier.alignByBaseline())
-            Text(" ${Loc.s.speedUnit}", color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, modifier = Modifier.alignByBaseline())
+        val max = maxOf(down.maxOrNull() ?: 0f, up.maxOrNull() ?: 0f, 0.05f)
+        fun path(values: List<Float>): androidx.compose.ui.graphics.Path {
+            val step = size.width / (values.size - 1)
+            val pts = values.mapIndexed { i, v -> Offset(i * step, bottom - (v / max) * (bottom - top)) }
+            return androidx.compose.ui.graphics.Path().apply {
+                moveTo(pts[0].x, pts[0].y)
+                for (i in 1 until pts.size) {
+                    val mid = Offset((pts[i - 1].x + pts[i].x) / 2f, (pts[i - 1].y + pts[i].y) / 2f)
+                    quadraticTo(pts[i - 1].x, pts[i - 1].y, mid.x, mid.y)
+                }
+                lineTo(pts.last().x, pts.last().y)
+            }
         }
+        if (up.size >= 2) drawPath(path(up), warm.copy(alpha = 0.7f), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+        val line = path(down)
+        val fill = androidx.compose.ui.graphics.Path().apply {
+            addPath(line)
+            lineTo(size.width, size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        drawPath(fill, Brush.verticalGradient(listOf(accent.copy(alpha = 0.22f), Color.Transparent)))
+        drawPath(line, accent, style = Stroke(stroke, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
     }
 }
 

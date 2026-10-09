@@ -106,6 +106,7 @@ data class FeatureStrings(
     val bypassEmpty: String,
     val bypassWithSubdomains: String,
     // ── Жидкое стекло ──
+    val speedNow: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -203,6 +204,7 @@ data class FeatureStrings(
             bypassListSection = { n -> "Сайты · $n" },
             bypassEmpty = "Список пуст — весь трафик идёт через VPN.",
             bypassWithSubdomains = "вместе с поддоменами",
+            speedNow = "Скорость сейчас",
         )
 
         private val EN = FeatureStrings(
@@ -294,6 +296,7 @@ data class FeatureStrings(
             bypassListSection = { n -> "Sites · $n" },
             bypassEmpty = "The list is empty — all traffic goes through the VPN.",
             bypassWithSubdomains = "including subdomains",
+            speedNow = "Speed now",
         )
 
         private val ZH = FeatureStrings(
@@ -385,6 +388,7 @@ data class FeatureStrings(
             bypassListSection = { n -> "网站 · $n" },
             bypassEmpty = "列表为空 — 所有流量都经过 VPN。",
             bypassWithSubdomains = "包括子域名",
+            speedNow = "当前速度",
         )
     }
 }
