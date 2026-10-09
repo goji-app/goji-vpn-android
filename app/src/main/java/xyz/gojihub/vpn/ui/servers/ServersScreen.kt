@@ -263,7 +263,7 @@ private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
             Modifier.size(24.dp).clip(CircleShape).background(if (message.isError) GodjiColors.Terracotta else GodjiColors.Teal),
             contentAlignment = Alignment.Center
         ) {
-            Icon(if (message.isError) Icons.Filled.PriorityHigh else Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+            Icon(if (message.isError) Icons.Filled.PriorityHigh else Icons.Filled.Check, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(13.dp))
         }
         Text(if (message.isError) Loc.s.refreshFail else Loc.s.refreshOk, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.weight(1f))
         Box(

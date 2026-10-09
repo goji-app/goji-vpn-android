@@ -163,7 +163,7 @@ fun BypassDomainsScreen(onBack: () -> Unit, viewModel: BypassDomainsViewModel = 
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(Loc.f.bypassAdd, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+                Text(Loc.f.bypassAdd, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
             }
         }
         if (error) {

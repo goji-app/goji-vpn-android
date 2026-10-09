@@ -279,7 +279,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(Modifier.size(34.dp).clip(CircleShape).background(GodjiColors.Terracotta), contentAlignment = Alignment.Center) {
-                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(16.dp))
             }
             Text(Loc.s.plansSupportText, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.8.sp)
         }
@@ -342,8 +342,8 @@ private fun SubscriptionCard(state: PlansUiState) {
                 horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(Loc.s.plansExtend, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Icon(Icons.Filled.NorthEast, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                Text(Loc.s.plansExtend, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Icon(Icons.Filled.NorthEast, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(13.dp))
             }
         }
     }
@@ -514,7 +514,7 @@ private fun ReferralCard(referral: ReferralUi, onCopy: () -> Unit, onShare: () -
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(Loc.s.plansReferralCopyShort, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+                Text(Loc.s.plansReferralCopyShort, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
             }
         }
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {

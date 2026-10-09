@@ -430,7 +430,7 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
         Box(Modifier.size(28.dp).clip(CircleShape).background(iconBg), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+            Icon(icon, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(15.dp))
         }
         Text(text, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.weight(1f))
         Box(

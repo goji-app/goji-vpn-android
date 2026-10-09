@@ -288,7 +288,7 @@ private fun LeakCheckCard(state: SettingsUiState, onCheck: () -> Unit) {
                     Modifier.size(28.dp).clip(CircleShape).background(if (ok) GodjiColors.Teal else GodjiColors.Terracotta),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(if (ok) Icons.Filled.Check else Icons.Filled.PriorityHigh, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                    Icon(if (ok) Icons.Filled.Check else Icons.Filled.PriorityHigh, contentDescription = null, tint = GodjiColors.Surface, modifier = Modifier.size(15.dp))
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(title, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -529,7 +529,7 @@ private fun UpdateSectionContent(state: SettingsUiState, viewModel: SettingsView
                     .clickable(interactionSource = interaction, indication = null, onClick = viewModel::downloadUpdate),
                 contentAlignment = Alignment.Center
             ) {
-                Text(Loc.s.updateDownloadInstall, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                Text(Loc.s.updateDownloadInstall, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
             }
         }
         state.updateChecking -> {
