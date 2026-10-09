@@ -152,6 +152,7 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                 exitTransition = { ExitTransition.None }
             ) {
                 ConnectScreen(
+                    onOpenJournal = { navController.navigate(GodjiDestinations.JOURNAL) },
                     onOpenPlans = {
                         navController.navigate(GodjiDestinations.PLANS) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -206,6 +207,7 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                     onOpenLogLevel = { navController.navigate(GodjiDestinations.LOG_LEVEL) },
                     onOpenAppTunneling = { navController.navigate(GodjiDestinations.APP_TUNNELING) },
                     onOpenNetworkRules = { navController.navigate(GodjiDestinations.NETWORK_RULES) },
+                    onOpenJournal = { navController.navigate(GodjiDestinations.JOURNAL) },
                     onOpenBypassDomains = { navController.navigate(GodjiDestinations.BYPASS_DOMAINS) },
                     onOpenSupport = { navController.navigate(GodjiDestinations.SUPPORT_LIST) }
                 )
@@ -284,6 +286,13 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
                 exitTransition = { ExitTransition.None }
             ) {
                 NetworkRulesScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                GodjiDestinations.JOURNAL,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None }
+            ) {
+                xyz.gojihub.vpn.ui.settings.JournalScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 GodjiDestinations.APP_TUNNELING,

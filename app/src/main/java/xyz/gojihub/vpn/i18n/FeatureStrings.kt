@@ -119,6 +119,21 @@ data class FeatureStrings(
     val subTileTitle: String,
     val subTileDays: (days: Int) -> String,
     val subTileUntil: (date: String) -> String,
+    val journalTitle: String,
+    val journalLinkDesc: String,
+    val journalToday: String,
+    val journalYesterday: String,
+    val journalProtected: String,
+    val journalDuration: (hours: Long, minutes: Long) -> String,
+    val journalOf: (done: String, total: String) -> String,
+    val journalConnects: String,
+    val journalSwitches: String,
+    val journalIssues: String,
+    val journalEventsSection: String,
+    val journalEmpty: String,
+    val journalFooter: String,
+    val journalHomeLine: (switches: Int, lastTime: String?) -> String,
+    val journalEvent: (kind: String, arg: String) -> Pair<String, String>,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -229,6 +244,40 @@ data class FeatureStrings(
             subTileTitle = "Подписка",
             subTileDays = { n -> "$n " + when { n % 10 == 1 && n % 100 != 11 -> "день"; n % 10 in 2..4 && n % 100 !in 12..14 -> "дня"; else -> "дней" } },
             subTileUntil = { date -> "до $date" },
+            journalTitle = "Журнал сети",
+            journalLinkDesc = "Когда VPN работал, переключения и сбои",
+            journalToday = "Сегодня",
+            journalYesterday = "Вчера",
+            journalProtected = "Под защитой",
+            journalDuration = { h, m -> if (h > 0) "$h ч $m мин" else "$m мин" },
+            journalOf = { done, total -> "$done из $total" },
+            journalConnects = "подключения",
+            journalSwitches = "переключения",
+            journalIssues = "сбои",
+            journalEventsSection = "События",
+            journalEmpty = "Пока тихо. События появятся, когда VPN начнёт работать.",
+            journalFooter = "Журнал хранится 7 дней и только на этом телефоне.",
+            journalHomeLine = { n, last -> (if (n == 0) "Сегодня без переключений" else "Сегодня переключений: $n") + (last?.let { " · последнее событие $it" } ?: "") },
+            journalEvent = { kind, arg ->
+                when (kind) {
+                    "CONNECTED" -> "Подключено" to (if (arg.isNotEmpty()) "Узел «$arg»" else "Защищённый туннель поднят")
+                    "DISCONNECTED" -> "Отключено" to "VPN выключен"
+                    "INTERRUPTED" -> "Сессия прервалась" to "Система закрыла приложение вместе с VPN"
+                    "NET_WIFI" -> "Wi-Fi" + (if (arg.isNotEmpty()) " «$arg»" else "") to "Телефон перешёл на Wi-Fi"
+                    "NET_CELLULAR" -> "Мобильная сеть" to "Телефон перешёл на мобильный интернет"
+                    "NET_JAMMED" -> "Связь пропала" to "Нет доступной сети — похоже на глушение"
+                    "SWITCH_JAMMED" -> "Обход глушения" to "Переключились на «$arg»"
+                    "SWITCH_CELLULAR_EU" -> "Мобильная сеть: Европа доступна" to "Выбран «$arg»"
+                    "SWITCH_CELLULAR_LTE" -> "Мобильная сеть: Европа недоступна" to "Переключились на «$arg»"
+                    "SWITCH_WIFI_RESTORED" -> "Wi-Fi вернулся" to "Вернули узел «$arg»"
+                    "RULE_AUTOCONNECT" -> "Чужой Wi-Fi — VPN включён" to "Сеть «$arg», по правилу"
+                    "RULE_TRUSTED_DISCONNECT" -> "Доверенный Wi-Fi — VPN выключен" to "Сеть «$arg», по правилу"
+                    "ERROR" -> "Ошибка подключения" to arg
+                    "LEAK_OK" -> "Проверка утечек пройдена" to "IP и DNS идут через туннель"
+                    "LEAK_FAIL" -> "Найдена утечка" to "Часть запросов идёт мимо туннеля"
+                    else -> kind to arg
+                }
+            },
         )
 
         private val EN = FeatureStrings(
@@ -333,6 +382,40 @@ data class FeatureStrings(
             subTileTitle = "Subscription",
             subTileDays = { n -> if (n == 1) "1 day" else "$n days" },
             subTileUntil = { date -> "until $date" },
+            journalTitle = "Network log",
+            journalLinkDesc = "When VPN was on, switches and failures",
+            journalToday = "Today",
+            journalYesterday = "Yesterday",
+            journalProtected = "Protected",
+            journalDuration = { h, m -> if (h > 0) "${h}h ${m}m" else "${m}m" },
+            journalOf = { done, total -> "$done of $total" },
+            journalConnects = "connections",
+            journalSwitches = "switches",
+            journalIssues = "issues",
+            journalEventsSection = "Events",
+            journalEmpty = "Quiet so far. Events appear once VPN starts working.",
+            journalFooter = "The log is kept for 7 days, only on this phone.",
+            journalHomeLine = { n, last -> (if (n == 0) "No switches today" else "Switches today: $n") + (last?.let { " · last event $it" } ?: "") },
+            journalEvent = { kind, arg ->
+                when (kind) {
+                    "CONNECTED" -> "Connected" to (if (arg.isNotEmpty()) "Server “$arg”" else "Secure tunnel is up")
+                    "DISCONNECTED" -> "Disconnected" to "VPN turned off"
+                    "INTERRUPTED" -> "Session interrupted" to "The system closed the app together with VPN"
+                    "NET_WIFI" -> "Wi-Fi" + (if (arg.isNotEmpty()) " “$arg”" else "") to "Phone switched to Wi-Fi"
+                    "NET_CELLULAR" -> "Mobile network" to "Phone switched to mobile data"
+                    "NET_JAMMED" -> "Connection lost" to "No network available — looks like jamming"
+                    "SWITCH_JAMMED" -> "Jamming bypass" to "Switched to “$arg”"
+                    "SWITCH_CELLULAR_EU" -> "Mobile: Europe reachable" to "Selected “$arg”"
+                    "SWITCH_CELLULAR_LTE" -> "Mobile: Europe unreachable" to "Switched to “$arg”"
+                    "SWITCH_WIFI_RESTORED" -> "Wi-Fi is back" to "Restored “$arg”"
+                    "RULE_AUTOCONNECT" -> "Untrusted Wi-Fi — VPN on" to "Network “$arg”, by rule"
+                    "RULE_TRUSTED_DISCONNECT" -> "Trusted Wi-Fi — VPN off" to "Network “$arg”, by rule"
+                    "ERROR" -> "Connection error" to arg
+                    "LEAK_OK" -> "Leak test passed" to "IP and DNS go through the tunnel"
+                    "LEAK_FAIL" -> "Leak found" to "Some requests bypass the tunnel"
+                    else -> kind to arg
+                }
+            },
         )
 
         private val ZH = FeatureStrings(
@@ -437,6 +520,40 @@ data class FeatureStrings(
             subTileTitle = "订阅",
             subTileDays = { n -> "$n 天" },
             subTileUntil = { date -> "至 $date" },
+            journalTitle = "网络日志",
+            journalLinkDesc = "VPN 运行时间、切换和故障",
+            journalToday = "今天",
+            journalYesterday = "昨天",
+            journalProtected = "受保护",
+            journalDuration = { h, m -> if (h > 0) "$h 小时 $m 分钟" else "$m 分钟" },
+            journalOf = { done, total -> "$done / $total" },
+            journalConnects = "连接",
+            journalSwitches = "切换",
+            journalIssues = "故障",
+            journalEventsSection = "事件",
+            journalEmpty = "暂无事件。VPN 开始工作后将显示在这里。",
+            journalFooter = "日志保存 7 天，仅存储在此手机上。",
+            journalHomeLine = { n, last -> (if (n == 0) "今天没有切换" else "今天切换 $n 次") + (last?.let { " · 最近事件 $it" } ?: "") },
+            journalEvent = { kind, arg ->
+                when (kind) {
+                    "CONNECTED" -> "已连接" to (if (arg.isNotEmpty()) "节点「$arg」" else "安全隧道已建立")
+                    "DISCONNECTED" -> "已断开" to "VPN 已关闭"
+                    "INTERRUPTED" -> "会话中断" to "系统关闭了应用和 VPN"
+                    "NET_WIFI" -> "Wi-Fi" + (if (arg.isNotEmpty()) "「$arg」" else "") to "手机切换到 Wi-Fi"
+                    "NET_CELLULAR" -> "移动网络" to "手机切换到移动数据"
+                    "NET_JAMMED" -> "网络中断" to "没有可用网络——疑似干扰"
+                    "SWITCH_JAMMED" -> "绕过干扰" to "已切换到「$arg」"
+                    "SWITCH_CELLULAR_EU" -> "移动网络：欧洲可达" to "已选择「$arg」"
+                    "SWITCH_CELLULAR_LTE" -> "移动网络：欧洲不可达" to "已切换到「$arg」"
+                    "SWITCH_WIFI_RESTORED" -> "Wi-Fi 已恢复" to "已恢复「$arg」"
+                    "RULE_AUTOCONNECT" -> "陌生 Wi-Fi — 已开启 VPN" to "网络「$arg」，按规则"
+                    "RULE_TRUSTED_DISCONNECT" -> "受信任 Wi-Fi — 已关闭 VPN" to "网络「$arg」，按规则"
+                    "ERROR" -> "连接错误" to arg
+                    "LEAK_OK" -> "泄漏检测通过" to "IP 和 DNS 经过隧道"
+                    "LEAK_FAIL" -> "发现泄漏" to "部分请求绕过了隧道"
+                    else -> kind to arg
+                }
+            },
         )
     }
 }

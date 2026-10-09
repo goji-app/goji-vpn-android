@@ -286,6 +286,7 @@ class ConnectViewModel @Inject constructor(
                     viewModelScope.launch { settingsRepository.setPreferredNodeId(current?.id) }
                 }
                 subscriptionRepository.select(ru.id)
+                xyz.gojihub.vpn.journal.NetworkJournal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.SWITCH_JAMMED, stripLeadingFlag(ru.name))
                 _state.value = _state.value.copy(
                     banner = Loc.s.bannerJammedSwitched(stripLeadingFlag(ru.name)),
                     bannerKind = BannerKind.WARNING
@@ -303,6 +304,7 @@ class ConnectViewModel @Inject constructor(
             val ru = russianNode()
             if (ru != null && current?.id == ru.id && preferredNodeId != null && preferredNodeId != ru.id) {
                 subscriptionRepository.select(preferredNodeId!!)
+                xyz.gojihub.vpn.journal.NetworkJournal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.SWITCH_WIFI_RESTORED, subscriptionRepository.selectedNode()?.name?.let(::stripLeadingFlag).orEmpty())
                 _state.value = _state.value.copy(banner = Loc.s.bannerWifiRestored, bannerKind = BannerKind.SUCCESS)
             }
         } else if (net == NetState.CELLULAR) {
@@ -330,6 +332,10 @@ class ConnectViewModel @Inject constructor(
         if (subscriptionRepository.selectedNode()?.id == target.id) return
 
         subscriptionRepository.select(target.id)
+        xyz.gojihub.vpn.journal.NetworkJournal.log(
+            if (europeReachable) xyz.gojihub.vpn.journal.NetworkJournal.Kind.SWITCH_CELLULAR_EU else xyz.gojihub.vpn.journal.NetworkJournal.Kind.SWITCH_CELLULAR_LTE,
+            stripLeadingFlag(target.name)
+        )
         _state.value = _state.value.copy(
             banner = if (europeReachable)
                 Loc.s.bannerCellularSwitchedEu(stripLeadingFlag(euNode.name))

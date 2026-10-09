@@ -66,6 +66,7 @@ fun SettingsScreen(
     onOpenSupport: () -> Unit,
     onOpenNetworkRules: () -> Unit = {},
     onOpenBypassDomains: () -> Unit = {},
+    onOpenJournal: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -145,6 +146,8 @@ fun SettingsScreen(
         // карточками/строками, что и эталонные разделы.
         SectionLabel(Loc.s.settingsConnection)
         RefCard {
+            LinkRow(Loc.f.journalTitle, Loc.f.journalLinkDesc, onOpenJournal)
+            Hair()
             LinkRow(Loc.f.netRulesTitle, Loc.f.netRulesLinkDesc, onOpenNetworkRules)
             Hair()
             ToggleRow(Loc.s.settingsKillSwitch, Loc.s.settingsKillSwitchDesc, state.killSwitch, viewModel::setKillSwitch)

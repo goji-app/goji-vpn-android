@@ -124,6 +124,7 @@ class NetworkRulesManager @Inject constructor(
             if (running && settingsRepository.disconnectOnTrusted.first()) {
                 AppLogger.i(context, LogCategory.MAIN, TAG, "Доверенная сеть «$ssid» — отключаю VPN")
                 VpnLauncher.disconnect(context)
+                xyz.gojihub.vpn.journal.NetworkJournal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.RULE_TRUSTED_DISCONNECT, ssid)
             }
             return
         }
@@ -131,6 +132,7 @@ class NetworkRulesManager @Inject constructor(
             val node = subscriptionRepository.selectedNode() ?: return
             if (!VpnLauncher.hasVpnPermission(context)) return
             val ok = VpnLauncher.connect(context, node)
+            if (ok) xyz.gojihub.vpn.journal.NetworkJournal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.RULE_AUTOCONNECT, ssid)
             AppLogger.i(context, LogCategory.MAIN, TAG, "Чужая сеть «${ssid.ifEmpty { "?" }}» — включаю VPN: ${if (ok) "ok" else "Android не дал запустить из фона"}")
         }
     }

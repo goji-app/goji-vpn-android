@@ -89,7 +89,7 @@ import xyz.gojihub.vpn.ui.theme.godjiGlassStrong
 import xyz.gojihub.vpn.ui.util.rememberPressScale
 
 @Composable
-fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}, onOpenServers: () -> Unit = {}) {
+fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: () -> Unit = {}, onOpenServers: () -> Unit = {}, onOpenJournal: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
@@ -203,7 +203,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
             if (banner != null) BannerCard(banner, kind, onDismiss = viewModel::dismissBanner)
         }
 
-        NodeAndAutoSwitchCard(state, onOpenServers = onOpenServers)
+        NodeAndAutoSwitchCard(state, onOpenServers = onOpenServers, onOpenJournal = onOpenJournal)
 
     }
     }
@@ -492,7 +492,7 @@ private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
 /** Узел + "Держит тебя в сети" — одна карточка. Строка узла — кнопка на всю ширину карточки,
  *  открывает "Серверы" для быстрого выбора другого узла (goServers в эталоне). */
 @Composable
-private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Unit) {
+private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Unit, onOpenJournal: () -> Unit) {
     val cardShape = RoundedCornerShape(26.dp)
     Column(Modifier.fillMaxWidth().godjiCard(cardShape).clip(cardShape)) {
         val nodeInteraction = remember { MutableInteractionSource() }
@@ -526,8 +526,17 @@ private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Un
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(16.dp))
         }
         HorizontalDivider(thickness = 2.dp, color = GodjiColors.SurfaceBase)
+        // Блок «Держит тебя в сети» открывает журнал сети — там видно, когда и почему
+        // переключались узлы (см. journal/NetworkJournal).
+        val journal by xyz.gojihub.vpn.journal.NetworkJournal.events.collectAsState()
+        val todayStart = remember(journal) { xyz.gojihub.vpn.journal.NetworkJournal.dayStart(0) }
+        val switchesToday = journal.count { it.at >= todayStart && xyz.gojihub.vpn.journal.NetworkJournal.isSwitch(it.kind) }
+        val lastAt = journal.lastOrNull()?.at?.let { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) }
         Column(
-            Modifier.fillMaxWidth().padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 11.dp),
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenJournal)
+                .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 11.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -538,6 +547,13 @@ private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Un
             // Строка "сеть: Wi-Fi/мобильная" убрана ради экрана без прокрутки — сеть и так
             // показана плашкой в шапке.
             Text(Loc.s.autoSwitchDesc, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp)
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    Loc.f.journalHomeLine(switchesToday, lastAt), color = GodjiColors.TealDeep, fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                )
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(16.dp))
+            }
         }
     }
 }

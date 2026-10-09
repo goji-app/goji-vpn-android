@@ -12,6 +12,7 @@ object GodjiDestinations {
     const val APP_TUNNELING = "app_tunneling"
     const val NETWORK_RULES = "network_rules"
     const val BYPASS_DOMAINS = "bypass_domains"
+    const val JOURNAL = "journal"
     const val SUPPORT_LIST = "support_list"
     const val SUPPORT_NEW = "support_new"
     const val SUPPORT_TICKET = "support_ticket/{ticketId}"

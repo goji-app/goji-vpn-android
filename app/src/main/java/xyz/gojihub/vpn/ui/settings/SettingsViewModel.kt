@@ -198,6 +198,9 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(leakChecking = true)
         viewModelScope.launch {
             val report = networkDiagnostics.check()
+            if (report.vpnIp != null) {
+                xyz.gojihub.vpn.journal.NetworkJournal.log(if (report.ipLeak || report.dnsLeak) xyz.gojihub.vpn.journal.NetworkJournal.Kind.LEAK_FAIL else xyz.gojihub.vpn.journal.NetworkJournal.Kind.LEAK_OK)
+            }
             _state.value = _state.value.copy(leakChecking = false, leakReport = report)
         }
     }

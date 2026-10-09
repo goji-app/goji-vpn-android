@@ -19,7 +19,9 @@ import coil.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -59,6 +61,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
     @Inject lateinit var networkRulesManager: xyz.gojihub.vpn.network.NetworkRulesManager
     @Inject lateinit var pingRepository: xyz.gojihub.vpn.subscription.PingRepository
     @Inject lateinit var tokenManager: xyz.gojihub.vpn.auth.TokenManager
+    @Inject lateinit var networkMonitor: xyz.gojihub.vpn.network.NetworkMonitor
 
     @Volatile private var lastForegroundRefreshAt = 0L
 
@@ -111,6 +114,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             AppLogger.level = settingsRepository.logLevelNow()
         }
         AppVisibility.install()
+        startNetworkJournal()
         // Разово для входов через браузер, сделанных до 1.0.112 (см. TokenManager).
         if (tokenManager.isLoggedIn() && tokenManager.refreshToken() == null) {
             android.os.Handler(mainLooper).post { tokenManager.recoverWebRefreshToken() }
@@ -222,5 +226,55 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )
+    }
+
+    /** Журнал сети (journal/NetworkJournal): подключения/отключения, смена сети, ошибки
+     *  туннеля и «пульс» раз в 5 минут, пока VPN поднят. Автопереключения узлов пишет
+     *  ConnectViewModel, правила Wi-Fi — NetworkRulesManager, проверку утечек — SettingsViewModel. */
+    private fun startNetworkJournal() {
+        val journal = xyz.gojihub.vpn.journal.NetworkJournal
+        journal.init(this, GodjiVpnService.isRunning.value)
+        val scope = CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Default)
+        scope.launch {
+            var lastStable: Boolean? = null
+            kotlinx.coroutines.flow.combine(GodjiVpnService.isRunning, GodjiVpnService.isConnecting) { r, c -> r to c }
+                .distinctUntilChanged()
+                .collect { (running, connecting) ->
+                    if (connecting && !running) return@collect
+                    val prev = lastStable
+                    lastStable = running
+                    if (prev == null || prev == running) return@collect
+                    if (running) {
+                        val node = subscriptionRepository.selectedNode()?.name?.let { xyz.gojihub.vpn.util.stripLeadingFlag(it) }.orEmpty()
+                        journal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.CONNECTED, node)
+                    } else {
+                        journal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.DISCONNECTED)
+                    }
+                }
+        }
+        scope.launch {
+            GodjiVpnService.isRunning.collectLatest { running ->
+                while (running) {
+                    journal.heartbeat()
+                    kotlinx.coroutines.delay(xyz.gojihub.vpn.journal.NetworkJournal.HEARTBEAT_INTERVAL_MS)
+                }
+            }
+        }
+        scope.launch {
+            networkMonitor.state.debounce(1500L).distinctUntilChanged().drop(1).collect { net ->
+                val kind = when (net) {
+                    xyz.gojihub.vpn.network.NetState.WIFI -> xyz.gojihub.vpn.journal.NetworkJournal.Kind.NET_WIFI
+                    xyz.gojihub.vpn.network.NetState.CELLULAR -> xyz.gojihub.vpn.journal.NetworkJournal.Kind.NET_CELLULAR
+                    xyz.gojihub.vpn.network.NetState.JAMMED -> xyz.gojihub.vpn.journal.NetworkJournal.Kind.NET_JAMMED
+                }
+                val arg = if (net == xyz.gojihub.vpn.network.NetState.WIFI) networkRulesManager.currentSsid.value.orEmpty() else ""
+                journal.log(kind, arg)
+            }
+        }
+        scope.launch {
+            GodjiVpnService.lastError.collect { error ->
+                if (!error.isNullOrBlank()) journal.log(xyz.gojihub.vpn.journal.NetworkJournal.Kind.ERROR, error)
+            }
+        }
     }
 }
