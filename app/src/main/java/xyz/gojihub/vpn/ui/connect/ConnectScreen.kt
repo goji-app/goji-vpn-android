@@ -52,7 +52,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -113,17 +117,16 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
         }
     }
 
-    // verticalScroll — без него на невысоких/мелких экранах нижние карточки (в первую
-    // очередь "Трафик") просто обрезались краем экрана без какой-либо прокрутки: контент
-    // не помещался по высоте, а Column сам по себе не скроллится. На больших экранах ничего
-    // не меняет — скроллить нечего, если всё и так помещается.
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(GodjiColors.Background)
+    // Экран целиком помещается без прокрутки: все блоки берут свою высоту, а глобус — то, что
+    // осталось (HomeFitColumn). verticalScroll — только страховка для очень низких экранов и
+    // крупного шрифта, когда даже минимальный глобус не влезает.
+    BoxWithConstraints(Modifier.fillMaxSize().background(GodjiColors.Background)) {
+    HomeFitColumn(
+        available = maxHeight - HOME_PAD_TOP - HOME_PAD_BOTTOM,
+        modifier = Modifier
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp, 14.dp, 16.dp, 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(start = 16.dp, top = HOME_PAD_TOP, end = 16.dp, bottom = HOME_PAD_BOTTOM)
     ) {
         // z-index:2 в эталоне — шапка лежит поверх верхнего края глобуса (он заходит под неё на 24dp).
         Row(Modifier.fillMaxWidth().zIndex(2f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -142,7 +145,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
             NetworkPill(state.netState)
         }
 
-        GlobeCard(state)
+        GlobeCard(state, Modifier.layoutId(GLOBE_ID))
 
         // Эталон: колонка gap 14 — кнопка ровно 80×80 (кольца/спиннер выходят за её край, не
         // занимая места), под ней блок gap 5: заголовок 26sp с line-height 1.08 и строка статуса.
@@ -196,6 +199,46 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
 
         TrafficCard(state, onClick = onOpenPlans)
     }
+    }
+}
+
+private const val GLOBE_ID = "globe"
+private val HOME_PAD_TOP = 14.dp
+private val HOME_PAD_BOTTOM = 8.dp
+private val HOME_GAP = 10.dp
+// Слот глобуса в раскладке (сам холст ещё заходит на 44dp под шапку и на 42dp под кнопку).
+// 344 — как было в эталоне; меньше 150 сфера становится мелкой — тогда уже прокрутка.
+private val GLOBE_SLOT_MIN = 150.dp
+private val GLOBE_SLOT_MAX = 344.dp
+
+/** Колонка главного экрана: блоки по порядку с промежутком [HOME_GAP] (пустые — без
+ *  промежутка, например скрытый баннер), глобус (layoutId [GLOBE_ID]) получает остаток
+ *  высоты [available] в пределах [GLOBE_SLOT_MIN]..[GLOBE_SLOT_MAX]. */
+@Composable
+private fun HomeFitColumn(available: Dp, modifier: Modifier, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val gap = HOME_GAP.roundToPx()
+        val loose = Constraints(maxWidth = width)
+        val globeIdx = measurables.indexOfFirst { it.layoutId == GLOBE_ID }
+        val fixed = measurables.mapIndexed { i, m -> if (i == globeIdx) null else m.measure(loose) }
+        val shown = fixed.count { it == null || it.height > 0 }
+        val gaps = gap * (shown - 1).coerceAtLeast(0)
+        val fixedSum = fixed.sumOf { it?.height ?: 0 }
+        val globeH = (available.roundToPx() - fixedSum - gaps)
+            .coerceIn(GLOBE_SLOT_MIN.roundToPx(), GLOBE_SLOT_MAX.roundToPx())
+        val globe = if (globeIdx >= 0) measurables[globeIdx].measure(Constraints.fixed(width, globeH)) else null
+        val total = fixedSum + gaps + (globe?.height ?: 0)
+        layout(width, total) {
+            var y = 0
+            fixed.forEachIndexed { i, f ->
+                val p = if (i == globeIdx) globe!! else f!!
+                if (i != globeIdx && p.height == 0) return@forEachIndexed
+                p.place((width - p.width) / 2, y)
+                y += p.height + gap
+            }
+        }
+    }
 }
 
 private fun countryPhrase(geo: xyz.gojihub.vpn.geo.CountryGeo?) = when (Loc.lang) {
@@ -227,19 +270,20 @@ private fun dotColor(s: ConnectUiState) = when {
 }
 
 @Composable
-private fun GlobeCard(state: ConnectUiState) {
-    // Эталон: height:430px; margin:-24px -60px -20px. По просьбе пользователя отступы вокруг
-    // сферы уменьшены: холст 430dp заходит на 44dp под шапку и на 42dp под кнопку — в раскладке
-    // занимает 344dp; по ширине — +60dp с каждой стороны. Прозрачный холст: вокруг сферы общий фон.
+private fun GlobeCard(state: ConnectUiState, modifier: Modifier = Modifier) {
+    // Эталон: height:430px; margin:-24px -60px -20px. Высоту слота задаёт HomeFitColumn (до
+    // 344dp — тогда холст 430dp, как в эталоне); холст заходит на 44dp под шапку и на 42dp под
+    // кнопку, по ширине — +60dp с каждой стороны. Прозрачный холст: вокруг сферы общий фон.
     BoxWithConstraints(
-        Modifier
+        modifier
             .fillMaxWidth()
             .layout { measurable, constraints ->
-                val full = 430.dp.roundToPx()
+                val slot = constraints.maxHeight
                 val top = 44.dp.roundToPx()
                 val bottom = 42.dp.roundToPx()
+                val full = slot + top + bottom
                 val placeable = measurable.measure(constraints.copy(minHeight = full, maxHeight = full))
-                layout(placeable.width, full - top - bottom) { placeable.place(0, -top) }
+                layout(placeable.width, slot) { placeable.place(0, -top) }
             }
     ) {
         GojiGlobe(
@@ -375,7 +419,7 @@ private fun StatsCard(state: ConnectUiState) {
         Modifier
             .fillMaxWidth()
             .godjiCard()
-            .padding(horizontal = 4.dp, vertical = 14.dp)
+            .padding(horizontal = 4.dp, vertical = 11.dp)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -479,30 +523,11 @@ private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Un
                 Text(Loc.s.autoSwitchTitle, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
                 xyz.gojihub.vpn.ui.theme.AutoBadge()
             }
+            // Строка "сеть: Wi-Fi/мобильная" убрана ради экрана без прокрутки — сеть и так
+            // показана плашкой в шапке.
             Text(Loc.s.autoSwitchDesc, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp)
-            HorizontalDivider(Modifier.padding(top = 6.dp), thickness = 1.dp, color = GodjiColors.Hair)
-            Row(
-                Modifier.padding(top = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(Modifier.size(7.dp).clip(CircleShape).background(netColor(state.netState)))
-                Text(watchLine(state), color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-            }
         }
     }
-}
-
-private fun netColor(net: NetState) = when (net) {
-    NetState.WIFI -> GodjiColors.TealDeep
-    NetState.CELLULAR -> GodjiColors.TextSecondary
-    NetState.JAMMED -> GodjiColors.JamText
-}
-
-private fun watchLine(s: ConnectUiState) = when {
-    s.netState == NetState.JAMMED -> Loc.s.autoSwitchJammed
-    s.netState == NetState.WIFI -> Loc.s.autoSwitchWifi
-    else -> Loc.s.autoSwitchCellular
 }
 
 @Composable
@@ -514,8 +539,8 @@ private fun TrafficCard(state: ConnectUiState, onClick: () -> Unit) {
             .fillMaxWidth()
             .godjiCard()
             .clickable(onClick = onClick)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(Loc.s.trafficLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.alignByBaseline())
