@@ -41,6 +41,7 @@ data class SettingsUiState(
     val autoConnectOnWifi: Boolean = false,
     val killSwitch: Boolean = false,
     val haptics: Boolean = true,
+    val liquidGlass: Boolean = true,
     val pingMethod: PingMethod = PingMethod.PROXY_GET,
     val pingTestUrl: String = SettingsRepository.DEFAULT_PING_URL,
     val logLevel: LogLevel = LogLevel.DEFAULT,
@@ -81,6 +82,7 @@ class SettingsViewModel @Inject constructor(
                 autoConnectOnWifi = settingsRepository.autoConnectOnWifi.first(),
                 killSwitch = settingsRepository.killSwitchEnabled.first(),
                 haptics = settingsRepository.hapticsEnabled.first(),
+                liquidGlass = settingsRepository.liquidGlassNow(),
                 logLevel = settingsRepository.logLevelNow(),
                 hwid = subscriptionRepository.hwidNow()
             )
@@ -148,6 +150,12 @@ class SettingsViewModel @Inject constructor(
     fun setKillSwitch(enabled: Boolean) {
         _state.value = _state.value.copy(killSwitch = enabled)
         viewModelScope.launch { settingsRepository.setKillSwitchEnabled(enabled) }
+    }
+
+    fun setLiquidGlass(enabled: Boolean) {
+        _state.value = _state.value.copy(liquidGlass = enabled)
+        xyz.gojihub.vpn.ui.theme.LiquidGlass.enabled = enabled
+        viewModelScope.launch { settingsRepository.setLiquidGlass(enabled) }
     }
 
     fun setHaptics(enabled: Boolean) {

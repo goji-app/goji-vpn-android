@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -85,6 +86,33 @@ private fun Modifier.outerShadow(shape: Shape, color: Color, blur: Dp, dy: Dp): 
 }
 
 private fun Modifier.glassSurface(shape: Shape, level: GlassLevel, overlay: Color?, accentBorder: Boolean): Modifier = composed {
+    // Liquid Glass (см. LiquidGlass.kt): настоящее преломление фона на Android 13+. Не для
+    // строк ВНУТРИ карточек (Faint — под ними карточка, а не фон) и не во всплывающих окнах
+    // (у диалога своё окно — слой фона активити там не совпадает по координатам).
+    val backdrop = LocalLiquidBackdrop.current
+    val scene = LocalLiquidScene.current
+    val view = LocalView.current
+    if (LiquidGlass.supported && LiquidGlass.enabled && level != GlassLevel.Faint &&
+        backdrop != null && backdrop.view === view
+    ) {
+        val lens = overlay == GodjiColors.Lens
+        val dark = GodjiColors.isDark
+        return@composed this
+            .liquidGlass(
+                backdrops = listOfNotNull(backdrop, scene.takeIf { it?.view === view }),
+                shape = shape,
+                material = if (lens) LiquidMaterial.Clear else LiquidMaterial.Regular,
+                overlay = if (lens) null else overlay,
+                dark = dark
+            )
+            .then(if (accentBorder) Modifier.drawWithCache {
+                val outline = shape.createOutline(size, layoutDirection, this)
+                onDrawWithContent {
+                    drawContent()
+                    drawOutline(outline, GodjiColors.Teal, style = Stroke(1.5.dp.toPx()))
+                }
+            } else Modifier)
+    }
     val light = LocalGlassLight.current
     drawWithCache {
         val outline: Outline = shape.createOutline(size, layoutDirection, this)

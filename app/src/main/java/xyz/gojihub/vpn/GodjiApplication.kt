@@ -106,6 +106,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             }
             if (dark) GodjiColors.applyDark()
             GodjiColors.fontSizePreset = settingsRepository.fontSizeNow()
+            xyz.gojihub.vpn.ui.theme.LiquidGlass.enabled = settingsRepository.liquidGlassNow()
             Loc.lang = settingsRepository.appLanguageNow()
             AppLogger.level = settingsRepository.logLevelNow()
         }

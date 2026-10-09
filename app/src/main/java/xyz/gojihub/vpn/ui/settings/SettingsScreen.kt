@@ -131,6 +131,11 @@ fun SettingsScreen(
                 selectedIndex = FontSizePreset.entries.indexOf(state.fontSize),
                 onSelect = { viewModel.setFontSize(FontSizePreset.entries[it]) }
             )
+            // Жидкое стекло требует Android 13+ (RuntimeShader) — на старших версиях пункта нет.
+            if (xyz.gojihub.vpn.ui.theme.LiquidGlass.supported) {
+                Hair()
+                ToggleRow(Loc.f.liquidGlassTitle, Loc.f.liquidGlassDesc, state.liquidGlass, viewModel::setLiquidGlass)
+            }
         }
 
         SectionLabel(Loc.s.settingsServerCheck)

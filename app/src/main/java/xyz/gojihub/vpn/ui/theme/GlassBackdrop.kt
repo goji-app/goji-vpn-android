@@ -38,10 +38,14 @@ fun GlassBackdrop(
     content: @Composable BoxScope.() -> Unit
 ) {
     val light = rememberGlassLight()
+    val liquid = rememberLiquidBackdrop()
     Box(modifier.fillMaxSize()) {
-        StaticTexture()
-        Blobs(connected)
-        CompositionLocalProvider(LocalGlassLight provides light) { content() }
+        // Фон отдельным слоем — его преломляют стеклянные поверхности (LiquidGlass.kt).
+        Box(Modifier.fillMaxSize().liquidBackdropSource(liquid)) {
+            StaticTexture()
+            Blobs(connected)
+        }
+        CompositionLocalProvider(LocalGlassLight provides light, LocalLiquidBackdrop provides liquid) { content() }
     }
 }
 
