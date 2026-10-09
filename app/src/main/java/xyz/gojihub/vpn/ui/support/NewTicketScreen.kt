@@ -62,7 +62,7 @@ fun NewTicketScreen(
                             .clip(RoundedCornerShape(50))
                             .background(GodjiColors.Ink)
                             .clickable(interactionSource = goInteraction, indication = androidx.compose.foundation.LocalIndication.current) { onGoToTicket(ticketId) }
-                            .padding(vertical = 12.dp),
+                            .padding(vertical = 9.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(Loc.s.support.supportNewTicketLimitGoTo, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)

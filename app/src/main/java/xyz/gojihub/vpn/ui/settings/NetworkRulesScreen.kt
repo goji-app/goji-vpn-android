@@ -105,7 +105,7 @@ fun NetworkRulesScreen(onBack: () -> Unit, viewModel: NetworkRulesViewModel = hi
             Modifier
                 .fillMaxWidth()
                 .godjiCard(RoundedCornerShape(24.dp))
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -135,7 +135,7 @@ fun NetworkRulesScreen(onBack: () -> Unit, viewModel: NetworkRulesViewModel = hi
             if (state.trusted.isEmpty()) {
                 Text(
                     Loc.f.netRulesTrustedEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-                    lineHeight = 17.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp)
+                    lineHeight = 17.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                 )
             }
             state.trusted.forEachIndexed { i, name ->
@@ -168,7 +168,7 @@ fun NetworkRulesScreen(onBack: () -> Unit, viewModel: NetworkRulesViewModel = hi
 private fun ChipButton(label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .height(34.dp)
+            .height(32.dp)
             .clip(RoundedCornerShape(50))
             .background(GodjiColors.Chip)
             .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))

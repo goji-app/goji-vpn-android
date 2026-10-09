@@ -133,7 +133,7 @@ fun BypassDomainsScreen(onBack: () -> Unit, viewModel: BypassDomainsViewModel = 
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(46.dp)
                 .clip(RoundedCornerShape(50))
                 .background(GodjiColors.Chip)
                 .border(1.dp, if (error) GodjiColors.Danger else GodjiColors.CardBorder, RoundedCornerShape(50))
@@ -156,7 +156,7 @@ fun BypassDomainsScreen(onBack: () -> Unit, viewModel: BypassDomainsViewModel = 
             }
             Box(
                 Modifier
-                    .height(38.dp)
+                    .height(34.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Brush.verticalGradient(0f to GodjiColors.AccentGradTop, 0.55f to GodjiColors.AccentGradMid, 1f to GodjiColors.AccentGradBottom))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { submit() }
@@ -183,7 +183,7 @@ fun BypassDomainsScreen(onBack: () -> Unit, viewModel: BypassDomainsViewModel = 
                 Text(Loc.f.bypassReconnectHint, color = GodjiColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.weight(1f))
                 Box(
                     Modifier
-                        .height(34.dp)
+                        .height(32.dp)
                         .clip(RoundedCornerShape(50))
                         .background(GodjiColors.Thumb)
                         .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))
@@ -201,7 +201,7 @@ fun BypassDomainsScreen(onBack: () -> Unit, viewModel: BypassDomainsViewModel = 
             if (state.domains.isEmpty()) {
                 Text(
                     Loc.f.bypassEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 17.sp,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                 )
             }
             state.domains.forEachIndexed { i, domain ->

@@ -58,7 +58,7 @@ fun SupportListScreen(
                 .clip(RoundedCornerShape(50))
                 .background(GodjiColors.Ink)
                 .clickable(interactionSource = newInteraction, indication = androidx.compose.foundation.LocalIndication.current) { onNewTicket() }
-                .padding(vertical = 13.dp),
+                .padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.Center
         ) {
             Text(Loc.s.support.supportNewTicket, color = GodjiColors.Surface, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -99,8 +99,8 @@ fun SupportListScreen(
             }
             else -> {
                 Column(
-                    Modifier.fillMaxWidth().godjiCard().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    Modifier.fillMaxWidth().godjiCard().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     state.tickets.forEachIndexed { index, ticket ->
                         if (index > 0) HorizontalDivider(color = GodjiColors.CardBorder)
@@ -134,7 +134,7 @@ private fun SupportTab(label: String, selected: Boolean, modifier: Modifier = Mo
     val fg = if (selected) GodjiColors.Surface else GodjiColors.TextSecondary
     Box(
         modifier
-            .height(38.dp)
+            .height(34.dp)
             .clip(RoundedCornerShape(50))
             .background(bg)
             .clickable(onClick = onClick),

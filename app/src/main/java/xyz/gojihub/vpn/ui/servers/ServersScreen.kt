@@ -65,8 +65,8 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
             .background(GodjiColors.Background)
             // Со строкой сортировки 8+ узлов уже не всегда влезают на невысокий экран.
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -74,7 +74,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
             verticalAlignment = Alignment.Bottom
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 31.5.sp, letterSpacing = (-0.9).sp)
+                Text(Loc.s.serversTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
                 Text(Loc.s.serversCount(state.servers.size), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp)
             }
             Spacer(Modifier.width(10.dp))
@@ -118,7 +118,7 @@ fun ServersScreen(viewModel: ServersViewModel = hiltViewModel(), onServerPicked:
                             .weight(1f)
                             .alpha(if (pickPressed) 0.6f else 1f)
                             .clickable(interactionSource = pickInteraction, indication = null) { viewModel.select(node.id); onServerPicked() }
-                            .padding(start = 14.dp, top = 12.dp, bottom = 12.dp),
+                            .padding(start = 14.dp, top = 9.dp, bottom = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -255,7 +255,7 @@ private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .godjiGlassPill(RoundedCornerShape(20.dp), tint = bg)
-            .padding(horizontal = 13.dp, vertical = 11.dp),
+            .padding(horizontal = 13.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {

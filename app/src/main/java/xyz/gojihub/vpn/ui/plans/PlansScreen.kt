@@ -85,8 +85,8 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
             .fillMaxSize()
             .background(GodjiColors.Background)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -94,7 +94,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
             verticalAlignment = Alignment.Top
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(Loc.s.plansTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 31.5.sp, letterSpacing = (-0.9).sp)
+                Text(Loc.s.plansTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp)
                 Text(Loc.s.plansSubtitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp)
                 state.customerId?.let { id ->
                     Row(
@@ -137,7 +137,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                     Modifier
                         .fillMaxWidth()
                         .background(if (plan.isCurrent) GodjiColors.SelBg else Color.Transparent)
-                        .padding(14.dp),
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -274,7 +274,7 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
                 .scale(supportScale.value)
                 .godjiGlassPill(RoundedCornerShape(24.dp), tint = GodjiColors.TerracottaTint)
                 .clickable(interactionSource = supportInteraction, indication = null, onClick = onOpenSupport)
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -295,8 +295,8 @@ private fun SubscriptionCard(state: PlansUiState) {
             .fillMaxWidth()
             .godjiCard(RoundedCornerShape(28.dp), tint = GodjiColors.TealTint)
             .clip(RoundedCornerShape(28.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DaysRing(state.daysLeft)
@@ -324,7 +324,7 @@ private fun SubscriptionCard(state: PlansUiState) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(44.dp)
                     .scale(extendScale.value)
                     .clip(RoundedCornerShape(50))
                     .background(Brush.verticalGradient(0f to GodjiColors.AccentGradTop, 0.55f to GodjiColors.AccentGradMid, 1f to GodjiColors.AccentGradBottom))
@@ -360,7 +360,7 @@ private fun PeriodSegments(periods: List<PeriodUi>, selectedMonths: Int, onSelec
             Modifier
                 .offset(x = thumbX)
                 .width(slot)
-                .height(38.dp)
+                .height(34.dp)
                 .clip(RoundedCornerShape(50))
                 .background(GodjiColors.Thumb)
                 .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))
@@ -372,7 +372,7 @@ private fun PeriodSegments(periods: List<PeriodUi>, selectedMonths: Int, onSelec
                 Box(
                     Modifier
                         .weight(1f)
-                        .height(38.dp)
+                        .height(34.dp)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(p.months) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -417,7 +417,7 @@ private fun NewsCard(item: NewsUi) {
         Modifier
             .fillMaxWidth()
             .godjiCard(RoundedCornerShape(24.dp))
-            .padding(14.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Text(item.dateLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
@@ -450,7 +450,7 @@ private fun TransferCard(onClick: () -> Unit) {
             .scale(scale.value)
             .godjiCard(RoundedCornerShape(24.dp))
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(14.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -470,7 +470,7 @@ private fun TransferCard(onClick: () -> Unit) {
 @Composable
 private fun ReferralCard(referral: ReferralUi, onCopy: () -> Unit, onShare: () -> Unit, onQr: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().godjiCard().padding(14.dp),
+        Modifier.fillMaxWidth().godjiCard().padding(horizontal = 14.dp, vertical = 11.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
@@ -604,7 +604,7 @@ private fun PartnerLinkCard(onClick: () -> Unit) {
             .scale(if (pressed) 0.98f else 1f)
             .godjiCard(RoundedCornerShape(24.dp))
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(14.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -636,11 +636,11 @@ private fun DevicesSection(
     SectionLabel(if (deviceLimit > 0) "${Loc.s.plansDevicesTitle} · ${Loc.s.plansDevicesCountLabel(devices.size, deviceLimit)}" else Loc.s.plansDevicesTitle)
     Column(Modifier.fillMaxWidth().godjiCard().clip(RoundedCornerShape(26.dp))) {
         if (devices.isEmpty()) {
-            Text(Loc.s.plansDevicesEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp, modifier = Modifier.padding(14.dp))
+            Text(Loc.s.plansDevicesEmpty, color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp))
         }
         devices.forEachIndexed { index, device ->
             if (index > 0) HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
-            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(device.name, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val subtitle = listOfNotNull(device.platform, device.connectedVia?.let(Loc.s.plansDevicesConnectedVia), device.createdAtLabel).joinToString(" · ")

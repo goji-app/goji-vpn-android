@@ -121,7 +121,7 @@ private fun ModeTab(label: String, mode: PerAppProxyMode, selected: PerAppProxyM
     val active = mode == selected
     Box(
         modifier
-            .height(38.dp)
+            .height(34.dp)
             .clip(RoundedCornerShape(50))
             .background(if (active) GodjiColors.Ink else Color.Transparent)
             .clickable { onSelect(mode) },

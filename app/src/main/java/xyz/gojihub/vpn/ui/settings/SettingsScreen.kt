@@ -86,7 +86,7 @@ fun SettingsScreen(
     ) {
         Text(
             Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily,
-            fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 31.5.sp, letterSpacing = (-0.9).sp,
+            fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp,
             modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 6.dp)
         )
 
@@ -174,7 +174,7 @@ fun SettingsScreen(
                 Modifier
                     .fillMaxWidth()
                     .godjiCard(RoundedCornerShape(24.dp))
-                    .padding(horizontal = 14.dp, vertical = 13.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 UpdateSectionContent(state, viewModel)
@@ -212,7 +212,7 @@ fun SettingsScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(46.dp)
                 .scale(outScale.value)
                 .godjiCard(RoundedCornerShape(24.dp))
                 .clip(RoundedCornerShape(24.dp))
@@ -235,7 +235,7 @@ private fun LeakCheckCard(state: SettingsUiState, onCheck: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .godjiCard(RoundedCornerShape(24.dp))
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -244,7 +244,7 @@ private fun LeakCheckCard(state: SettingsUiState, onCheck: () -> Unit) {
             val pressed by interaction.collectIsPressedAsState()
             Box(
                 Modifier
-                    .height(34.dp)
+                    .height(32.dp)
                     .scale(if (pressed) 0.95f else 1f)
                     .clip(RoundedCornerShape(50))
                     .background(GodjiColors.Chip)
@@ -280,7 +280,7 @@ private fun LeakCheckCard(state: SettingsUiState, onCheck: () -> Unit) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
                     .background(if (ok) GodjiColors.TealTint else GodjiColors.TerracottaTint)
-                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(11.dp)
             ) {
@@ -385,7 +385,7 @@ internal fun ToggleRow(title: String, subtitle: String?, checked: Boolean, onChe
         Modifier
             .fillMaxWidth()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onCheckedChange(!checked) }
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -421,7 +421,7 @@ internal fun GlassSwitch(checked: Boolean, onToggle: () -> Unit) {
 @Composable
 internal fun LinkRow(title: String, subtitle: String?, onClick: () -> Unit) {
     Row(
-        pressableRow(onClick).padding(horizontal = 14.dp, vertical = 13.dp),
+        pressableRow(onClick).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -435,7 +435,7 @@ internal fun LinkRow(title: String, subtitle: String?, onClick: () -> Unit) {
 @Composable
 private fun SegmentedRow(title: String, subtitle: String?, options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         RowTexts(title, subtitle)
@@ -454,7 +454,7 @@ private fun SegmentedRow(title: String, subtitle: String?, options: List<String>
                 Modifier
                     .offset(x = thumbX)
                     .width(slotWidth)
-                    .height(34.dp)
+                    .height(32.dp)
                     .clip(RoundedCornerShape(50))
                     .background(GodjiColors.Thumb)
                     .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))
@@ -464,7 +464,7 @@ private fun SegmentedRow(title: String, subtitle: String?, options: List<String>
                     Box(
                         Modifier
                             .weight(1f)
-                            .height(34.dp)
+                            .height(32.dp)
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) },
                         contentAlignment = Alignment.Center
                     ) {
@@ -558,7 +558,7 @@ private fun CheckUpdatesPill(onClick: () -> Unit) {
     val pressed by interaction.collectIsPressedAsState()
     Box(
         Modifier
-            .height(34.dp)
+            .height(32.dp)
             .scale(if (pressed) 0.95f else 1f)
             .clip(RoundedCornerShape(50))
             .background(GodjiColors.Chip)
@@ -575,7 +575,7 @@ private fun CheckUpdatesPill(onClick: () -> Unit) {
 private fun AboutRow(label: String, value: String) {
     val clipboard = LocalClipboardManager.current
     Row(
-        pressableRow { clipboard.setText(AnnotatedString(value)) }.padding(horizontal = 14.dp, vertical = 12.dp),
+        pressableRow { clipboard.setText(AnnotatedString(value)) }.padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -596,7 +596,7 @@ private fun AboutRow(label: String, value: String) {
 @Composable
 private fun LogRow(title: String, onClick: () -> Unit) {
     Row(
-        pressableRow(onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        pressableRow(onClick).padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
