@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Виджет «Подписка» 2×2 (концепт Goji 2.0): остаток дней крупно и пять полосок-индикатор,
+     как на главной. См. GojiSubscriptionWidgetProvider. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/wsub_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/wsub_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Подписка"
+        android:textColor="@color/widget_text_secondary"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="bottom">
+
+        <TextView
+            android:id="@+id/wsub_days"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="—"
+            android:textColor="@color/widget_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:orientation="horizontal"
+            android:gravity="bottom">
+        <ImageView
+            android:id="@+id/wsub_bar0"
+            android:layout_width="6dp"
+            android:layout_height="10dp"
+            android:layout_marginStart="0dp"
+            android:src="@drawable/widget_bar" />
+        <ImageView
+            android:id="@+id/wsub_bar1"
+            android:layout_width="6dp"
+            android:layout_height="13dp"
+            android:layout_marginStart="3dp"
+            android:src="@drawable/widget_bar" />
+        <ImageView
+            android:id="@+id/wsub_bar2"
+            android:layout_width="6dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="3dp"
+            android:src="@drawable/widget_bar" />
+        <ImageView
+            android:id="@+id/wsub_bar3"
+            android:layout_width="6dp"
+            android:layout_height="19dp"
+            android:layout_marginStart="3dp"
+            android:src="@drawable/widget_bar" />
+        <ImageView
+            android:id="@+id/wsub_bar4"
+            android:layout_width="6dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="3dp"
+            android:src="@drawable/widget_bar" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/wsub_until"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:text=""
+        android:textColor="@color/widget_text_secondary"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</LinearLayout>

@@ -166,6 +166,32 @@
                 android:resource="@xml/widget_goji_info" />
         </receiver>
 
+        <!-- Виджеты «Статус» и «Подписка» 2×2 (концепт Goji 2.0) — так же, как GojiWidgetProvider,
+             только перерисовываются по внутреннему состоянию; действия идут через
+             GojiWidgetActionReceiver (exported=false). -->
+        <receiver
+            android:name=".widget.GojiStatusWidgetProvider"
+            android:label="@string/widget_status_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_status_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GojiSubscriptionWidgetProvider"
+            android:label="@string/widget_subscription_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_subscription_info" />
+        </receiver>
+
         <!-- Выбор сервера/подключение из виджета (см. GojiWidgetActionReceiver) — в отличие от
              GojiWidgetProvider выше, exported=false: эти действия реально меняют текущий узел
              подписки и поднимают VPN, а не просто перерисовывают виджет, поэтому стороннему

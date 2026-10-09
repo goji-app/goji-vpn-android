@@ -134,6 +134,10 @@ data class FeatureStrings(
     val journalFooter: String,
     val journalHomeLine: (switches: Int, lastTime: String?) -> String,
     val journalEvent: (kind: String, arg: String) -> Pair<String, String>,
+    val widgetProtected: String,
+    val widgetUnprotected: String,
+    val widgetDaysLine: (days: Int, date: String) -> String,
+    val widgetNoSubscription: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -278,6 +282,10 @@ data class FeatureStrings(
                     else -> kind to arg
                 }
             },
+            widgetProtected = "Защищено",
+            widgetUnprotected = "Не защищено",
+            widgetDaysLine = { n, date -> (when { n % 10 == 1 && n % 100 != 11 -> "день"; n % 10 in 2..4 && n % 100 !in 12..14 -> "дня"; else -> "дней" }) + " · до $date" },
+            widgetNoSubscription = "Открой Goji, чтобы обновить",
         )
 
         private val EN = FeatureStrings(
@@ -416,6 +424,10 @@ data class FeatureStrings(
                     else -> kind to arg
                 }
             },
+            widgetProtected = "Protected",
+            widgetUnprotected = "Not protected",
+            widgetDaysLine = { n, date -> (if (n == 1) "day" else "days") + " · until $date" },
+            widgetNoSubscription = "Open Goji to refresh",
         )
 
         private val ZH = FeatureStrings(
@@ -554,6 +566,10 @@ data class FeatureStrings(
                     else -> kind to arg
                 }
             },
+            widgetProtected = "已保护",
+            widgetUnprotected = "未保护",
+            widgetDaysLine = { _, date -> "天 · 至 $date" },
+            widgetNoSubscription = "打开 Goji 以刷新",
         )
     }
 }

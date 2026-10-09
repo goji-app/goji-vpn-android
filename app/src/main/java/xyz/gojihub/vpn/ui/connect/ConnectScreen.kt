@@ -62,6 +62,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.graphicsLayer
 import xyz.gojihub.vpn.ui.theme.CookieShape
+import xyz.gojihub.vpn.util.subscriptionBars
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
@@ -594,16 +595,6 @@ private fun QualityTile(state: ConnectUiState, modifier: Modifier = Modifier) {
             color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp
         )
     }
-}
-
-/** Сколько из 5 «полосок» подписки заполнено — как индикатор сигнала. */
-private fun subscriptionBars(days: Int): Int = when {
-    days >= 90 -> 5
-    days >= 30 -> 4
-    days >= 14 -> 3
-    days >= 7 -> 2
-    days >= 1 -> 1
-    else -> 0
 }
 
 /** Плитка «Подписка» (концепт Goji 2.0): остаток дней крупно, полоски-индикатор остатка

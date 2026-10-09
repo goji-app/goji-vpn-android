@@ -115,6 +115,12 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
         }
         AppVisibility.install()
         startNetworkJournal()
+        // Виджет «Подписка» считает дни от даты окончания — сохраняем её при каждом обновлении.
+        CoroutineScope(Dispatchers.Default).launch {
+            subscriptionRepository.subscription.collect { sub ->
+                if (sub != null) xyz.gojihub.vpn.widget.GojiSubscriptionWidgetProvider.saveExpiry(this@GodjiApplication, sub.expireAt)
+            }
+        }
         // Разово для входов через браузер, сделанных до 1.0.112 (см. TokenManager).
         if (tokenManager.isLoggedIn() && tokenManager.refreshToken() == null) {
             android.os.Handler(mainLooper).post { tokenManager.recoverWebRefreshToken() }

@@ -62,6 +62,9 @@ class GojiWidgetProvider : AppWidgetProvider() {
                 manager.updateAppWidget(id, buildViews(context, id, manager.getAppWidgetOptions(id)))
             }
             if (ids.isNotEmpty()) manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_server_list)
+            // Виджеты концепта Goji 2.0 обновляются по тем же событиям.
+            GojiStatusWidgetProvider.refresh(context)
+            GojiSubscriptionWidgetProvider.refresh(context)
         }
 
         private fun buildViews(context: Context, appWidgetId: Int, options: Bundle?): RemoteViews {
@@ -133,7 +136,7 @@ class GojiWidgetProvider : AppWidgetProvider() {
          *  VPN-уведомлении). Подключение теперь тоже работает прямо из виджета —
          *  см. GojiWidgetActionReceiver.ACTION_CONNECT — и открывает приложение только если
          *  системное разрешение на VPN ещё не выдавалось (там его не запросить без Activity). */
-        private fun connectToggleIntent(context: Context, running: Boolean): PendingIntent = if (running) {
+        internal fun connectToggleIntent(context: Context, running: Boolean): PendingIntent = if (running) {
             PendingIntent.getService(
                 context, 0,
                 Intent(context, GodjiVpnService::class.java).setAction(GodjiVpnService.ACTION_DISCONNECT),
@@ -153,7 +156,7 @@ class GojiWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        private fun openAppIntent(context: Context, requestCode: Int): PendingIntent = PendingIntent.getActivity(
+        internal fun openAppIntent(context: Context, requestCode: Int): PendingIntent = PendingIntent.getActivity(
             context, requestCode,
             Intent(context, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

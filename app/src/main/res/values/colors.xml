@@ -7,16 +7,25 @@
          внутриприложенческому тумблеру: RemoteViews виджета инфлейтятся процессом лончера,
          который сам применяет values-night при системном тёмной режиме — отдельный код для
          этого не нужен, достаточно вынести цвета сюда вместо хардкода прямо в drawable/layout. -->
-    <color name="widget_bg">#FFFDF7</color>
-    <color name="widget_border">#E7DFCA</color>
-    <color name="widget_text_primary">#12312C</color>
-    <color name="widget_text_secondary">#5F736D</color>
-    <color name="widget_node_bg">#EFE7D4</color>
-    <color name="widget_dot_muted">#9AA39B</color>
-    <color name="widget_dot_active">#00A79B</color>
-    <color name="widget_button_teal">#00A79B</color>
-    <color name="widget_button_red">#C4553C</color>
-    <color name="widget_button_text">#FFFDF7</color>
+    <color name="widget_bg">#E8EFEC</color>
+    <color name="widget_border">#00000000</color>
+    <color name="widget_text_primary">#161D1C</color>
+    <color name="widget_text_secondary">#3F4947</color>
+    <color name="widget_node_bg">#DDE4E1</color>
+    <color name="widget_dot_muted">#6F7977</color>
+    <color name="widget_dot_active">#006A62</color>
+    <color name="widget_button_teal">#006A62</color>
+    <color name="widget_button_red">#9A4524</color>
+    <color name="widget_button_text">#FFFFFF</color>
     <color name="widget_list_item_bg">#00000000</color>
-    <color name="widget_list_item_selected_bg">#1A00A79B</color>
+    <color name="widget_list_item_selected_bg">#CCE8E3</color>
+    <color name="widget_on_bg">#9DF2E6</color>
+    <color name="widget_on_text">#00201D</color>
+    <color name="widget_on_text_secondary">#1F4A44</color>
+    <color name="widget_on_button_bg">#00201D</color>
+    <color name="widget_on_button_text">#9DF2E6</color>
+    <color name="widget_bar_off">#C9D2CF</color>
+    <color name="widget_bar_on">#006A62</color>
+    <color name="widget_bar_warm">#9A4524</color>
+    <color name="widget_bar_danger">#BA1A1A</color>
 </resources>
