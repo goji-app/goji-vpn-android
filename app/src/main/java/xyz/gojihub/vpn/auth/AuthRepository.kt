@@ -192,7 +192,16 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    fun logout() = tokenManager.clear()
+    fun logout() {
+        tokenManager.clear()
+        // Данные прежнего аккаунта (подписка, устройства, рефералы) не должны показываться
+        // следующему, кто войдёт на этом телефоне.
+        listOf(
+            "account_subscription.json", "account_broadcasts.json", "account_plans.json",
+            "account_referrals.json", "account_partner.json", "account_devices.json"
+        ).forEach { runCatching { java.io.File(appContext.filesDir, it).delete() } }
+        appContext.getSharedPreferences("subscription_refresh", Context.MODE_PRIVATE).edit().clear().apply()
+    }
     fun isLoggedIn(): Boolean = tokenManager.isLoggedIn()
 
     /** true после реального 401 от бэкенда (см. authInterceptor в NetworkModule) — GodjiApp

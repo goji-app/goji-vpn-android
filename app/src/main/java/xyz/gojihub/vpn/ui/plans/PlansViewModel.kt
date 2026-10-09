@@ -13,6 +13,7 @@ import xyz.gojihub.vpn.network.models.ReferralEntry
 import xyz.gojihub.vpn.network.models.DeviceDto
 import xyz.gojihub.vpn.network.models.RenameDeviceRequest
 import xyz.gojihub.vpn.subscription.SubscriptionRepository
+import xyz.gojihub.vpn.subscription.AccountCache.Key as CacheKey
 import xyz.gojihub.vpn.util.formatDateTime
 import xyz.gojihub.vpn.util.formatDate
 import javax.inject.Inject
@@ -129,11 +130,16 @@ private fun displayNameFor(e: ReferralEntry): String {
     return "ID: ${e.refereeTelegramId ?: e.refereeId ?: 0}"
 }
 
+/** Сколько живут сохранённые разделы «Подписки» (тарифы, рефералы, партнёрка, устройства),
+ *  прежде чем страница тихо обновит их в фоне. Кнопка «обновить» — всегда сразу. */
+private const val PAGE_TTL_MS = 60 * 60_000L
+
 @HiltViewModel
 class PlansViewModel @Inject constructor(
     private val api: RemnawaveApi,
     private val subscriptionRepository: SubscriptionRepository,
-    private val authRepository: xyz.gojihub.vpn.auth.AuthRepository
+    private val authRepository: xyz.gojihub.vpn.auth.AuthRepository,
+    private val accountCache: xyz.gojihub.vpn.subscription.AccountCache
 ) : ViewModel() {
 
     /** Код переноса входа на другое устройство (см. AuthRepository.transferUri). */
@@ -143,99 +149,138 @@ class PlansViewModel @Inject constructor(
     val state: StateFlow<PlansUiState> = _state
 
     private var rawPlans: List<PlanInfo> = emptyList()
+    private var rawDevices: List<DeviceDto> = emptyList()
+    private val savedAt = mutableMapOf<xyz.gojihub.vpn.subscription.AccountCache.Key, Long>()
 
     init {
-        load(force = false)
+        // 1) Сразу — всё, что уже сохранено на телефоне: страница не бывает пустой, даже если
+        //    сеть пропала или VPN как раз переподключается.
+        showCached()
+        // 2) Подписка и новости — живые потоки репозитория (их обновляют воркер, «Главная» и
+        //    кнопка «обновить»), страница просто следует за ними.
+        viewModelScope.launch { subscriptionRepository.subscription.collect { applySubscription(it) } }
+        viewModelScope.launch { subscriptionRepository.broadcasts.collect { applyNews(it) } }
+        // 3) Тихое обновление в фоне — только устаревших разделов (старше PAGE_TTL_MS).
+        viewModelScope.launch { fetch(force = false) }
     }
 
-    /** [force] = false — при открытии вкладки: свежая (<30 с) подписка не перезапрашивается. */
-    private fun load(force: Boolean = true) {
-        viewModelScope.launch {
-            if (force) subscriptionRepository.refresh() else subscriptionRepository.refreshIfStale()
-            val sub = subscriptionRepository.subscription.value
-            _state.value = _state.value.copy(
-                planName = sub?.planName ?: "—",
-                expiryLabel = sub?.expireAt?.let(::formatDate) ?: "—",
-                daysLeft = sub?.daysLeft ?: 0,
-                // UUID клиента в Remnawave (settings.vnext[].users[].id у VLESS-профиля) — тот же,
-                // что зашит в конфиг узлов, реальный Remnawave-идентификатор, в отличие от
-                // customer_id (UUID шоп-бэкенда) и subscription.id (внутренний ID шоп-бэкенда) —
-                // ни один из них не находится в панели Remnawave по словам пользователя.
-                customerId = subscriptionRepository.clientUuid(),
-                subscriptionId = sub?.id,
-                devicesDeleteSupportOnly = sub?.kind == "trial" || sub?.kind == "free",
-                deviceLimit = sub?.deviceLimit ?: 0,
-                news = subscriptionRepository.broadcasts.value
-                    .sortedByDescending { it.createdAt }
-                    .map { b ->
-                        NewsUi(
-                            id = b.id,
-                            rawContent = b.content,
-                            dateLabel = formatDateTime(b.createdAt),
-                            buttons = b.buttons().map { NewsButtonUi(it.url, it.text) }
-                        )
-                    }
-            )
+    private fun showCached() {
+        accountCache.load<xyz.gojihub.vpn.network.models.PlansResponse>(CacheKey.PLANS)?.let { savedAt[CacheKey.PLANS] = it.savedAt; applyPlans(it.value) }
+        accountCache.load<xyz.gojihub.vpn.network.models.ReferralsResponse>(CacheKey.REFERRALS)?.let { savedAt[CacheKey.REFERRALS] = it.savedAt; applyReferrals(it.value) }
+        accountCache.load<xyz.gojihub.vpn.network.models.PartnerStatusResponse>(CacheKey.PARTNER)?.let { savedAt[CacheKey.PARTNER] = it.savedAt; applyPartner(it.value) }
+        accountCache.load<List<DeviceDto>>(CacheKey.DEVICES)?.let { savedAt[CacheKey.DEVICES] = it.savedAt; applyDevices(it.value) }
+    }
 
-            runCatching { api.getPlans(subscriptionId = sub?.id) }.onSuccess { response ->
-                rawPlans = response.plans
-                _state.value = _state.value.copy(
-                    personalDiscountPercent = response.customerDiscountPercent?.toInt() ?: 0
-                )
-                val months = rawPlans.flatMap { it.prices }
-                    .filter { it.priceType == "base" }
-                    .map { it.periodValue }
-                    .distinct().sorted()
-                val periods = months.map { m ->
-                    PeriodUi(m, Loc.s.plansMonthsLabel(m))
-                }
-                _state.value = _state.value.copy(
-                    periods = periods,
-                    selectedMonths = periods.firstOrNull()?.months ?: 1
-                )
-                rebuildPlanCards()
-            }
+    private fun stale(key: xyz.gojihub.vpn.subscription.AccountCache.Key) =
+        System.currentTimeMillis() - (savedAt[key] ?: 0L) > PAGE_TTL_MS
 
-            // referral_enabled/partner_program_enabled — оба флага сейчас включены на
-            // бэкенде, но не проверяются отдельным запросом настроек: если фича когда-нибудь
-            // выключат, эндпоинт просто перестанет отвечать успешно, и секция тихо не
-            // покажется (тот же принцип, что уже применяется к getBroadcasts/getPlans).
-            runCatching { api.getReferrals() }.onSuccess { r ->
-                _state.value = _state.value.copy(
-                    referral = ReferralUi(
-                        link = r.link,
-                        webLink = r.webLink,
-                        totalReferrals = r.summary.totalReferrals,
-                        activeReferrals = r.summary.activeReferrals,
-                        totalBonusDays = r.summary.totalBonusDays,
-                        entries = r.referrals.map { e ->
-                            ReferralEntryUi(displayNameFor(e), e.isActive, e.bonusDays)
-                        }
-                    )
-                )
-            }
-
-            sub?.id?.let { subId ->
-                runCatching { api.getDevices(subId) }.onSuccess { list ->
-                    _state.value = _state.value.copy(devices = list.map { it.toUi() })
-                }
-            }
-
-            runCatching { api.getPartnerStatus() }.onSuccess { p ->
-                _state.value = _state.value.copy(
-                    partner = PartnerUi(
-                        isPartner = p.isPartner,
-                        isActive = p.partner?.isActive ?: false,
-                        applicationStatus = p.application?.status,
-                        commissionRate = p.partner?.commissionRate ?: 0.0,
-                        clientCount = p.stats?.clientCount ?: 0,
-                        totalEarned = p.partner?.totalEarned ?: 0.0,
-                        availableBalance = p.partner?.availableBalance ?: 0.0,
-                        pendingBalance = p.partner?.pendingBalance ?: 0.0
-                    )
-                )
-            }
+    /** Сбой любого запроса ничего не стирает: на экране остаётся последнее сохранённое. */
+    private suspend fun fetch(force: Boolean) {
+        if (force) subscriptionRepository.refresh() else subscriptionRepository.refreshIfStale()
+        val sub = subscriptionRepository.subscription.value
+        if (force || stale(CacheKey.PLANS)) {
+            runCatching { api.getPlans(subscriptionId = sub?.id) }.onSuccess { saveAndApply(CacheKey.PLANS, it) { r -> applyPlans(r) } }
         }
+        if (force || stale(CacheKey.REFERRALS)) {
+            runCatching { api.getReferrals() }.onSuccess { saveAndApply(CacheKey.REFERRALS, it) { r -> applyReferrals(r) } }
+        }
+        if (sub?.id != null && (force || stale(CacheKey.DEVICES))) {
+            runCatching { api.getDevices(sub.id) }.onSuccess { saveAndApply(CacheKey.DEVICES, it) { r -> applyDevices(r) } }
+        }
+        if (force || stale(CacheKey.PARTNER)) {
+            runCatching { api.getPartnerStatus() }.onSuccess { saveAndApply(CacheKey.PARTNER, it) { r -> applyPartner(r) } }
+        }
+    }
+
+    private suspend fun <T : Any> saveAndApply(key: xyz.gojihub.vpn.subscription.AccountCache.Key, value: T, apply: (T) -> Unit) {
+        apply(value)
+        savedAt[key] = System.currentTimeMillis()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { accountCache.save(key, value) }
+    }
+
+    private fun applySubscription(sub: xyz.gojihub.vpn.network.models.SubscriptionInfo?) {
+        if (sub == null) return
+        _state.value = _state.value.copy(
+            planName = sub.planName,
+            expiryLabel = formatDate(sub.expireAt),
+            daysLeft = sub.daysLeft,
+            // UUID клиента в Remnawave (settings.vnext[].users[].id у VLESS-профиля) — тот же,
+            // что зашит в конфиг узлов, реальный Remnawave-идентификатор, в отличие от
+            // customer_id (UUID шоп-бэкенда) и subscription.id (внутренний ID шоп-бэкенда) —
+            // ни один из них не находится в панели Remnawave по словам пользователя.
+            customerId = subscriptionRepository.clientUuid(),
+            subscriptionId = sub.id,
+            devicesDeleteSupportOnly = sub.kind == "trial" || sub.kind == "free",
+            deviceLimit = sub.deviceLimit
+        )
+        rebuildPlanCards()
+    }
+
+    private fun applyNews(list: List<xyz.gojihub.vpn.network.models.BroadcastDto>) {
+        _state.value = _state.value.copy(
+            news = list
+                .sortedByDescending { it.createdAt }
+                .map { b ->
+                    NewsUi(
+                        id = b.id,
+                        rawContent = b.content,
+                        dateLabel = formatDateTime(b.createdAt),
+                        buttons = b.buttons().map { NewsButtonUi(it.url, it.text) }
+                    )
+                }
+        )
+    }
+
+    private fun applyPlans(response: xyz.gojihub.vpn.network.models.PlansResponse) {
+        rawPlans = response.plans
+        val periods = rawPlans.flatMap { it.prices }
+            .filter { it.priceType == "base" }
+            .map { it.periodValue }
+            .distinct().sorted()
+            .map { m -> PeriodUi(m, Loc.s.plansMonthsLabel(m)) }
+        val keep = _state.value.selectedMonths.takeIf { m -> periods.any { it.months == m } }
+        _state.value = _state.value.copy(
+            personalDiscountPercent = response.customerDiscountPercent?.toInt() ?: 0,
+            periods = periods,
+            selectedMonths = keep ?: periods.firstOrNull()?.months ?: 1
+        )
+        rebuildPlanCards()
+    }
+
+    // referral_enabled/partner_program_enabled — оба флага сейчас включены на бэкенде, но не
+    // проверяются отдельным запросом настроек: если фичу выключат, эндпоинт просто перестанет
+    // отвечать успешно, и секция тихо не покажется.
+    private fun applyReferrals(r: xyz.gojihub.vpn.network.models.ReferralsResponse) {
+        _state.value = _state.value.copy(
+            referral = ReferralUi(
+                link = r.link,
+                webLink = r.webLink,
+                totalReferrals = r.summary.totalReferrals,
+                activeReferrals = r.summary.activeReferrals,
+                totalBonusDays = r.summary.totalBonusDays,
+                entries = r.referrals.map { e -> ReferralEntryUi(displayNameFor(e), e.isActive, e.bonusDays) }
+            )
+        )
+    }
+
+    private fun applyDevices(list: List<DeviceDto>) {
+        rawDevices = list
+        _state.value = _state.value.copy(devices = list.map { it.toUi() })
+    }
+
+    private fun applyPartner(p: xyz.gojihub.vpn.network.models.PartnerStatusResponse) {
+        _state.value = _state.value.copy(
+            partner = PartnerUi(
+                isPartner = p.isPartner,
+                isActive = p.partner?.isActive ?: false,
+                applicationStatus = p.application?.status,
+                commissionRate = p.partner?.commissionRate ?: 0.0,
+                clientCount = p.stats?.clientCount ?: 0,
+                totalEarned = p.partner?.totalEarned ?: 0.0,
+                availableBalance = p.partner?.availableBalance ?: 0.0,
+                pendingBalance = p.partner?.pendingBalance ?: 0.0
+            )
+        )
     }
 
     /** Свёрнутый вид (NEWS_PREVIEW_COUNT новостей) <-> постраничный (NEWS_PAGE_SIZE на
@@ -281,6 +326,8 @@ class PlansViewModel @Inject constructor(
                     _state.value = _state.value.copy(devices = _state.value.devices.map {
                         if (it.hwid == hwid) it.copy(name = trimmed, busy = false) else it
                     })
+                    rawDevices = rawDevices.map { if (it.hwid == hwid) it.copy(readableName = trimmed) else it }
+                    accountCache.save(xyz.gojihub.vpn.subscription.AccountCache.Key.DEVICES, rawDevices)
                 }
                 .onFailure { setDeviceBusy(hwid, false) }
         }
@@ -300,6 +347,8 @@ class PlansViewModel @Inject constructor(
             }
                 .onSuccess {
                     _state.value = _state.value.copy(devices = _state.value.devices.filterNot { it.hwid == hwid })
+                    rawDevices = rawDevices.filterNot { it.hwid == hwid }
+                    accountCache.save(xyz.gojihub.vpn.subscription.AccountCache.Key.DEVICES, rawDevices)
                 }
                 .onFailure { setDeviceBusy(hwid, false) }
         }
@@ -311,10 +360,13 @@ class PlansViewModel @Inject constructor(
         })
     }
 
+    /** Кнопка «обновить»: всё сразу с сервера. Раньше индикатор гас мгновенно — load()
+     *  запускал отдельную корутину и не ждал её; теперь ждём реального окончания запросов. */
     fun refresh() {
+        if (_state.value.refreshing) return
         _state.value = _state.value.copy(refreshing = true)
         viewModelScope.launch {
-            load()
+            fetch(force = true)
             _state.value = _state.value.copy(refreshing = false)
         }
     }

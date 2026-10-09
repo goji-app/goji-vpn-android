@@ -67,7 +67,8 @@ fun VlessNode.toGlobeNode(): xyz.gojihub.vpn.globe.GlobeNode? =
 @Singleton
 class SubscriptionRepository @Inject constructor(
     private val api: RemnawaveApi,
-    @ApplicationContext private val appContext: Context
+    @ApplicationContext private val appContext: Context,
+    private val accountCache: AccountCache
 ) {
     // Тот же приём, что и в NetworkModule: пока туннель поднят, гоняем запрос списка серверов
     // через локальный SOCKS самого Xray — иначе он идёт по сырой сети телефона и падает в зоне
@@ -88,14 +89,15 @@ class SubscriptionRepository @Inject constructor(
     /** То же значение X-HWID, что уходит на бэкенд — для экрана "О программе". */
     fun hwidNow(): String = hwid
 
-    private val _subscription = MutableStateFlow<SubscriptionInfo?>(null)
+    // Последняя известная подписка с диска (см. AccountCache) — «Главная», «Подписка» и виджеты
+    // показывают её сразу после запуска, не дожидаясь сети.
+    private val _subscription = MutableStateFlow(accountCache.load<SubscriptionInfo>(AccountCache.Key.SUBSCRIPTION)?.value)
     val subscription: StateFlow<SubscriptionInfo?> = _subscription.asStateFlow()
 
     // Новости/рассылки (см. RemnawaveApi.getBroadcasts) — та же страница, что "Мои рассылки"
-    // веб-версии (#/my-broadcasts). Не персистится на диск: список короткий, лишний раз
-    // сходить в сеть при следующем запуске не накладно, а устаревшие новости в офлайн-кэше
-    // приносили бы больше путаницы, чем пользы.
-    private val _broadcasts = MutableStateFlow<List<BroadcastDto>>(emptyList())
+    // веб-версии (#/my-broadcasts). Тоже с диска: без этого раздел новостей на «Подписке»
+    // пустовал при каждом запуске без сети.
+    private val _broadcasts = MutableStateFlow(accountCache.load<List<BroadcastDto>>(AccountCache.Key.BROADCASTS)?.value.orEmpty())
     val broadcasts: StateFlow<List<BroadcastDto>> = _broadcasts.asStateFlow()
 
     // Заполняем из диска ДО первого сетевого запроса — как в Happ/Incy: если gojihub.xyz или
@@ -116,8 +118,11 @@ class SubscriptionRepository @Inject constructor(
     // запроса и разбор списка узлов. refreshIfStale() склеивает одновременные вызовы в один и
     // пропускает обновление, если свежее было меньше REFRESH_MIN_INTERVAL_MS назад.
     private val refreshMutex = kotlinx.coroutines.sync.Mutex()
-    @Volatile private var lastRefreshAt = 0L
-    @Volatile private var lastRefreshOk = false
+    // Момент последнего обновления переживает перезапуск процесса — иначе каждый холодный старт
+    // (Android регулярно выгружает приложение) заново тянул подписку, хотя ей несколько минут.
+    private val refreshPrefs = appContext.getSharedPreferences("subscription_refresh", Context.MODE_PRIVATE)
+    @Volatile private var lastRefreshAt = refreshPrefs.getLong("last_refresh_at", 0L)
+    @Volatile private var lastRefreshOk = lastRefreshAt > 0L
 
     suspend fun refreshIfStale(maxAgeMs: Long = REFRESH_MIN_INTERVAL_MS): Boolean {
         if (System.currentTimeMillis() - lastRefreshAt < maxAgeMs) return lastRefreshOk
@@ -132,16 +137,18 @@ class SubscriptionRepository @Inject constructor(
     suspend fun refresh(): Boolean = refreshInternal().also {
         lastRefreshOk = it
         lastRefreshAt = System.currentTimeMillis()
+        // Неудачную попытку не запоминаем на диске: после перезапуска стоит попробовать снова.
+        if (it) refreshPrefs.edit().putLong("last_refresh_at", lastRefreshAt).apply()
     }
 
     private suspend fun refreshInternal(): Boolean {
-        var active = runCatching { api.getSubscriptions() }
+        val response = runCatching { api.getSubscriptions() }
             .onFailure {
                 if (BuildConfig.DEBUG) android.util.Log.e("GodjiSub", "getSubscriptions failed", it)
                 AppLogger.e(appContext, LogCategory.SUBSCRIPTION, "GodjiSub", "getSubscriptions failed", it)
             }
             .getOrNull()
-            ?.subscriptions
+        var active = response?.subscriptions
             ?.let { list -> list.firstOrNull { it.isPrimary } ?: list.firstOrNull() }
 
         // С бэкенда 7.1.0 список выше больше не содержит traffic (подтверждено живым
@@ -155,7 +162,16 @@ class SubscriptionRepository @Inject constructor(
                 .onFailure { AppLogger.e(appContext, LogCategory.SUBSCRIPTION, "GodjiSub", "getSubscription(${toEnrich.id}) failed", it) }
                 .getOrNull() ?: toEnrich
         }
-        _subscription.value = active
+        // Запрос не прошёл (нет сети, VPN переподключается) — оставляем последнюю известную
+        // подписку. Раньше сюда записывался null, и «Главная»/«Подписка» внезапно показывали
+        // «0 дней» и «—» до следующего удачного обновления. null — только если бэкенд реально
+        // ответил, что подписок нет.
+        if (response != null) {
+            _subscription.value = active
+            withContext(Dispatchers.IO) {
+                if (active != null) accountCache.save(AccountCache.Key.SUBSCRIPTION, active)
+            }
+        }
         // Уведомления о скором окончании подписки/успешной оплате — считаются здесь, а не в
         // отдельных вызывающих местах (воркер + 3 ViewModel), чтобы сработать при любом
         // источнике обновления, а не только раз в час в фоне.
@@ -169,6 +185,7 @@ class SubscriptionRepository @Inject constructor(
             .getOrNull()
             ?.let { list ->
                 _broadcasts.value = list
+                withContext(Dispatchers.IO) { accountCache.save(AccountCache.Key.BROADCASTS, list) }
                 BroadcastNotifier.check(appContext, list)
             }
 
@@ -210,7 +227,9 @@ class SubscriptionRepository @Inject constructor(
     }
 
     private companion object {
-        const val REFRESH_MIN_INTERVAL_MS = 30_000L
+        // Автоматические обновления (открытие приложения/экранов) — не чаще раза в час;
+        // фоновый воркер и так обновляет подписку ежечасно, а кнопка «обновить» — сразу.
+        const val REFRESH_MIN_INTERVAL_MS = 60 * 60_000L
     }
 
     fun select(id: String) {
