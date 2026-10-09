@@ -162,7 +162,9 @@ object NetworkJournal {
         return Day(
             hours = hours,
             protectedMs = clipped.sumOf { (a, b) -> b - a },
-            elapsedMs = (limit - start).coerceAtLeast(0),
+            // Журнал мог начаться посреди суток (первый запуск с ним) — процент считаем от
+            // первой записи, а не от полуночи, иначе первый день выглядел бы как «почти 0%».
+            elapsedMs = (limit - maxOf(start, all.firstOrNull()?.at ?: start)).coerceAtLeast(0),
             connects = dayEvents.count { it.kind == Kind.CONNECTED },
             switches = dayEvents.count { isSwitch(it.kind) },
             issues = dayEvents.count { isIssue(it.kind) },
