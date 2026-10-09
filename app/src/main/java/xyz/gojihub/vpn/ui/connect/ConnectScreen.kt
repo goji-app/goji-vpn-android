@@ -190,6 +190,11 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
 
         SpeedCard(state)
 
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            QualityTile(state, Modifier.weight(1f).fillMaxHeight())
+            SubscriptionTile(state, onClick = onOpenPlans, modifier = Modifier.weight(1f).fillMaxHeight())
+        }
+
         AnimatedContent(
             targetState = state.banner to state.bannerKind,
             transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
@@ -200,7 +205,6 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
 
         NodeAndAutoSwitchCard(state, onOpenServers = onOpenServers)
 
-        TrafficCard(state, onClick = onOpenPlans)
     }
     }
 }
@@ -538,29 +542,93 @@ private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Un
     }
 }
 
+/** Плитка «Качество канала» (концепт Goji 2.0): оценка 0..100 по медиане задержки и потерям
+ *  за последнюю минуту (см. ConnectViewModel.startQualityProbe). */
 @Composable
-private fun TrafficCard(state: ConnectUiState, onClick: () -> Unit) {
-    val unlimited = state.isUnlimited || state.quotaGb <= 0.0
-    val pct = if (unlimited) 0f else (state.usedGb / state.quotaGb).coerceIn(0.0, 1.0).toFloat()
+private fun QualityTile(state: ConnectUiState, modifier: Modifier = Modifier) {
+    val score = state.qualityScore
+    val (label, color) = when {
+        score == null -> "" to GodjiColors.TextSecondary
+        score >= 85 -> Loc.f.qualityExcellent to GodjiColors.Teal
+        score >= 65 -> Loc.f.qualityGood to GodjiColors.Teal
+        score >= 45 -> Loc.f.qualityFair to GodjiColors.Warning
+        else -> Loc.f.qualityPoor to GodjiColors.Danger
+    }
     Column(
-        Modifier
-            .fillMaxWidth()
-            .godjiCard()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        modifier.godjiCard().padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(Loc.s.trafficLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.alignByBaseline())
+        Text(Loc.f.qualityTitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                if (unlimited) Loc.s.trafficUnlimited("%.1f".format(state.usedGb)) else Loc.s.trafficLimited("%.1f".format(state.usedGb), state.quotaGb.toInt()),
-                color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.alignByBaseline()
+                score?.toString() ?: "—", color = color, fontWeight = FontWeight.ExtraBold,
+                fontSize = 26.sp, lineHeight = 28.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline()
             )
+            if (label.isNotEmpty()) {
+                Text(label, color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp, modifier = Modifier.alignByBaseline())
+            }
         }
-        if (!unlimited) {
-            AnimatedTrafficBar(pct = pct)
+        Text(
+            when {
+                state.qualityPingMs != null -> Loc.f.qualityPing(state.qualityPingMs, state.qualityLossPct)
+                score != null -> Loc.f.qualityNoReply
+                state.connected -> Loc.f.qualityMeasuring
+                else -> Loc.f.qualityOff
+            },
+            color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp
+        )
+    }
+}
+
+/** Сколько из 5 «полосок» подписки заполнено — как индикатор сигнала. */
+private fun subscriptionBars(days: Int): Int = when {
+    days >= 90 -> 5
+    days >= 30 -> 4
+    days >= 14 -> 3
+    days >= 7 -> 2
+    days >= 1 -> 1
+    else -> 0
+}
+
+/** Плитка «Подписка» (концепт Goji 2.0): остаток дней крупно, полоски-индикатор остатка
+ *  (меньше недели — тёплым цветом, меньше трёх дней — красным) и дата окончания с трафиком. */
+@Composable
+private fun SubscriptionTile(state: ConnectUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val days = state.daysLeft
+    val filled = subscriptionBars(days)
+    val barColor = when {
+        days < 3 -> GodjiColors.Danger
+        days < 7 -> GodjiColors.Terracotta
+        else -> GodjiColors.Teal
+    }
+    val unlimited = state.isUnlimited || state.quotaGb <= 0.0
+    Column(
+        modifier.godjiCard().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(Loc.f.subTileTitle, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                Loc.f.subTileDays(days), color = GodjiColors.TextPrimary, fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.4).sp, maxLines = 1,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
+                repeat(5) { i ->
+                    Box(
+                        Modifier
+                            .size(width = 5.dp, height = (8 + i * 2).dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (i < filled) barColor else GodjiColors.TrackBg)
+                    )
+                }
+            }
         }
-        Text(Loc.s.trafficExpiry(state.expiryLabel, state.daysLeft), color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+        Text(
+            Loc.f.subTileUntil(state.expiryLabel) + " · " +
+                if (unlimited) Loc.s.trafficUnlimited("%.1f".format(state.usedGb)) else Loc.s.trafficLimited("%.1f".format(state.usedGb), state.quotaGb.toInt()),
+            color = GodjiColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp
+        )
     }
 }
 

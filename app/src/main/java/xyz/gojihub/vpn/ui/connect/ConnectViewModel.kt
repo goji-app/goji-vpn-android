@@ -64,12 +64,32 @@ data class ConnectUiState(
     val banner: String? = null,
     val bannerKind: BannerKind = BannerKind.INFO,
 
-    val connectedTimeLabel: String = "00:00:00"
+    val connectedTimeLabel: String = "00:00:00",
+
+    // Качество канала (плитка на главной): медиана задержки через туннель за последние
+    // QUALITY_WINDOW замеров, доля неудачных и итоговая оценка 0..100. null — не измерено.
+    val qualityScore: Int? = null,
+    val qualityPingMs: Int? = null,
+    val qualityLossPct: Int = 0
 )
 
 enum class BannerKind { WARNING, SUCCESS, INFO }
 
+/** Оценка канала 0..100: задержка до 150 мс — 100, к 900 мс линейно падает до 35; каждые 10%
+ *  потерь — минус 5. Все замеры неудачны — 0. */
+internal fun qualityScore(rttMs: Int?, lossPct: Int): Int {
+    if (rttMs == null) return 0
+    val base = when {
+        rttMs <= 150 -> 100.0
+        rttMs >= 900 -> 35.0
+        else -> 100.0 - (rttMs - 150) * 65.0 / 750.0
+    }
+    return (base - lossPct * 0.5).toInt().coerceIn(0, 100)
+}
+
 private const val SPEED_HISTORY_SIZE = 30
+private const val QUALITY_WINDOW = 6
+private const val QUALITY_INTERVAL_MS = 10_000L
 
 @HiltViewModel
 class ConnectViewModel @Inject constructor(
@@ -77,8 +97,16 @@ class ConnectViewModel @Inject constructor(
     private val pingRepository: PingRepository,
     private val networkMonitor: NetworkMonitor,
     private val settingsRepository: SettingsRepository,
+    // Ходит через локальный SOCKS Xray, пока туннель поднят (см. NetworkModule) — то есть
+    // меряет задержку именно по VPN-маршруту, без авторизационных заголовков приложения.
+    @javax.inject.Named("diagnostics") diagnosticsClient: okhttp3.OkHttpClient,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
+
+    private val probeClient = diagnosticsClient.newBuilder()
+        .callTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+    private var qualityJob: Job? = null
 
     private val _state = MutableStateFlow(ConnectUiState())
     val state: StateFlow<ConnectUiState> = _state
@@ -147,7 +175,9 @@ class ConnectViewModel @Inject constructor(
             // Скорость и таймер раз в секунду нужны только на видимом экране: в свёрнутом
             // приложении ViewModel жива, и раньше этот цикл будил процессор впустую.
             combine(GodjiVpnService.isRunning, AppVisibility.visible) { running, visible -> running && visible }
-                .collect { active -> if (active) startSpeedPolling() else stopSpeedPolling() }
+                .collect { active ->
+                    if (active) { startSpeedPolling(); startQualityProbe() } else { stopSpeedPolling(); stopQualityProbe() }
+                }
         }
         viewModelScope.launch {
             // "connecting" сюда больше не трогаем — единственный источник правды для него
@@ -383,6 +413,55 @@ class ConnectViewModel @Inject constructor(
         speedJob?.cancel()
         speedJob = null
         _state.value = _state.value.copy(downSpeedMbps = 0.0, upSpeedMbps = 0.0, downHistory = emptyList(), upHistory = emptyList())
+    }
+
+    /** Раз в QUALITY_INTERVAL_MS — GET на адрес проверки пинга (Настройки → Пинг) через
+     *  туннель. Только пока экран виден и VPN подключён (тот же переключатель, что у
+     *  скорости), чтобы не тратить батарею в фоне. Первый удачный замер — с TLS-рукопожатием,
+     *  он не показателен: сразу повторяем по уже открытому соединению. */
+    private fun startQualityProbe() {
+        if (qualityJob?.isActive == true) return
+        qualityJob = viewModelScope.launch {
+            val samples = ArrayDeque<Int>()
+            var warmedUp = false
+            while (isActive) {
+                val ms = probeOnce(settingsRepository.pingTestUrlNow())
+                if (!warmedUp && ms >= 0) { warmedUp = true; continue }
+                warmedUp = true
+                samples.addLast(ms)
+                while (samples.size > QUALITY_WINDOW) samples.removeFirst()
+                publishQuality(samples)
+                delay(QUALITY_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun stopQualityProbe() {
+        qualityJob?.cancel()
+        qualityJob = null
+        if (!GodjiVpnService.isRunning.value) {
+            _state.value = _state.value.copy(qualityScore = null, qualityPingMs = null, qualityLossPct = 0)
+        }
+    }
+
+    private suspend fun probeOnce(url: String): Int = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val start = android.os.SystemClock.elapsedRealtime()
+            probeClient.newCall(okhttp3.Request.Builder().url(url).build()).execute().use { r ->
+                if (r.code in 200..399) (android.os.SystemClock.elapsedRealtime() - start).toInt() else -1
+            }
+        }.getOrDefault(-1)
+    }
+
+    private fun publishQuality(samples: Collection<Int>) {
+        val ok = samples.filter { it >= 0 }.sorted()
+        val loss = (samples.size - ok.size) * 100 / samples.size.coerceAtLeast(1)
+        val rtt = ok.getOrNull(ok.size / 2)
+        _state.value = _state.value.copy(
+            qualityScore = qualityScore(rtt, loss),
+            qualityPingMs = rtt,
+            qualityLossPct = loss
+        )
     }
 
     private fun formatElapsed(millis: Long): String {

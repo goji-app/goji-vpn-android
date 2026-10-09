@@ -107,6 +107,18 @@ data class FeatureStrings(
     val bypassWithSubdomains: String,
     // ── Жидкое стекло ──
     val speedNow: String,
+    val qualityTitle: String,
+    val qualityExcellent: String,
+    val qualityGood: String,
+    val qualityFair: String,
+    val qualityPoor: String,
+    val qualityPing: (ms: Int, lossPct: Int) -> String,
+    val qualityMeasuring: String,
+    val qualityOff: String,
+    val qualityNoReply: String,
+    val subTileTitle: String,
+    val subTileDays: (days: Int) -> String,
+    val subTileUntil: (date: String) -> String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -205,6 +217,18 @@ data class FeatureStrings(
             bypassEmpty = "Список пуст — весь трафик идёт через VPN.",
             bypassWithSubdomains = "вместе с поддоменами",
             speedNow = "Скорость сейчас",
+            qualityTitle = "Качество канала",
+            qualityExcellent = "отлично",
+            qualityGood = "хорошо",
+            qualityFair = "средне",
+            qualityPoor = "плохо",
+            qualityPing = { ms, loss -> if (loss == 0) "Пинг $ms мс · потерь нет" else "Пинг $ms мс · потери $loss%" },
+            qualityMeasuring = "Измеряем…",
+            qualityOff = "Подключись — и покажем",
+            qualityNoReply = "Сервер не отвечает",
+            subTileTitle = "Подписка",
+            subTileDays = { n -> "$n " + when { n % 10 == 1 && n % 100 != 11 -> "день"; n % 10 in 2..4 && n % 100 !in 12..14 -> "дня"; else -> "дней" } },
+            subTileUntil = { date -> "до $date" },
         )
 
         private val EN = FeatureStrings(
@@ -297,6 +321,18 @@ data class FeatureStrings(
             bypassEmpty = "The list is empty — all traffic goes through the VPN.",
             bypassWithSubdomains = "including subdomains",
             speedNow = "Speed now",
+            qualityTitle = "Connection quality",
+            qualityExcellent = "excellent",
+            qualityGood = "good",
+            qualityFair = "fair",
+            qualityPoor = "poor",
+            qualityPing = { ms, loss -> if (loss == 0) "Ping $ms ms · no loss" else "Ping $ms ms · $loss% loss" },
+            qualityMeasuring = "Measuring…",
+            qualityOff = "Connect to see it",
+            qualityNoReply = "Server not responding",
+            subTileTitle = "Subscription",
+            subTileDays = { n -> if (n == 1) "1 day" else "$n days" },
+            subTileUntil = { date -> "until $date" },
         )
 
         private val ZH = FeatureStrings(
@@ -389,6 +425,18 @@ data class FeatureStrings(
             bypassEmpty = "列表为空 — 所有流量都经过 VPN。",
             bypassWithSubdomains = "包括子域名",
             speedNow = "当前速度",
+            qualityTitle = "连接质量",
+            qualityExcellent = "优秀",
+            qualityGood = "良好",
+            qualityFair = "一般",
+            qualityPoor = "较差",
+            qualityPing = { ms, loss -> if (loss == 0) "延迟 $ms 毫秒 · 无丢包" else "延迟 $ms 毫秒 · 丢包 $loss%" },
+            qualityMeasuring = "正在测量…",
+            qualityOff = "连接后显示",
+            qualityNoReply = "服务器无响应",
+            subTileTitle = "订阅",
+            subTileDays = { n -> "$n 天" },
+            subTileUntil = { date -> "至 $date" },
         )
     }
 }
