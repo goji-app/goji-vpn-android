@@ -114,7 +114,7 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
         }
     }
 
-    // Вместо Scaffold + NavigationBar: общий фон → контент → плавающий стеклянный таб-бар.
+    // Вместо Scaffold + NavigationBar: общий фон → контент → нижняя панель (GlassTabBar).
     GlassBackdrop {
         NavHost(
             navController = navController,
@@ -122,8 +122,8 @@ fun GodjiApp(startLoggedIn: Boolean, authRepository: AuthRepository) {
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                // 64dp капсула + 10dp отступ снизу + 10dp воздуха
-                .padding(bottom = if (showBottomBar) 84.dp else 0.dp)
+                // Короткая нижняя панель M3 Expressive — 64dp над системной навигацией.
+                .padding(bottom = if (showBottomBar) 64.dp else 0.dp)
         ) {
             composable(GodjiDestinations.LOGIN) {
                 LoginScreen(

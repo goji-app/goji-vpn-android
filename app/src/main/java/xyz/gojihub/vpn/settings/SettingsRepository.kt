@@ -64,7 +64,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val trustedSsidsKey = stringSetPreferencesKey("trusted_wifi_ssids")
     private val disconnectOnTrustedKey = booleanPreferencesKey("disconnect_on_trusted_wifi")
     private val bypassDomainsKey = stringSetPreferencesKey("bypass_domains")
-    private val liquidGlassKey = booleanPreferencesKey("liquid_glass")
 
     val preferredNodeId: Flow<String?> = context.dataStore.data.map { it[preferredNodeKey] }
 
@@ -222,15 +221,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun removeBypassDomain(domain: String) {
         context.dataStore.edit { it[bypassDomainsKey] = (it[bypassDomainsKey] ?: emptySet()) - domain }
     }
-
-    /** Эффект жидкого стекла (ui/theme/LiquidGlass.kt) — по умолчанию включён; на слабых
-     *  устройствах его можно выключить, тогда остаётся прежнее стекло. */
-    val liquidGlass: Flow<Boolean> = context.dataStore.data.map { it[liquidGlassKey] ?: true }
-    suspend fun liquidGlassNow(): Boolean = liquidGlass.first()
-    suspend fun setLiquidGlass(enabled: Boolean) {
-        context.dataStore.edit { it[liquidGlassKey] = enabled }
-    }
-
     companion object {
         /** "https://www.Example.com:443/path" → "example.com"; кириллические домены → punycode.
          *  null — если это не похоже на домен. */

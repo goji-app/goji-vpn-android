@@ -131,11 +131,6 @@ fun SettingsScreen(
                 selectedIndex = FontSizePreset.entries.indexOf(state.fontSize),
                 onSelect = { viewModel.setFontSize(FontSizePreset.entries[it]) }
             )
-            // Жидкое стекло требует Android 13+ (RuntimeShader) — на старших версиях пункта нет.
-            if (xyz.gojihub.vpn.ui.theme.LiquidGlass.supported) {
-                Hair()
-                ToggleRow(Loc.f.liquidGlassTitle, Loc.f.liquidGlassDesc, state.liquidGlass, viewModel::setLiquidGlass)
-            }
         }
 
         SectionLabel(Loc.s.settingsServerCheck)
@@ -341,7 +336,9 @@ internal fun RefCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun Hair() = HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
+// M3 Expressive (настройки Android 16): строки группы разделены зазором цвета фона — карточка
+// читается как стопка отдельных плашек.
+internal fun Hair() = HorizontalDivider(thickness = 2.dp, color = GodjiColors.SurfaceBase)
 
 /** Подпись секции + карточка с внутренним padding 16 — для подэкранов (пинг, логирование). */
 @Composable
@@ -458,7 +455,6 @@ private fun SegmentedRow(title: String, subtitle: String?, options: List<String>
                     .offset(x = thumbX)
                     .width(slotWidth)
                     .height(34.dp)
-                    .shadow(4.dp, RoundedCornerShape(50), ambientColor = Color(0x1F000000), spotColor = Color(0x1F000000))
                     .clip(RoundedCornerShape(50))
                     .background(GodjiColors.Thumb)
                     .border(1.dp, GodjiColors.CardBorder, RoundedCornerShape(50))

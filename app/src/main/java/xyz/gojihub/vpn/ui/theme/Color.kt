@@ -8,140 +8,165 @@ import androidx.compose.ui.graphics.Color
 enum class FontSizePreset(val multiplier: Float) { SMALL(0.9f), NORMAL(1f), LARGE(1.15f) }
 
 /**
- * Токены дизайна v5 «Стекло» (эталон: handoff-1.0.77/screens/, файлы *.png).
- * Имена старых полей НЕ менялись — экраны 1.0.77 продолжают компилироваться как есть.
+ * Токены дизайна «Goji Expressive» — Material 3 Expressive (Android 16/17): плотные тональные
+ * поверхности вместо стекла, без размытия, бликов и теней. Тональная схема построена от
+ * фирменного бирюзового (#00A79B), тёплый акцент — терракотовый (tertiary).
  *
- * ВАЖНО: Background = Transparent. Все экраны делают `.background(GodjiColors.Background)` —
- * теперь это no-op, и под экранами виден общий фон GlassBackdrop (см. MainActivity).
- * Для мест, где нужен сплошной цвет (отдельная Activity, диалог), есть BackgroundSolid.
+ * Имена полей v5 «Стекло» НЕ менялись — экраны продолжают их читать, но значения теперь
+ * роли M3: TextPrimary = onSurface, Teal/TealDeep = primary, TealTint = primaryContainer,
+ * Chip = surfaceContainerHigh, Thumb = secondaryContainer и т. д. Поля, которые больше
+ * ничего не рисуют (блики, кромки, пятна фона), оставлены прозрачными для совместимости.
+ *
+ * Background = Transparent: экраны делают `.background(GodjiColors.Background)` — это no-op,
+ * под ними сплошной фон GlassBackdrop (BackgroundSolid = surface).
  */
 object GodjiColors {
     var isDark by mutableStateOf(false)
     var themeMode by mutableStateOf(ThemeMode.SYSTEM)
     var fontSizePreset by mutableStateOf(FontSizePreset.NORMAL)
 
-    // ── старые поля (значения v5) ─────────────────────────────
+    // ── роли Material 3 ──────────────────────────────────────
+    var SurfaceBase by mutableStateOf(Color(0xFFF4FBF8))
+    var SurfaceContainerLow by mutableStateOf(Color(0xFFEEF5F2))
+    var SurfaceContainer by mutableStateOf(Color(0xFFE8EFEC))
+    var SurfaceContainerHigh by mutableStateOf(Color(0xFFE3EAE7))
+    var SurfaceContainerHighest by mutableStateOf(Color(0xFFDDE4E1))
+    var PrimaryContainer by mutableStateOf(Color(0xFF9DF2E6))
+    var OnPrimaryContainer by mutableStateOf(Color(0xFF00201D))
+    var SecondaryContainer by mutableStateOf(Color(0xFFCCE8E3))
+    var OnSecondaryContainer by mutableStateOf(Color(0xFF051F1C))
+    var TertiaryContainer by mutableStateOf(Color(0xFFFFDBCF))
+    var OnTertiaryContainer by mutableStateOf(Color(0xFF380D00))
+    var ErrorContainer by mutableStateOf(Color(0xFFFFDAD6))
+    var Outline by mutableStateOf(Color(0xFF6F7977))
+    var OutlineVariant by mutableStateOf(Color(0xFFBEC9C6))
+
+    // ── поля v5 (значения — роли M3) ─────────────────────────
     var Background by mutableStateOf(Color.Transparent)
-    var BackgroundSolid by mutableStateOf(Color(0xFFE6ECF1))
-    var Surface by mutableStateOf(Color(0xFFFFFFFF))          // текст на акценте / на Ink-кнопке
-    var SurfaceGlass by mutableStateOf(Color(0x59FFFFFF))
+    var BackgroundSolid by mutableStateOf(Color(0xFFF4FBF8))
+    var Surface by mutableStateOf(Color(0xFFFFFFFF))          // текст на акценте (onPrimary)
+    var SurfaceGlass by mutableStateOf(Color(0xFFE3EAE7))
 
-    var Ink by mutableStateOf(Color(0xFF0B1F1C))
-    var InkShadow by mutableStateOf(Color(0xFF06120F))
-    var TextPrimary by mutableStateOf(Color(0xFF0B1F1C))
-    var TextSecondary by mutableStateOf(Color(0x9E0B1F1C))    // rgba(11,31,28,.62)
-    var TextMuted by mutableStateOf(Color(0x7A0B1F1C))
+    var Ink by mutableStateOf(Color(0xFF161D1C))
+    var InkShadow by mutableStateOf(Color.Transparent)
+    var TextPrimary by mutableStateOf(Color(0xFF161D1C))
+    var TextSecondary by mutableStateOf(Color(0xFF3F4947))
+    var TextMuted by mutableStateOf(Color(0xFF6F7977))
 
-    var Teal by mutableStateOf(Color(0xFF00A79B))             // accent
-    var TealBright by mutableStateOf(Color(0xFF2AC9BA))
-    var TealDeep by mutableStateOf(Color(0xFF007A70))         // accentInk — акцентный ТЕКСТ
-    var TealTint by mutableStateOf(Color(0x2400A79B))         // okBg .14
-    var TealTintBorder by mutableStateOf(Color(0x5900A79B))
+    var Teal by mutableStateOf(Color(0xFF006A62))             // primary
+    var TealBright by mutableStateOf(Color(0xFF006A62))
+    var TealDeep by mutableStateOf(Color(0xFF006A62))         // акцентный ТЕКСТ
+    var TealTint by mutableStateOf(Color(0xFF9DF2E6))         // primaryContainer
+    var TealTintBorder by mutableStateOf(Color(0xFF006A62))
 
-    var Terracotta by mutableStateOf(Color(0xFFE0693F))       // warm
-    var TerracottaDeep by mutableStateOf(Color(0xFFB2482A))
-    var TerracottaTint by mutableStateOf(Color(0x80FFD6C4))   // warmGlass
-    var TerracottaTintBorder by mutableStateOf(Color(0x80FFFFFF))
+    var Terracotta by mutableStateOf(Color(0xFF9A4524))       // tertiary
+    var TerracottaDeep by mutableStateOf(Color(0xFF7B2F12))
+    var TerracottaTint by mutableStateOf(Color(0xFFFFDBCF))   // tertiaryContainer
+    var TerracottaTintBorder by mutableStateOf(Color.Transparent)
 
-    var Warning by mutableStateOf(Color(0xFFC98B12))
-    var Danger by mutableStateOf(Color(0xFFD2432C))
-    var JamBg by mutableStateOf(Color(0x8CFFC8B9))
-    var JamBorder by mutableStateOf(Color(0x80FFFFFF))
-    var JamText by mutableStateOf(Color(0xFFC2412A))
+    var Warning by mutableStateOf(Color(0xFF8A6100))
+    var Danger by mutableStateOf(Color(0xFFBA1A1A))
+    var JamBg by mutableStateOf(Color(0xFFFFDAD6))
+    var JamBorder by mutableStateOf(Color.Transparent)
+    var JamText by mutableStateOf(Color(0xFFBA1A1A))
 
-    var CardBorder by mutableStateOf(Color(0x80FFFFFF))       // stroke
-    var CardBorderStrong by mutableStateOf(Color(0x80FFFFFF))
-    var ButtonBorder by mutableStateOf(Color(0x80FFFFFF))
-    var Chip by mutableStateOf(Color(0x59FFFFFF))             // chip .35
-    var TrackBg by mutableStateOf(Color(0x170B1F1C))          // track .09
+    var CardBorder by mutableStateOf(Color.Transparent)       // у тональных карточек нет обводки
+    var CardBorderStrong by mutableStateOf(Color.Transparent)
+    var ButtonBorder by mutableStateOf(Color(0xFF6F7977))     // outline (поля ввода, outlined-кнопки)
+    var Chip by mutableStateOf(Color(0xFFE3EAE7))             // surfaceContainerHigh
+    var TrackBg by mutableStateOf(Color(0xFFDDE4E1))          // surfaceContainerHighest
 
-    var BorderTeal by mutableStateOf(Color(0x2600A79B))
+    var BorderTeal by mutableStateOf(Color(0xFF006A62))
     var Purple by mutableStateOf(Color(0xFF5B3BD6))
 
-    // ── новые поля стекла ─────────────────────────────────────
-    var Glass by mutableStateOf(Color(0x33FFFFFF))            // .20 — карточки
-    var GlassStrong by mutableStateOf(Color(0x66FFFFFF))      // .40 — таб-бар, лист входа
-    var GlassFaint by mutableStateOf(Color(0x29FFFFFF))       // .16
-    var Hair by mutableStateOf(Color(0x140B1F1C))             // разделители .08
-    var Hl by mutableStateOf(Color(0xCCFFFFFF))               // верхняя светлая кромка .8
-    var GlassSpot by mutableStateOf(Color(0x8CFFFFFF))        // бегающий блик .55
-    var GlassGloss by mutableStateOf(Color(0x40FFFFFF))       // диагональный глянец .25
-    var RimA by mutableStateOf(Color(0xFFFFFFFF)); var RimB by mutableStateOf(Color(0x40FFFFFF))
-    var RimC by mutableStateOf(Color(0x0FFFFFFF)); var RimD by mutableStateOf(Color(0xB3FFFFFF))
-    var InnerTop by mutableStateOf(Color(0xF2FFFFFF))
-    var InnerBottom by mutableStateOf(Color(0x38283C5A))      // rgba(40,60,90,.22)
-    var GlassShadow by mutableStateOf(Color(0x2E3C1E78))      // rgba(60,30,120,.18)
-    var AccentGradTop by mutableStateOf(Color(0xFF2AC9BA))
-    var AccentGradMid by mutableStateOf(Color(0xFF00A79B))
-    var AccentGradBottom by mutableStateOf(Color(0xFF008F84))
-    var AccentGlow by mutableStateOf(Color(0x5900A79B))
-    var SelBg by mutableStateOf(Color(0x1A00A79B))
-    var Thumb by mutableStateOf(Color(0xEBFFFFFF))            // бегунок сегмент-контрола
-    var Lens by mutableStateOf(Color(0xBFFFFFFF))             // линза выбранной вкладки
-    var RingCore by mutableStateOf(Color(0xE0FFFFFF))
-    var InkBtn by mutableStateOf(Color(0xFF0B1F1C)); var InkBtnText by mutableStateOf(Color(0xFFF4FAF9))
-    // фон (GlassBackdrop)
-    var BaseTop by mutableStateOf(Color(0xFFF2F4F7)); var BaseMid by mutableStateOf(Color(0xFFE6ECF1)); var BaseBottom by mutableStateOf(Color(0xFFDDE7EA))
-    var Blob1 by mutableStateOf(Color(0xFF6FD1C4)); var Blob2 by mutableStateOf(Color(0xFFAFA6F2))
-    var Blob3 by mutableStateOf(Color(0xFFF2C2A5)); var Blob4 by mutableStateOf(Color(0xFF8EC3EA))
-    var BlobAlpha by mutableStateOf(0.6f)
-    var TexLine by mutableStateOf(Color(0x12284660))          // rgba(40,70,90,.07)
-    var TexDot by mutableStateOf(Color(0x21284660))           // rgba(40,70,90,.13)
+    var Glass by mutableStateOf(Color(0xFFE8EFEC))            // карточки — surfaceContainer
+    var GlassStrong by mutableStateOf(Color(0xFFE3EAE7))      // лист входа, тост — High
+    var GlassFaint by mutableStateOf(Color(0xFFDDE4E1))       // строки внутри карточек — Highest
+    var Hair by mutableStateOf(Color(0xFFDDE4E1))             // разделители
+    var Hl by mutableStateOf(Color.Transparent)
+    var GlassSpot by mutableStateOf(Color.Transparent)
+    var GlassGloss by mutableStateOf(Color.Transparent)
+    var RimA by mutableStateOf(Color.Transparent); var RimB by mutableStateOf(Color.Transparent)
+    var RimC by mutableStateOf(Color.Transparent); var RimD by mutableStateOf(Color.Transparent)
+    var InnerTop by mutableStateOf(Color.Transparent)
+    var InnerBottom by mutableStateOf(Color.Transparent)
+    var GlassShadow by mutableStateOf(Color.Transparent)
+    // Градиенты v5 сведены к плоскому primary — в M3E заливки однотонные.
+    var AccentGradTop by mutableStateOf(Color(0xFF006A62))
+    var AccentGradMid by mutableStateOf(Color(0xFF006A62))
+    var AccentGradBottom by mutableStateOf(Color(0xFF006A62))
+    var AccentGlow by mutableStateOf(Color.Transparent)
+    var SelBg by mutableStateOf(Color(0xFFCCE8E3))
+    var Thumb by mutableStateOf(Color(0xFFCCE8E3))            // выбранный сегмент — secondaryContainer
+    var Lens by mutableStateOf(Color(0xFFCCE8E3))             // индикатор вкладки — secondaryContainer
+    var RingCore by mutableStateOf(Color(0xFFE8EFEC))
+    var InkBtn by mutableStateOf(Color(0xFF006A62)); var InkBtnText by mutableStateOf(Color(0xFFFFFFFF))
+    // фон (GlassBackdrop) — сплошной surface
+    var BaseTop by mutableStateOf(Color(0xFFF4FBF8)); var BaseMid by mutableStateOf(Color(0xFFF4FBF8)); var BaseBottom by mutableStateOf(Color(0xFFF4FBF8))
+    var Blob1 by mutableStateOf(Color.Transparent); var Blob2 by mutableStateOf(Color.Transparent)
+    var Blob3 by mutableStateOf(Color.Transparent); var Blob4 by mutableStateOf(Color.Transparent)
+    var BlobAlpha by mutableStateOf(0f)
+    var TexLine by mutableStateOf(Color.Transparent)
+    var TexDot by mutableStateOf(Color.Transparent)
+
+    private fun apply(
+        surface: Color, cLow: Color, c: Color, cHigh: Color, cHighest: Color,
+        onSurface: Color, onSurfaceVariant: Color, outline: Color, outlineVariant: Color,
+        primary: Color, onPrimary: Color, primaryC: Color, onPrimaryC: Color,
+        secondaryC: Color, onSecondaryC: Color,
+        tertiary: Color, tertiaryDeep: Color, tertiaryC: Color, onTertiaryC: Color,
+        error: Color, errorC: Color, warning: Color
+    ) {
+        SurfaceBase = surface; SurfaceContainerLow = cLow; SurfaceContainer = c
+        SurfaceContainerHigh = cHigh; SurfaceContainerHighest = cHighest
+        PrimaryContainer = primaryC; OnPrimaryContainer = onPrimaryC
+        SecondaryContainer = secondaryC; OnSecondaryContainer = onSecondaryC
+        TertiaryContainer = tertiaryC; OnTertiaryContainer = onTertiaryC
+        ErrorContainer = errorC; Outline = outline; OutlineVariant = outlineVariant
+
+        Background = Color.Transparent; BackgroundSolid = surface
+        Surface = onPrimary; SurfaceGlass = cHigh
+        Ink = onSurface; TextPrimary = onSurface; TextSecondary = onSurfaceVariant; TextMuted = outline
+        Teal = primary; TealBright = primary; TealDeep = primary; TealTint = primaryC; TealTintBorder = primary
+        Terracotta = tertiary; TerracottaDeep = tertiaryDeep; TerracottaTint = tertiaryC
+        Warning = warning; Danger = error; JamBg = errorC; JamText = error
+        ButtonBorder = outline; Chip = cHigh; TrackBg = cHighest; BorderTeal = primary
+        Glass = c; GlassStrong = cHigh; GlassFaint = cHighest; Hair = cHighest
+        AccentGradTop = primary; AccentGradMid = primary; AccentGradBottom = primary
+        SelBg = secondaryC; Thumb = secondaryC; Lens = secondaryC; RingCore = c
+        InkBtn = primary; InkBtnText = onPrimary
+        BaseTop = surface; BaseMid = surface; BaseBottom = surface
+    }
 
     fun applyLight() {
         isDark = false
-        Background = Color.Transparent; BackgroundSolid = Color(0xFFE6ECF1)
-        Surface = Color(0xFFFFFFFF); SurfaceGlass = Color(0x59FFFFFF)
-        Ink = Color(0xFF0B1F1C); InkShadow = Color(0xFF06120F)
-        TextPrimary = Color(0xFF0B1F1C); TextSecondary = Color(0x9E0B1F1C); TextMuted = Color(0x7A0B1F1C)
-        Teal = Color(0xFF00A79B); TealBright = Color(0xFF2AC9BA); TealDeep = Color(0xFF007A70)
-        TealTint = Color(0x2400A79B); TealTintBorder = Color(0x5900A79B)
-        Terracotta = Color(0xFFE0693F); TerracottaDeep = Color(0xFFB2482A)
-        TerracottaTint = Color(0x80FFD6C4); TerracottaTintBorder = Color(0x80FFFFFF)
-        Warning = Color(0xFFC98B12); Danger = Color(0xFFD2432C)
-        JamBg = Color(0x8CFFC8B9); JamBorder = Color(0x80FFFFFF); JamText = Color(0xFFC2412A)
-        CardBorder = Color(0x80FFFFFF); CardBorderStrong = Color(0x80FFFFFF); ButtonBorder = Color(0x80FFFFFF)
-        Chip = Color(0x59FFFFFF); TrackBg = Color(0x170B1F1C)
-        BorderTeal = Color(0x2600A79B); Purple = Color(0xFF5B3BD6)
-        Glass = Color(0x33FFFFFF); GlassStrong = Color(0x66FFFFFF); GlassFaint = Color(0x29FFFFFF)
-        Hair = Color(0x140B1F1C); Hl = Color(0xCCFFFFFF); GlassSpot = Color(0x8CFFFFFF); GlassGloss = Color(0x40FFFFFF)
-        RimA = Color(0xFFFFFFFF); RimB = Color(0x40FFFFFF); RimC = Color(0x0FFFFFFF); RimD = Color(0xB3FFFFFF)
-        InnerTop = Color(0xF2FFFFFF); InnerBottom = Color(0x38283C5A); GlassShadow = Color(0x2E3C1E78)
-        AccentGradTop = Color(0xFF2AC9BA); AccentGradMid = Color(0xFF00A79B); AccentGradBottom = Color(0xFF008F84)
-        AccentGlow = Color(0x5900A79B); SelBg = Color(0x1A00A79B)
-        Thumb = Color(0xEBFFFFFF); Lens = Color(0xBFFFFFFF); RingCore = Color(0xE0FFFFFF)
-        InkBtn = Color(0xFF0B1F1C); InkBtnText = Color(0xFFF4FAF9)
-        BaseTop = Color(0xFFF2F4F7); BaseMid = Color(0xFFE6ECF1); BaseBottom = Color(0xFFDDE7EA)
-        Blob1 = Color(0xFF6FD1C4); Blob2 = Color(0xFFAFA6F2); Blob3 = Color(0xFFF2C2A5); Blob4 = Color(0xFF8EC3EA)
-        BlobAlpha = 0.6f; TexLine = Color(0x12284660); TexDot = Color(0x21284660)
+        apply(
+            surface = Color(0xFFF4FBF8), cLow = Color(0xFFEEF5F2), c = Color(0xFFE8EFEC),
+            cHigh = Color(0xFFE3EAE7), cHighest = Color(0xFFDDE4E1),
+            onSurface = Color(0xFF161D1C), onSurfaceVariant = Color(0xFF3F4947),
+            outline = Color(0xFF6F7977), outlineVariant = Color(0xFFBEC9C6),
+            primary = Color(0xFF006A62), onPrimary = Color(0xFFFFFFFF),
+            primaryC = Color(0xFF9DF2E6), onPrimaryC = Color(0xFF00201D),
+            secondaryC = Color(0xFFCCE8E3), onSecondaryC = Color(0xFF051F1C),
+            tertiary = Color(0xFF9A4524), tertiaryDeep = Color(0xFF7B2F12),
+            tertiaryC = Color(0xFFFFDBCF), onTertiaryC = Color(0xFF380D00),
+            error = Color(0xFFBA1A1A), errorC = Color(0xFFFFDAD6), warning = Color(0xFF8A6100)
+        )
     }
 
     fun applyDark() {
         isDark = true
-        Background = Color.Transparent; BackgroundSolid = Color(0xFF0C1320)
-        // Surface в экранах = цвет текста на акцентной/Ink-кнопке → на тёмной теме он тёмный.
-        Surface = Color(0xFF0B1F1C); SurfaceGlass = Color(0x14FFFFFF)
-        Ink = Color(0xFFF1F7F6); InkShadow = Color(0xFFC7CBD4)
-        TextPrimary = Color(0xFFF5F7FA); TextSecondary = Color(0xCCE8EEF4); TextMuted = Color(0x99E8EEF4)
-        Teal = Color(0xFF5FFFE6); TealBright = Color(0xFF34E3D2); TealDeep = Color(0xFF7FFFEA)
-        TealTint = Color(0x242FE0CF); TealTintBorder = Color(0x595FFFE6)
-        Terracotta = Color(0xFFFF8E62); TerracottaDeep = Color(0xFFFFB08E)
-        TerracottaTint = Color(0x6178321C); TerracottaTintBorder = Color(0x24FFFFFF)
-        Warning = Color(0xFFE0A63C); Danger = Color(0xFFFF7A66)
-        JamBg = Color(0x66782819); JamBorder = Color(0x24FFFFFF); JamText = Color(0xFFFF8A6E)
-        CardBorder = Color(0x24FFFFFF); CardBorderStrong = Color(0x24FFFFFF); ButtonBorder = Color(0x24FFFFFF)
-        Chip = Color(0x14FFFFFF); TrackBg = Color(0x1FFFFFFF)
-        BorderTeal = Color(0x262FE0CF); Purple = Color(0xFF8B5CFF)
-        Glass = Color(0x9E12161E); GlassStrong = Color(0xBD161A24); GlassFaint = Color(0x6612161E)
-        Hair = Color(0x1AFFFFFF); Hl = Color(0x2EFFFFFF); GlassSpot = Color(0x12FFFFFF); GlassGloss = Color(0x12FFFFFF)
-        RimA = Color(0x8CFFFFFF); RimB = Color(0x14FFFFFF); RimC = Color(0x05FFFFFF); RimD = Color(0x47FFFFFF)
-        InnerTop = Color(0x47FFFFFF); InnerBottom = Color(0x80000000); GlassShadow = Color(0x590A0528)
-        AccentGradTop = Color(0xFF34E3D2); AccentGradMid = Color(0xFF10B8A9); AccentGradBottom = Color(0xFF079487)
-        AccentGlow = Color(0x592FE0CF); SelBg = Color(0x172FE0CF)
-        Thumb = Color(0x29FFFFFF); Lens = Color(0x2EFFFFFF); RingCore = Color(0xE610141C)
-        InkBtn = Color(0xFFF1F7F6); InkBtnText = Color(0xFF0B1F1C)
-        BaseTop = Color(0xFF080C12); BaseMid = Color(0xFF0C1320); BaseBottom = Color(0xFF06100F)
-        Blob1 = Color(0xFF0F8C80); Blob2 = Color(0xFF4332A8); Blob3 = Color(0xFF8A3D2A); Blob4 = Color(0xFF1B4F8C)
-        BlobAlpha = 0.32f; TexLine = Color(0x09A0DCE6); TexDot = Color(0x0FC8E6F0)
+        apply(
+            surface = Color(0xFF0E1513), cLow = Color(0xFF161D1C), c = Color(0xFF1A2120),
+            cHigh = Color(0xFF252B2A), cHighest = Color(0xFF2F3635),
+            onSurface = Color(0xFFDDE4E1), onSurfaceVariant = Color(0xFFBEC9C6),
+            outline = Color(0xFF889391), outlineVariant = Color(0xFF3F4947),
+            primary = Color(0xFF80D5CA), onPrimary = Color(0xFF003732),
+            primaryC = Color(0xFF005049), onPrimaryC = Color(0xFF9DF2E6),
+            secondaryC = Color(0xFF334B48), onSecondaryC = Color(0xFFCCE8E3),
+            tertiary = Color(0xFFFFB59A), tertiaryDeep = Color(0xFFFFDBCF),
+            tertiaryC = Color(0xFF7B2F12), onTertiaryC = Color(0xFFFFDBCF),
+            error = Color(0xFFFFB4AB), errorC = Color(0xFF93000A), warning = Color(0xFFF0BF48)
+        )
     }
 }

@@ -3,6 +3,7 @@ package xyz.gojihub.vpn.ui.theme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -58,40 +60,45 @@ object GojiTabIcons {
 
 data class GlassTab(val route: String, val label: String, val icon: ImageVector)
 
-/** Плавающая капсула таб-бара: отступ 14dp от краёв, высота 64dp, «линза» скользит под выбранной вкладкой. */
+/** Короткая нижняя панель навигации M3 Expressive (как в приложениях Android 16/17): во всю
+ *  ширину, surfaceContainer, высота 64dp над системной навигацией. У выбранной вкладки под
+ *  иконкой — таблетка-индикатор secondaryContainer 56×32, раскрывается пружиной. */
 @Composable
 fun GlassTabBar(tabs: List<GlassTab>, selectedRoute: String?, onSelect: (GlassTab) -> Unit, modifier: Modifier = Modifier) {
     val idx = tabs.indexOfFirst { it.route == selectedRoute }.coerceAtLeast(0)
     val pill = RoundedCornerShape(50)
-    Box(
+    Row(
         modifier
             .fillMaxWidth()
+            .background(GodjiColors.SurfaceContainer)
             .navigationBarsPadding()
-            .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
             .height(64.dp)
-            .godjiGlassStrong(pill)
-            .padding(5.dp)
     ) {
-        BoxWithConstraints(Modifier.fillMaxWidth().fillMaxHeight()) {
-            val w = maxWidth / tabs.size
-            val x by animateDpAsState(w * idx, spring(dampingRatio = 0.62f, stiffness = 380f), label = "lens")
-            Box(Modifier.offset(x = x).width(w).fillMaxHeight().godjiGlassPill(pill, tint = GodjiColors.Lens))
-            Row(Modifier.fillMaxWidth().fillMaxHeight(), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                tabs.forEachIndexed { i, tab ->
-                    val selected = i == idx
-                    val color by animateColorAsState(if (selected) GodjiColors.TealDeep else GodjiColors.TextSecondary, label = "tabColor")
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .selectable(selected, remember { MutableInteractionSource() }, null, role = Role.Tab) { onSelect(tab) },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
-                    ) {
-                        Icon(tab.icon, contentDescription = null, tint = color, modifier = Modifier.size(21.dp))
-                        Text(tab.label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+        tabs.forEachIndexed { i, tab ->
+            val selected = i == idx
+            val indicator by animateDpAsState(
+                if (selected) 56.dp else 24.dp,
+                spring(dampingRatio = 0.6f, stiffness = 500f), label = "indicator"
+            )
+            val iconColor by animateColorAsState(if (selected) GodjiColors.OnSecondaryContainer else GodjiColors.TextSecondary, label = "tabIcon")
+            val labelColor by animateColorAsState(if (selected) GodjiColors.TextPrimary else GodjiColors.TextSecondary, label = "tabLabel")
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .selectable(selected, remember { MutableInteractionSource() }, null, role = Role.Tab) { onSelect(tab) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
+            ) {
+                Box(Modifier.size(56.dp, 32.dp), contentAlignment = Alignment.Center) {
+                    if (selected) Box(Modifier.width(indicator).fillMaxHeight().clip(pill).background(GodjiColors.Lens))
+                    Icon(tab.icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(22.dp))
                 }
+                Text(
+                    tab.label, color = labelColor, fontSize = 12.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

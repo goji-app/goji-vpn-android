@@ -286,39 +286,15 @@ fun PlansScreen(onOpenSupport: () -> Unit, viewModel: PlansViewModel = hiltViewM
     }
 }
 
-/** Верхняя карточка: кольцо дней, тариф, "АКТИВНА", "Продлить" + медленный блик gg-sweep. */
+/** Верхняя карточка: кольцо дней, тариф, "АКТИВНА", "Продлить" (тональная primaryContainer). */
 @Composable
 private fun SubscriptionCard(state: PlansUiState) {
     val context = LocalContext.current
-    val sweepT = rememberInfiniteTransition(label = "sweep")
-    // gg-sweep 6с ease-in-out: 0% → −160%, 55%…100% → 420% ширины полосы (26% карточки)
-    val sweep by sweepT.animateFloat(
-        initialValue = -1.6f, targetValue = 4.2f,
-        animationSpec = infiniteRepeatable(keyframes {
-            durationMillis = 6000
-            -1.6f at 0 using CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
-            4.2f at 3300
-            4.2f at 6000
-        }),
-        label = "sweepX"
-    )
     Column(
         Modifier
             .fillMaxWidth()
             .godjiCard(RoundedCornerShape(28.dp), tint = GodjiColors.TealTint)
             .clip(RoundedCornerShape(28.dp))
-            .drawWithContent {
-                val w = size.width * 0.26f
-                val x = w * sweep
-                rotate(-20f, pivot = Offset(x + w / 2, size.height / 2)) {
-                    drawRect(
-                        Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.28f), Color.Transparent), startX = x, endX = x + w),
-                        topLeft = Offset(x, -size.height * 0.4f),
-                        size = androidx.compose.ui.geometry.Size(w, size.height * 1.8f)
-                    )
-                }
-                drawContent()
-            }
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {

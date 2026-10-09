@@ -250,12 +250,7 @@ private fun HeaderCircleButton(label: String, color: Color, busy: Boolean, onCli
 /** Эталон: padding 11/13, радиус 20, круг 24dp с галочкой, текст 12sp, крестик 22dp на hair. */
 @Composable
 private fun RefreshBanner(message: RefreshMessage, onDismiss: () -> Unit) {
-    val bg = when {
-        !message.isError && GodjiColors.isDark -> Color(0x61145A50)
-        !message.isError -> Color(0x8CC8F5EC)
-        GodjiColors.isDark -> Color(0x666E2D19)
-        else -> Color(0x8CFFDCCD)
-    }
+    val bg = if (!message.isError) GodjiColors.TealTint else GodjiColors.TerracottaTint
     Row(
         Modifier
             .fillMaxWidth()

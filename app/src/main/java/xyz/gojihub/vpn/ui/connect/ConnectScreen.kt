@@ -58,6 +58,10 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import xyz.gojihub.vpn.ui.theme.CookieShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
@@ -147,19 +151,18 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
 
         GlobeCard(state, Modifier.layoutId(GLOBE_ID))
 
-        // Эталон: колонка gap 14 — кнопка ровно 80×80 (кольца/спиннер выходят за её край, не
-        // занимая места), под ней блок gap 5: заголовок 26sp с line-height 1.08 и строка статуса.
+        // Кнопка-«печенье» 64dp, под ней заголовок 22sp и строка статуса.
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ConnectButton(state, onClick = { toggle() })
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     headline(state),
                     color = GodjiColors.TextPrimary,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 26.sp,
-                    lineHeight = 28.sp,
-                    letterSpacing = (-0.65).sp,
+                    fontSize = 22.sp,
+                    lineHeight = 26.sp,
+                    letterSpacing = (-0.4).sp,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -205,7 +208,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel(), onOpenPlans: ()
 private const val GLOBE_ID = "globe"
 private val HOME_PAD_TOP = 14.dp
 private val HOME_PAD_BOTTOM = 8.dp
-private val HOME_GAP = 10.dp
+private val HOME_GAP = 8.dp
 // Слот глобуса в раскладке (сам холст ещё заходит на 44dp под шапку и на 42dp под кнопку).
 // 344 — как было в эталоне; меньше 150 сфера становится мелкой — тогда уже прокрутка.
 private val GLOBE_SLOT_MIN = 150.dp
@@ -261,12 +264,10 @@ private fun subline(s: ConnectUiState): String {
     }
 }
 
-// Значения — из эталона (dotColor): accent / #E0A526 / белый .35 или чернильный .3.
 private fun dotColor(s: ConnectUiState) = when {
     s.connected -> GodjiColors.Teal
-    s.connecting -> Color(0xFFE0A526)
-    GodjiColors.isDark -> Color(0x59FFFFFF)
-    else -> Color(0x4D0B1F1C)
+    s.connecting -> GodjiColors.Warning
+    else -> GodjiColors.Outline
 }
 
 @Composable
@@ -313,81 +314,50 @@ private fun GlobeCard(state: ConnectUiState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Круглая кнопка подключения (80dp) по центру под глобусом — вместо прежней текстовой
- *  кнопки рядом с заголовком. Выключено — стеклянная (godjiGlassStrong), включено — залита
- *  акцентным градиентом с двумя расходящимися кольцами, подключение — вращающаяся
- *  двухцветная дуга-спиннер вокруг кнопки. */
+/** Кнопка подключения в стиле Material 3 Expressive — «печенье» (8 мягких волн) 64dp.
+ *  Выключено — primaryContainer; подключение — печенье вращается (как LoadingIndicator M3E);
+ *  включено — заливка primary, волны сглаживаются почти в круг. Нажатие «вдавливает» волны —
+ *  форма морфится пружиной, а не переключается рывком. Без колец и теней: ничего не
+ *  перерисовывается на каждом кадре, кроме поворота во время подключения. */
 @Composable
 private fun ConnectButton(state: ConnectUiState, onClick: () -> Unit) {
-    // Эталон: контейнер ровно 80×80; кольца (inset 0, scale 1→1.55) и спиннер (inset −5)
-    // рисуются за его пределами, не занимая места в раскладке.
-    Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-        if (state.connected) {
-            // orbGlow: кольцо 8px цвета okBg вокруг кнопки
-            Box(Modifier.requiredSize(96.dp).clip(CircleShape).background(GodjiColors.TealTint))
-            repeat(2) { i ->
-                val ringTransition = rememberInfiniteTransition(label = "ring$i")
-                val progress by ringTransition.animateFloat(
-                    initialValue = 0f, targetValue = 1f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2400, easing = CubicBezierEasing(0f, 0f, 0.58f, 1f)),
-                        initialStartOffset = StartOffset(i * 1200)
-                    ),
-                    label = "ringProgress$i"
-                )
-                Box(
-                    Modifier
-                        .requiredSize(80.dp)
-                        .scale(1f + progress * 0.55f)
-                        .border(2.dp, GodjiColors.Teal.copy(alpha = 0.5f * (1f - progress)), CircleShape)
-                )
+    val (pressInteraction, pressScale) = rememberPressScale()
+    val pressed by pressInteraction.collectIsPressedAsState()
+    val depth by animateFloatAsState(
+        when {
+            pressed -> 0.09f
+            state.connected -> 0.025f
+            else -> 0.055f
+        },
+        spring(dampingRatio = 0.45f, stiffness = 380f), label = "cookieDepth"
+    )
+    val fill by animateColorAsState(if (state.connected) GodjiColors.Teal else GodjiColors.PrimaryContainer, label = "cookieFill")
+    val iconTint by animateColorAsState(if (state.connected) GodjiColors.Surface else GodjiColors.OnPrimaryContainer, label = "cookieIcon")
+    val spin: State<Float> = if (state.connecting) {
+        rememberInfiniteTransition(label = "cookieSpin").animateFloat(
+            0f, 360f, infiniteRepeatable(tween(1800, easing = LinearEasing)), label = "spin"
+        )
+    } else remember { mutableFloatStateOf(0f) }
+    val shape = CookieShape(8, depth)
+    Box(
+        Modifier
+            .size(64.dp)
+            .graphicsLayer {
+                rotationZ = spin.value
+                scaleX = pressScale.value
+                scaleY = pressScale.value
             }
-        }
-
-        if (state.connecting) {
-            val spinTransition = rememberInfiniteTransition(label = "ctaSpin")
-            val spinAngle by spinTransition.animateFloat(
-                initialValue = 0f, targetValue = 360f,
-                animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
-                label = "ctaSpinAngle"
-            )
-            // border 2.5px: верхняя четверть — accent, правая — warm, остальное прозрачно
-            Canvas(Modifier.requiredSize(90.dp).rotate(spinAngle)) {
-                val w = 2.5.dp.toPx()
-                val arcSize = Size(size.width - w, size.height - w)
-                val topLeft = Offset(w / 2, w / 2)
-                drawArc(GodjiColors.Teal, 225f, 90f, false, topLeft, arcSize, style = Stroke(w))
-                drawArc(GodjiColors.Terracotta, 315f, 90f, false, topLeft, arcSize, style = Stroke(w))
-            }
-        }
-
-        val (pressInteraction, pressScale) = rememberPressScale()
-        Box(
-            Modifier
-                .size(80.dp)
-                .scale(pressScale.value)
-                .then(
-                    if (state.connected)
-                        Modifier
-                            .shadow(18.dp, CircleShape, ambientColor = GodjiColors.AccentGlow, spotColor = GodjiColors.AccentGlow)
-                            .background(
-                                Brush.verticalGradient(0f to GodjiColors.AccentGradTop, 0.55f to GodjiColors.AccentGradMid, 1f to GodjiColors.AccentGradBottom),
-                                CircleShape
-                            )
-                            .border(1.dp, Color.White.copy(alpha = 0.55f), CircleShape)
-                    else Modifier.godjiGlassStrong(CircleShape)
-                )
-                .clip(CircleShape)
-                .clickable(interactionSource = pressInteraction, indication = null, onClick = onClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Filled.PowerSettingsNew,
-                contentDescription = null,
-                tint = if (state.connected) Color.White else GodjiColors.TextPrimary,
-                modifier = Modifier.size(28.dp)
-            )
-        }
+            .background(fill, shape)
+            .clip(shape)
+            .clickable(interactionSource = pressInteraction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            Icons.Filled.PowerSettingsNew,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(26.dp).graphicsLayer { rotationZ = -spin.value }
+        )
     }
 }
 
@@ -419,7 +389,7 @@ private fun StatsCard(state: ConnectUiState) {
         Modifier
             .fillMaxWidth()
             .godjiCard()
-            .padding(horizontal = 4.dp, vertical = 11.dp)
+            .padding(horizontal = 4.dp, vertical = 9.dp)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -431,7 +401,7 @@ private fun StatsCard(state: ConnectUiState) {
 
 @Composable
 private fun StatColumn(label: String, speedMbps: Double, accent: Color, down: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(
                 if (down) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
@@ -440,7 +410,7 @@ private fun StatColumn(label: String, speedMbps: Double, accent: Color, down: Bo
             Text(label, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
         }
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("%.1f".format(speedMbps), color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 22.sp, letterSpacing = (-0.44).sp, modifier = Modifier.alignByBaseline())
+            Text("%.1f".format(speedMbps), color = GodjiColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 20.sp, letterSpacing = (-0.4).sp, modifier = Modifier.alignByBaseline())
             Text(" ${Loc.s.speedUnit}", color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, modifier = Modifier.alignByBaseline())
         }
     }
@@ -451,16 +421,11 @@ private fun StatColumn(label: String, speedMbps: Double, accent: Color, down: Bo
 @Composable
 private fun BannerCard(text: String, kind: BannerKind, onDismiss: () -> Unit) {
     val ok = kind == BannerKind.SUCCESS
-    val bg = when {
-        ok && GodjiColors.isDark -> Color(0x61145A50)
-        ok -> Color(0x8CC8F5EC)
-        GodjiColors.isDark -> Color(0x666E2D19)
-        else -> Color(0x8CFFDCCD)
-    }
+    val bg = if (ok) GodjiColors.TealTint else GodjiColors.TerracottaTint
     val iconBg = if (ok) GodjiColors.Teal else GodjiColors.Terracotta
     val icon = when (kind) { BannerKind.SUCCESS -> Icons.Filled.Check; BannerKind.WARNING -> Icons.Filled.PriorityHigh; BannerKind.INFO -> Icons.Filled.Info }
     Row(
-        Modifier.fillMaxWidth().godjiGlassPill(RoundedCornerShape(22.dp), tint = bg).padding(horizontal = 14.dp, vertical = 13.dp),
+        Modifier.fillMaxWidth().godjiGlassPill(RoundedCornerShape(20.dp), tint = bg).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
@@ -490,7 +455,7 @@ private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Un
                 .fillMaxWidth()
                 .background(if (pressed) Color(0x147F7F7F) else Color.Transparent)
                 .clickable(interactionSource = nodeInteraction, indication = null, onClick = onOpenServers)
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -513,10 +478,10 @@ private fun NodeAndAutoSwitchCard(state: ConnectUiState, onOpenServers: () -> Un
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = GodjiColors.TextSecondary, modifier = Modifier.size(16.dp))
         }
-        HorizontalDivider(thickness = 1.dp, color = GodjiColors.Hair)
+        HorizontalDivider(thickness = 2.dp, color = GodjiColors.SurfaceBase)
         Column(
-            Modifier.fillMaxWidth().padding(start = 14.dp, top = 13.dp, end = 14.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            Modifier.fillMaxWidth().padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Filled.Shield, contentDescription = null, tint = GodjiColors.TealDeep, modifier = Modifier.size(15.dp))
@@ -539,8 +504,8 @@ private fun TrafficCard(state: ConnectUiState, onClick: () -> Unit) {
             .fillMaxWidth()
             .godjiCard()
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(Loc.s.trafficLabel, color = GodjiColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.alignByBaseline())

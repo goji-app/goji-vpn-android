@@ -106,8 +106,6 @@ data class FeatureStrings(
     val bypassEmpty: String,
     val bypassWithSubdomains: String,
     // ── Жидкое стекло ──
-    val liquidGlassTitle: String,
-    val liquidGlassDesc: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -205,8 +203,6 @@ data class FeatureStrings(
             bypassListSection = { n -> "Сайты · $n" },
             bypassEmpty = "Список пуст — весь трафик идёт через VPN.",
             bypassWithSubdomains = "вместе с поддоменами",
-            liquidGlassTitle = "Жидкое стекло",
-            liquidGlassDesc = "Карточки и панели преломляют фон, как настоящее стекло. На слабых телефонах можно выключить",
         )
 
         private val EN = FeatureStrings(
@@ -298,8 +294,6 @@ data class FeatureStrings(
             bypassListSection = { n -> "Sites · $n" },
             bypassEmpty = "The list is empty — all traffic goes through the VPN.",
             bypassWithSubdomains = "including subdomains",
-            liquidGlassTitle = "Liquid glass",
-            liquidGlassDesc = "Cards and panels refract the background like real glass. Turn off on slower phones",
         )
 
         private val ZH = FeatureStrings(
@@ -391,8 +385,6 @@ data class FeatureStrings(
             bypassListSection = { n -> "网站 · $n" },
             bypassEmpty = "列表为空 — 所有流量都经过 VPN。",
             bypassWithSubdomains = "包括子域名",
-            liquidGlassTitle = "液态玻璃",
-            liquidGlassDesc = "卡片和面板像真实玻璃一样折射背景。性能较弱的手机可关闭",
         )
     }
 }
