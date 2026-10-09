@@ -58,6 +58,7 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
     @Inject lateinit var vpnStateObserver: VpnStateObserver
     @Inject lateinit var networkRulesManager: xyz.gojihub.vpn.network.NetworkRulesManager
     @Inject lateinit var pingRepository: xyz.gojihub.vpn.subscription.PingRepository
+    @Inject lateinit var tokenManager: xyz.gojihub.vpn.auth.TokenManager
 
     @Volatile private var lastForegroundRefreshAt = 0L
 
@@ -111,6 +112,10 @@ class GodjiApplication : Application(), Configuration.Provider, ImageLoaderFacto
             AppLogger.level = settingsRepository.logLevelNow()
         }
         AppVisibility.install()
+        // Разово для входов через браузер, сделанных до 1.0.112 (см. TokenManager).
+        if (tokenManager.isLoggedIn() && tokenManager.refreshToken() == null) {
+            android.os.Handler(mainLooper).post { tokenManager.recoverWebRefreshToken() }
+        }
         vpnStateObserver.addListener { running ->
             GojiTileService.requestUpdate(this)
             // Узел только что стал "последним" — обновляем подпись ярлыка на иконке.

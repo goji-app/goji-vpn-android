@@ -60,7 +60,11 @@ object NetworkModule {
         // Если ниже сработает TokenAuthenticator и продлит сессию, сюда придёт уже финальный
         // (не 401) ответ после успешного ретрая — markSessionExpired() увидит только "по-
         // настоящему" мёртвую сессию (refresh-токена нет или сам он тоже не принят).
-        if (response.code == 401 && token != null && !request.url.encodedPath.startsWith("/api/auth/")) {
+        // Последнее условие: если параллельный запрос за это время уже обновил сессию, этот
+        // устаревший 401 не должен стирать свежий токен.
+        if (response.code == 401 && token != null && !request.url.encodedPath.startsWith("/api/auth/") &&
+            tokenManager.accessToken() == token
+        ) {
             tokenManager.markSessionExpired()
         }
         response
@@ -104,27 +108,52 @@ object NetworkModule {
     ): Authenticator = Authenticator { _, response ->
         if (responseCount(response) >= 2) return@Authenticator null
         if (response.request.url.encodedPath.startsWith("/api/auth/")) return@Authenticator null
-        val refreshToken = tokenManager.refreshToken() ?: return@Authenticator null
+        val failedToken = response.request.header("Authorization")?.removePrefix("Bearer ") ?: return@Authenticator null
 
-        val refreshRequest = Request.Builder()
-            .url(BASE_URL + "api/auth/refresh")
-            .post("".toRequestBody(null))
-            .header("Cookie", "rw_refresh_token=$refreshToken")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .build()
+        // Ровно в момент истечения JWT 401 получают сразу несколько запросов (подписка,
+        // профиль, фоновый воркер). Бэкенд ротирует refresh-токен: второй параллельный
+        // refresh со старым токеном получал отказ — и authInterceptor стирал уже свежую
+        // сессию. Поэтому обновление — строго по одному, а кто ждал — берёт готовый токен.
+        synchronized(refreshLock) {
+            val current = tokenManager.accessToken() ?: return@Authenticator null
+            if (current != failedToken) {
+                return@Authenticator response.request.newBuilder().header("Authorization", "Bearer $current").build()
+            }
+            val refreshToken = tokenManager.refreshToken() ?: return@Authenticator null
 
-        runCatching { refreshClient.newCall(refreshRequest).execute() }.getOrNull()?.use { refreshResponse ->
-            if (!refreshResponse.isSuccessful) return@Authenticator null
-            val newToken = extractCookieValue(refreshResponse.headers, "rw_session_token") ?: return@Authenticator null
-            // Ротация refresh-токена — если бэкенд не прислал новый, оставляем прежний
-            // (он мог быть выдан на длительный срок и не ротируется на каждое обновление).
-            extractCookieValue(refreshResponse.headers, "rw_refresh_token")?.let(tokenManager::saveRefreshToken)
-            // Значение здесь ни на что не влияет — TokenManager.isLoggedIn() его не читает,
-            // единственный источник правды о протухшем токене — 401 от бэкенда (см. там же).
-            tokenManager.save(newToken, 24L * 3600)
-            response.request.newBuilder().header("Authorization", "Bearer $newToken").build()
+            val refreshRequest = Request.Builder()
+                .url(BASE_URL + "api/auth/refresh")
+                .post("".toRequestBody(null))
+                .header("Cookie", "rw_refresh_token=$refreshToken")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+
+            // Сетевой сбой самого обновления (нет сети, туннель переподключается) — НЕ повод
+            // разлогинивать: IOException роняет исходный запрос как обычную сетевую ошибку,
+            // 401 до authInterceptor не доходит, сессия обновится при следующем запросе.
+            refreshClient.newCall(refreshRequest).execute().use { refreshResponse ->
+                val newToken = extractCookieValue(refreshResponse.headers, "rw_session_token")
+                when {
+                    (refreshResponse.isSuccessful || refreshResponse.code == 409) && newToken != null -> {
+                        // Ротация refresh-токена — если бэкенд не прислал новый, оставляем прежний.
+                        extractCookieValue(refreshResponse.headers, "rw_refresh_token")?.let(tokenManager::saveRefreshToken)
+                        // Значение здесь ни на что не влияет — TokenManager.isLoggedIn() его не
+                        // читает, источник правды о протухшем токене — 401 от бэкенда.
+                        tokenManager.save(newToken, 24L * 3600)
+                        response.request.newBuilder().header("Authorization", "Bearer $newToken").build()
+                    }
+                    // Refresh-токен действительно отвергнут ("Invalid refresh token") —
+                    // сессия мертва, дальше authInterceptor отправит на логин.
+                    refreshResponse.code == 400 || refreshResponse.code == 401 -> null
+                    // 409 без новой сессии (веб-клиент сайта считает его "уже обновлено
+                    // параллельно"), 429, 5xx, CDN — временное: не разлогиниваем.
+                    else -> throw java.io.IOException("session refresh failed: HTTP ${refreshResponse.code}")
+                }
+            }
         }
     }
+
+    private val refreshLock = Any()
 
     private fun responseCount(response: Response): Int {
         var result = 1

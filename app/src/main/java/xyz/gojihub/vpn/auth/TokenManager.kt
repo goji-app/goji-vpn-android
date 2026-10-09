@@ -53,6 +53,25 @@ class TokenManager @Inject constructor(
 
     fun refreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
 
+    /** Сессии, начатые через встроенный браузер до 1.0.112, сохранились без refresh-токена
+     *  (кука с Path=/api/auth не читалась, см. WebLoginActivity) — и выкидывали на логин ровно
+     *  через сутки. Сама кука при этом лежит в CookieManager WebView. Забираем её, только если
+     *  сессионная кука там — та же, что наш текущий токен: значит, это тот же вход, а не
+     *  старая сессия другого аккаунта. Вызывать на главном потоке (CookieManager). */
+    fun recoverWebRefreshToken() {
+        val token = accessToken() ?: return
+        if (refreshToken() != null) return
+        runCatching {
+            val cm = android.webkit.CookieManager.getInstance()
+            val session = cookie(cm.getCookie("https://gojihub.xyz/"), "rw_session_token")
+            val refresh = cookie(cm.getCookie("https://gojihub.xyz/api/auth/refresh"), "rw_refresh_token")
+            if (session == token && !refresh.isNullOrBlank()) saveRefreshToken(refresh)
+        }
+    }
+
+    private fun cookie(cookies: String?, name: String): String? =
+        cookies?.split("; ")?.firstOrNull { it.startsWith("$name=") }?.substringAfter("$name=")
+
     /** Раньше здесь ещё сравнивался KEY_EXPIRES_AT (локально посчитанный из expires_in при
      *  логине) с системным временем — из-за этого MainActivity при каждом холодном старте
      *  (Android регулярно убивает процесс в фоне, особенно без активного VPN-сервиса) могла

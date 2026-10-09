@@ -87,6 +87,7 @@ class WebLoginActivity : ComponentActivity() {
 }
 
 private const val SITE_URL = "https://gojihub.xyz/"
+private const val REFRESH_URL = "https://gojihub.xyz/api/auth/refresh"
 private const val SESSION_COOKIE_NAME = "rw_session_token"
 private const val REFRESH_COOKIE_NAME = "rw_refresh_token"
 
@@ -147,7 +148,14 @@ private fun WebLoginScreen(onSessionCookie: (String, String?) -> Unit, onClose: 
                                     CookieManager.getInstance().flush()
                                     // Живёт намного дольше сессионного JWT — без неё TokenAuthenticator
                                     // не смог бы продлевать сессию раз в сутки (см. NetworkModule).
-                                    onSessionCookie(token, cookieFrom(cookies, REFRESH_COOKIE_NAME))
+                                    // Кука выставлена с Path=/api/auth, поэтому getCookie(SITE_URL)
+                                    // (путь "/") её НЕ возвращает — спрашиваем по URL обновления.
+                                    // До 1.0.112 из-за этого вход через Google/Яндекс/Telegram
+                                    // сохранялся без refresh-токена и ровно через сутки выкидывал
+                                    // на логин (у email-входа токен берётся из Set-Cookie ответа).
+                                    val refresh = cookieFrom(CookieManager.getInstance().getCookie(REFRESH_URL), REFRESH_COOKIE_NAME)
+                                        ?: cookieFrom(cookies, REFRESH_COOKIE_NAME)
+                                    onSessionCookie(token, refresh)
                                 }
                             }
                         }
