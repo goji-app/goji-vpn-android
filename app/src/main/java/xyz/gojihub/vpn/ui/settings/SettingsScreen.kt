@@ -47,6 +47,7 @@ import xyz.gojihub.vpn.ui.theme.FontSizePreset
 import xyz.gojihub.vpn.ui.theme.NewBadge
 import xyz.gojihub.vpn.ui.theme.ThemeMode
 import xyz.gojihub.vpn.ui.theme.GodjiColors
+import xyz.gojihub.vpn.ui.util.BackButton
 import xyz.gojihub.vpn.ui.theme.SpaceGroteskFamily
 import xyz.gojihub.vpn.ui.theme.godjiCard
 import xyz.gojihub.vpn.ui.util.LogViewerDialog
@@ -76,7 +77,11 @@ fun SettingsScreen(
         LogViewerDialog(category = category, title = title, onDismiss = { logDialog = null })
     }
 
-    // Эталон: колонка padding 16, gap 8; заголовок 30px/1.05, трекинг -.03em, padding 0 4 6.
+    // Как в Windows-клиенте: главный экран — карточка со ссылками на разделы, каждый раздел
+    // открывается своим окном (стрелка «назад» и системный «назад» возвращают к списку).
+    var page by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(SettingsPage.MAIN) }
+    androidx.activity.compose.BackHandler(enabled = page != SettingsPage.MAIN) { page = SettingsPage.MAIN }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -85,95 +90,137 @@ fun SettingsScreen(
             .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily,
-            fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 6.dp)
-        )
-
-        SectionLabel(Loc.s.settingsNotifications)
-        RefCard {
-            ToggleRow(Loc.s.settingsPinNotif, Loc.s.settingsPinNotifDesc, state.pinNotification, viewModel::setPinNotification)
-        }
-
-        SectionLabel(Loc.s.settingsAppearance)
-        RefCard {
-            // В эталоне тема — переключатель "Тёмная тема" (2 состояния). В приложении их три
-            // (Светлая/Тёмная/Системная) — показываю тем же сегмент-контролом, что и язык.
-            SegmentedRow(
-                title = Loc.s.settingsDarkTheme, subtitle = null,
-                options = ThemeMode.entries.map {
-                    when (it) {
-                        ThemeMode.LIGHT -> Loc.s.themeModeLight
-                        ThemeMode.DARK -> Loc.s.themeModeDark
-                        ThemeMode.SYSTEM -> Loc.s.themeModeSystem
-                    }
-                },
-                selectedIndex = ThemeMode.entries.indexOf(state.themeMode),
-                onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) }
+        if (page == SettingsPage.MAIN) {
+            Text(
+                Loc.s.settingsTitle, color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily,
+                fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 28.sp, letterSpacing = (-0.6).sp,
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 6.dp)
             )
-            Hair()
-            SegmentedRow(
-                title = Loc.s.settingsLanguage, subtitle = Loc.s.settingsLanguageDesc,
-                options = AppLanguage.entries.map { it.displayName },
-                selectedIndex = AppLanguage.entries.indexOf(state.language),
-                onSelect = { viewModel.setLanguage(AppLanguage.entries[it]) }
-            )
-            Hair()
-            SegmentedRow(
-                title = Loc.s.settingsFontSize, subtitle = null,
-                options = FontSizePreset.entries.map {
-                    when (it) {
-                        FontSizePreset.SMALL -> Loc.s.fontSizeSmall
-                        FontSizePreset.NORMAL -> Loc.s.fontSizeNormal
-                        FontSizePreset.LARGE -> Loc.s.fontSizeLarge
-                    }
-                },
-                selectedIndex = FontSizePreset.entries.indexOf(state.fontSize),
-                onSelect = { viewModel.setFontSize(FontSizePreset.entries[it]) }
-            )
-        }
-
-        SectionLabel(Loc.s.settingsServerCheck)
-        RefCard {
-            LinkRow(Loc.s.settingsPingLink, Loc.s.settingsPingLinkDesc, onOpenPingSettings)
-        }
-
-        SectionLabel(Loc.f.securitySection)
-        LeakCheckCard(state, onCheck = viewModel::checkLeak)
-
-        // Разделов ниже в эталоне нет — это рабочие функции приложения, оформлены теми же
-        // карточками/строками, что и эталонные разделы.
-        SectionLabel(Loc.s.settingsConnection)
-        RefCard {
-            LinkRow(Loc.f.journalTitle, Loc.f.journalLinkDesc, onOpenJournal)
-            Hair()
-            LinkRow(Loc.f.netRulesTitle, Loc.f.netRulesLinkDesc, onOpenNetworkRules)
-            Hair()
-            ToggleRow(Loc.s.settingsKillSwitch, Loc.s.settingsKillSwitchDesc, state.killSwitch, viewModel::setKillSwitch)
-            Hair()
-            ToggleRow(Loc.f.hapticsTitle, Loc.f.hapticsDesc, state.haptics, viewModel::setHaptics)
-            Hair()
-            LinkRow(Loc.s.settingsAppTunneling, Loc.s.settingsAppTunnelingDesc, onOpenAppTunneling)
-            Hair()
-            LinkRow(Loc.f.bypassTitle, Loc.f.bypassLinkDesc, onOpenBypassDomains)
-            Hair()
-            // Программно включить Always-on VPN нельзя — ограничение Android; открываем
-            // системный экран, где пользователь включает это сам.
-            LinkRow(Loc.s.settingsAlwaysOnTitle, Loc.s.settingsAlwaysOnDesc) {
-                runCatching { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
+            RefCard {
+                LinkRow(Loc.s.settingsAppearance, Loc.f.setAppearanceDesc) { page = SettingsPage.APPEARANCE }
+                Hair()
+                LinkRow(Loc.s.settingsConnection, Loc.f.setConnectionDesc) { page = SettingsPage.CONNECTION }
+                Hair()
+                LinkRow(Loc.f.securitySection, Loc.f.setSecurityDesc) { page = SettingsPage.SECURITY }
+                Hair()
+                LinkRow(Loc.s.settingsNotifications, Loc.f.setNotificationsDesc) { page = SettingsPage.NOTIFICATIONS }
+                // Флейвор "play" — самообновления по GitHub Releases в нём нет вовсе.
+                if (BuildConfig.ENABLE_SELF_UPDATE) {
+                    Hair()
+                    LinkRow(Loc.s.settingsUpdatesTitle, Loc.f.setUpdatesDesc) { page = SettingsPage.UPDATES }
+                }
+                Hair()
+                LinkRow(Loc.s.settingsAbout, Loc.f.setAboutDesc) { page = SettingsPage.ABOUT }
             }
+            Spacer(Modifier.height(4.dp))
+            RefCard {
+                LinkRow(Loc.s.support.settingsSupportLink, Loc.s.support.settingsSupportLinkDesc, onOpenSupport)
+            }
+            Spacer(Modifier.height(4.dp))
+            val (outInteraction, outScale) = rememberPressScale()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .scale(outScale.value)
+                    .godjiCard(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(24.dp))
+                    .clickable(interactionSource = outInteraction, indication = null) {
+                        viewModel.logout(); onLoggedOut()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(Loc.s.settingsLogout, color = GodjiColors.Danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            return@Column
         }
 
-        SectionLabel(Loc.s.support.settingsSupportTitle)
-        RefCard {
-            LinkRow(Loc.s.support.settingsSupportLink, Loc.s.support.settingsSupportLinkDesc, onOpenSupport)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+            BackButton(onClick = { page = SettingsPage.MAIN })
+            Text(
+                when (page) {
+                    SettingsPage.APPEARANCE -> Loc.s.settingsAppearance
+                    SettingsPage.CONNECTION -> Loc.s.settingsConnection
+                    SettingsPage.SECURITY -> Loc.f.securitySection
+                    SettingsPage.NOTIFICATIONS -> Loc.s.settingsNotifications
+                    SettingsPage.UPDATES -> Loc.s.settingsUpdatesTitle
+                    SettingsPage.ABOUT -> Loc.s.settingsAbout
+                    SettingsPage.MAIN -> ""
+                },
+                color = GodjiColors.TextPrimary, fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.SemiBold, fontSize = 24.sp
+            )
         }
 
-        // Флейвор "play" — самообновления по GitHub Releases в нём нет вовсе.
-        if (BuildConfig.ENABLE_SELF_UPDATE) {
-            SectionLabel(Loc.s.settingsUpdatesTitle)
-            Column(
+        when (page) {
+            SettingsPage.APPEARANCE -> RefCard {
+                // Тема — три состояния (Светлая/Тёмная/Системная), тем же сегмент-контролом, что и язык.
+                SegmentedRow(
+                    title = Loc.s.settingsDarkTheme, subtitle = null,
+                    options = ThemeMode.entries.map {
+                        when (it) {
+                            ThemeMode.LIGHT -> Loc.s.themeModeLight
+                            ThemeMode.DARK -> Loc.s.themeModeDark
+                            ThemeMode.SYSTEM -> Loc.s.themeModeSystem
+                        }
+                    },
+                    selectedIndex = ThemeMode.entries.indexOf(state.themeMode),
+                    onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) }
+                )
+                Hair()
+                SegmentedRow(
+                    title = Loc.s.settingsLanguage, subtitle = Loc.s.settingsLanguageDesc,
+                    options = AppLanguage.entries.map { it.displayName },
+                    selectedIndex = AppLanguage.entries.indexOf(state.language),
+                    onSelect = { viewModel.setLanguage(AppLanguage.entries[it]) }
+                )
+                Hair()
+                SegmentedRow(
+                    title = Loc.s.settingsFontSize, subtitle = null,
+                    options = FontSizePreset.entries.map {
+                        when (it) {
+                            FontSizePreset.SMALL -> Loc.s.fontSizeSmall
+                            FontSizePreset.NORMAL -> Loc.s.fontSizeNormal
+                            FontSizePreset.LARGE -> Loc.s.fontSizeLarge
+                        }
+                    },
+                    selectedIndex = FontSizePreset.entries.indexOf(state.fontSize),
+                    onSelect = { viewModel.setFontSize(FontSizePreset.entries[it]) }
+                )
+            }
+
+            SettingsPage.CONNECTION -> {
+                RefCard {
+                    LinkRow(Loc.f.journalTitle, Loc.f.journalLinkDesc, onOpenJournal)
+                    Hair()
+                    LinkRow(Loc.f.netRulesTitle, Loc.f.netRulesLinkDesc, onOpenNetworkRules)
+                    Hair()
+                    LinkRow(Loc.s.settingsPingLink, Loc.s.settingsPingLinkDesc, onOpenPingSettings)
+                    Hair()
+                    LinkRow(Loc.s.settingsAppTunneling, Loc.s.settingsAppTunnelingDesc, onOpenAppTunneling)
+                    Hair()
+                    LinkRow(Loc.f.bypassTitle, Loc.f.bypassLinkDesc, onOpenBypassDomains)
+                }
+                Spacer(Modifier.height(4.dp))
+                RefCard {
+                    ToggleRow(Loc.s.settingsKillSwitch, Loc.s.settingsKillSwitchDesc, state.killSwitch, viewModel::setKillSwitch)
+                    Hair()
+                    // Программно включить Always-on VPN нельзя — ограничение Android; открываем
+                    // системный экран, где пользователь включает это сам.
+                    LinkRow(Loc.s.settingsAlwaysOnTitle, Loc.s.settingsAlwaysOnDesc) {
+                        runCatching { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
+                    }
+                }
+            }
+
+            SettingsPage.SECURITY -> LeakCheckCard(state, onCheck = viewModel::checkLeak)
+
+            SettingsPage.NOTIFICATIONS -> RefCard {
+                ToggleRow(Loc.s.settingsPinNotif, Loc.s.settingsPinNotifDesc, state.pinNotification, viewModel::setPinNotification)
+                Hair()
+                ToggleRow(Loc.f.hapticsTitle, Loc.f.hapticsDesc, state.haptics, viewModel::setHaptics)
+            }
+
+            SettingsPage.UPDATES -> Column(
                 Modifier
                     .fillMaxWidth()
                     .godjiCard(RoundedCornerShape(24.dp))
@@ -182,52 +229,41 @@ fun SettingsScreen(
             ) {
                 UpdateSectionContent(state, viewModel)
             }
-        }
 
-        SectionLabel("${Loc.s.settingsAbout} · ${Loc.s.settingsAboutCopyHint}")
-        RefCard {
-            AboutRow(Loc.s.settingsAppVersion, state.appVersion)
-            Hair()
-            AboutRow(Loc.s.settingsXrayVersion, state.xrayVersion)
-            Hair()
-            AboutRow(Loc.s.settingsHwid, state.hwid)
-            Hair()
-            AboutRow(Loc.s.settingsDeviceInfo, state.deviceInfo)
-        }
-
-        SectionLabel(Loc.s.settingsLogs)
-        RefCard {
-            LinkRow(Loc.s.settingsLogLevel, Loc.s.settingsLogLevelDesc, onOpenLogLevel)
-            listOf(
-                LogCategory.MAIN to Loc.s.logMain,
-                LogCategory.CORE to Loc.s.logCore,
-                LogCategory.SUBSCRIPTION to Loc.s.logSubscription,
-                LogCategory.SERVICE to Loc.s.logService,
-                LogCategory.PUSH to Loc.s.logPush,
-            ).forEach { (category, title) ->
-                Hair()
-                LogRow(title) { logDialog = category to title }
+            SettingsPage.ABOUT -> {
+                SectionLabel(Loc.s.settingsAboutCopyHint)
+                RefCard {
+                    AboutRow(Loc.s.settingsAppVersion, state.appVersion)
+                    Hair()
+                    AboutRow(Loc.s.settingsXrayVersion, state.xrayVersion)
+                    Hair()
+                    AboutRow(Loc.s.settingsHwid, state.hwid)
+                    Hair()
+                    AboutRow(Loc.s.settingsDeviceInfo, state.deviceInfo)
+                }
+                SectionLabel(Loc.s.settingsLogs)
+                RefCard {
+                    LinkRow(Loc.s.settingsLogLevel, Loc.s.settingsLogLevelDesc, onOpenLogLevel)
+                    listOf(
+                        LogCategory.MAIN to Loc.s.logMain,
+                        LogCategory.CORE to Loc.s.logCore,
+                        LogCategory.SUBSCRIPTION to Loc.s.logSubscription,
+                        LogCategory.SERVICE to Loc.s.logService,
+                        LogCategory.PUSH to Loc.s.logPush,
+                    ).forEach { (category, title) ->
+                        Hair()
+                        LogRow(title) { logDialog = category to title }
+                    }
+                }
             }
-        }
 
-        SectionLabel(Loc.s.settingsAccount)
-        val (outInteraction, outScale) = rememberPressScale()
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(46.dp)
-                .scale(outScale.value)
-                .godjiCard(RoundedCornerShape(24.dp))
-                .clip(RoundedCornerShape(24.dp))
-                .clickable(interactionSource = outInteraction, indication = null) {
-                    viewModel.logout(); onLoggedOut()
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(Loc.s.settingsLogout, color = GodjiColors.Danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            SettingsPage.MAIN -> {}
         }
     }
 }
+
+/** Окна настроек (как разделы Windows-клиента). */
+private enum class SettingsPage { MAIN, APPEARANCE, CONNECTION, SECURITY, NOTIFICATIONS, UPDATES, ABOUT }
 
 /** Проверка утечек: заголовок + кнопка, после проверки — вердикт (круг 28dp с иконкой, как у
  *  баннеров Главной) и строки деталей в стиле "О программе". */

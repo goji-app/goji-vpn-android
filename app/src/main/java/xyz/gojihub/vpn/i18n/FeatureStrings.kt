@@ -138,6 +138,12 @@ data class FeatureStrings(
     val widgetUnprotected: String,
     val widgetDaysLine: (days: Int, date: String) -> String,
     val widgetNoSubscription: String,
+    val setAppearanceDesc: String,
+    val setConnectionDesc: String,
+    val setSecurityDesc: String,
+    val setNotificationsDesc: String,
+    val setUpdatesDesc: String,
+    val setAboutDesc: String,
 ) {
     companion object {
         fun forLang(lang: AppLanguage): FeatureStrings = when (lang) {
@@ -286,6 +292,12 @@ data class FeatureStrings(
             widgetUnprotected = "Не защищено",
             widgetDaysLine = { n, date -> (when { n % 10 == 1 && n % 100 != 11 -> "день"; n % 10 in 2..4 && n % 100 !in 12..14 -> "дня"; else -> "дней" }) + " · до $date" },
             widgetNoSubscription = "Открой Goji, чтобы обновить",
+            setAppearanceDesc = "Тема, язык и размер шрифта",
+            setConnectionDesc = "Журнал сети, Wi-Fi, пинг, приложения и сайты мимо VPN",
+            setSecurityDesc = "Проверка утечек IP и DNS",
+            setNotificationsDesc = "Закреплённое уведомление и вибрация",
+            setUpdatesDesc = "Версия приложения и новые выпуски",
+            setAboutDesc = "Версии, HWID, журналы",
         )
 
         private val EN = FeatureStrings(
@@ -428,6 +440,12 @@ data class FeatureStrings(
             widgetUnprotected = "Not protected",
             widgetDaysLine = { n, date -> (if (n == 1) "day" else "days") + " · until $date" },
             widgetNoSubscription = "Open Goji to refresh",
+            setAppearanceDesc = "Theme, language and font size",
+            setConnectionDesc = "Network log, Wi-Fi, ping, apps and sites outside VPN",
+            setSecurityDesc = "IP and DNS leak test",
+            setNotificationsDesc = "Pinned notification and vibration",
+            setUpdatesDesc = "App version and new releases",
+            setAboutDesc = "Versions, HWID, logs",
         )
 
         private val ZH = FeatureStrings(
@@ -570,6 +588,12 @@ data class FeatureStrings(
             widgetUnprotected = "未保护",
             widgetDaysLine = { _, date -> "天 · 至 $date" },
             widgetNoSubscription = "打开 Goji 以刷新",
+            setAppearanceDesc = "主题、语言和字体大小",
+            setConnectionDesc = "网络日志、Wi-Fi、延迟、绕过 VPN 的应用和网站",
+            setSecurityDesc = "IP 和 DNS 泄漏检测",
+            setNotificationsDesc = "常驻通知和振动",
+            setUpdatesDesc = "应用版本和新版本",
+            setAboutDesc = "版本、HWID、日志",
         )
     }
 }
